@@ -12,7 +12,42 @@
 | Target | Mobile / arcade / browser game jam that rewards retention |
 | Companion docs | [`ANALYSIS.md`](./ANALYSIS.md) (market, design and tech analysis with sources), [`../CLAUDE.md`](../CLAUDE.md) |
 
-Status: **design only. No code yet.** Every number in this document is a starting value to tune on real phones.
+Status: **jam build in progress** (Digit7 Jam, deadline 31 Oct 2026, 23:59:59 UTC+06:30). Every number is a starting value to tune on real phones.
+
+---
+
+## 0. Current jam design: "Seven Colors" (v0.3, 2026-10-26). This section supersedes the rest
+
+The sections after this one describe the original pair-based design ("Classic"). Where they conflict, **this section wins**. The reasons for each change are in `ANALYSIS.md` §4.1–4.2.
+
+**Loop (Krillion-like, deliberately simple)**
+1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation*.
+2. Each section deals **one** named color. Tier ladder: Lead, Lead, Lead, Silver, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
+3. **Intro beat** (~1.3 s): the operation, "find", a swatch and the color name.
+4. **Hunt (60 s)**: the live camera in full color. A **square at the center** (30 % of the short side) is framed in the target color. A panel shows the **target** swatch next to a live **"in the square"** swatch. The player can **zoom** (digital, 1–4×, pinch / slider / wheel / +−) and **snap**. Time runs out → auto-snap.
+5. **No editing.** No brightness, saturation, contrast or crop. Light is part of the game: shade with a hand, tilt, move to a window.
+6. **Result** (waits for the player, untimed): **target → yours as a color ramp** (1 in-between step for Quintessence … 6 for Sludge, OKLab-interpolated; no hint words), accuracy, grade stamp, points, and a **Next color** button. Nothing advances automatically; the next clock starts when the next color appears.
+7. After 7 colors: **Magnum Opus** summary with the band, total, 7 found swatches, the list of "<Grade> of <Virtue>" ingredients, a local leaderboard entry and a share text with a **7-square emoji row**. Restart is one tap ("Brew again").
+
+**Scoring**
+- The square is split into 10×10 cells. Each cell's mean color (linear RGB → OKLab) is scored with ΔE_CA (§8.4, plus the greyish penalty `dullRelK`) and the accuracy curve (§8.5). **acc = mean of the cell accuracies** (blown-out cells score 0). Free, invisible light help: the better of the raw square and an auto-white-balanced one (estimated on the whole frame).
+- Points per color = `round(10 × acc × tierMult) + quicksilver` (2 per second left, max 120, camera mode only).
+- Grades as §8.6 (Sludge → Quintessence). Philosopher's Stone: all 7 colors ≥ 80 → +500, band **FULL SPECTRUM**.
+- Bands (to retune after playtests): GRAYSCALE < 2 500 ≤ SEPIA < 4 000 ≤ PASTEL < 5 500 ≤ VIVID < 7 000 ≤ TECHNICOLOR.
+
+**Modes**
+- **Begin the hunt**: the camera.
+- **Practice · no camera**: a painted still life per color; drag to aim, zoom like a camera. Its own leaderboard.
+- **Test photos (dev builds only)**: real photos from `test-photos/` or any image file. Not in the jam build: the game is live-camera only.
+
+**Look and feel**
+- **Menus are full of color:** every page outside the hunt (title, how-to, camera prompt/error, leaderboard, summary, dialogs) gets its own palette from 21 (`src/ui/palettes.ts`): pastel, neon, bright, dull, earthy, dark. New palettes every refresh for now (daily later).
+- **The hunt screen stays neutral grey**: surrounding colors would bias how players judge the square (simultaneous contrast). Its juice uses only the target and found colors.
+- **Juice** (`src/ui/fx.ts`): paint-wipe transitions, particles, confetti, floating points, shakes, staggered entrances, a bouncing logo. Everything respects `prefers-reduced-motion`.
+
+**How "yours" is computed:** the square's average in linear RGB (camera frames averaged), converted to OKLab. The score is not the distance of that average. It is the mean accuracy of the 10×10 cells, so a half-filled square shows a muddy average *and* scores about half.
+
+**Out of scope for the jam:** daily seed, online leaderboard, Grimoire, Lens color-splash, catalysts, transmute, editing sliders, Famous Formulae. Their code (Classic mode) is still in the repo but not reachable from the UI.
 
 ---
 
