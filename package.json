@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:phone": "vite --host --mode phone",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "tsc --noEmit && vite build --mode pages",
     "preview": "vite preview --host",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
