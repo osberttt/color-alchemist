@@ -93,11 +93,11 @@ export const SEVEN = {
   /** Seconds per color. */
   seconds: 30,
   /**
-   * The machine's side bars nudge what the camera sees, a little (ANALYSIS §4.17):
-   * brightness ±evMax stops in linear light (0.5 ≈ −29 % … +41 % light), saturation
+   * The machine's side bars nudge what the camera sees (ANALYSIS §4.17, widened in §4.20):
+   * brightness ±evMax stops in linear light (0.75 ≈ −41 % … +68 % light), saturation
    * ±satMax of OKLab chroma. Hue can't change, and a grey stays grey.
    */
-  adjust: { evMax: 0.5, satMax: 0.25 },
+  adjust: { evMax: 0.75, satMax: 0.4 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */
