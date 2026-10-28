@@ -257,6 +257,24 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.20 Celebrations for Flawless and the Elixir; stronger side bars (2026-10-28)
+
+**The change (the user's call).**
+- **Flawless** (when its stamp lands) and **reaching the Elixir of Life** (on the result sheet, and on the summary) fire a celebration: confetti cannons from both bottom corners, then a shower from the top, in the sheet's palette and the found color. Other summaries keep their smaller, rank-scaled confetti.
+- **Side bars widened:** brightness ±0.75 stops (about −41 % … +68 % light, was ±0.5) and saturation ±40 % chroma (was ±25 %).
+
+**Market**
+- Big, rare, shareable moments are what players screenshot. Krillion's "One in a Krillion" is the same idea.
+
+**Game design**
+- The two rarest achievements now feel unmistakably different from a good result.
+- The wider bars give players more help with a camera that's too dark or dull. They still can't change hue or make a grey colorful, so the grey-wall case (§4.12) doesn't get stronger.
+- **Watch in playtests:** whether the wider range makes Kindred too easy. The tuner's live camera check shows the effect.
+
+**Digit7 Jam**
+- No new assets.
+- Confetti runs on the existing particle canvas (capped at 450 particles), and reduced motion cuts it to a fifth.
+
 ### 4.19 Brewing the Elixir of Life: potions replace the math crafts (2026-10-28)
 
 **The change (the user's call).**

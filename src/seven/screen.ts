@@ -649,8 +649,9 @@ export function sevenScreen(r: SevenRun): void {
         fx.burst(c.x, c.y, [sec.def.target, sec.hex], { count: 5 + power * 9, speed: 160 + power * 50, shapes: ['circle', 'star', 'square'] });
         if (power >= 4) shake(sheet, power === 5 ? 'hard' : 'soft');
         if (power === 5) {
+          // Flawless: a celebration in the color itself and the sheet's palette.
           sfx.choir();
-          fx.confetti([sec.def.target, sec.hex, '#ffffff'], 140);
+          fx.celebrate([sec.def.target, sec.hex, '#ffffff', ...paletteFor('result').accents]);
         } else if (power >= 3) sfx.sparkle();
         const seg = segments[sec.index];
         seg.classList.remove('seg-pop');
@@ -687,6 +688,11 @@ export function sevenScreen(r: SevenRun): void {
               sfx.fanfare();
               const cc = centerOf(craftStage);
               fx.burst(cc.x, cc.y, paletteFor('result').accents, { count: 30 + now.index * 8, speed: 300, shapes: ['star', 'circle'] });
+              // The Elixir of Life: the Great Work is done.
+              if (now.index === SEVEN.craftTiers.length - 1) {
+                sfx.choir();
+                fx.celebrate([...paletteFor('result').accents, '#ffffff']);
+              }
             } else sfx.pop(3);
           });
         });

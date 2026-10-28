@@ -165,12 +165,17 @@ export function sevenSummaryScreen(r: SevenRun): void {
         screen.classList.add('flooded');
         craftTitle.classList.add('final');
         sfx.fanfare();
-        if (final.index >= SEVEN.craftTiers.length - 1) sfx.choir();
+        const top = SEVEN.craftTiers.length - 1;
         const pal = currentPalette();
-        fx.confetti([...res.found, ...(pal?.accents ?? [])], 50 + final.index * 45);
+        const colors = [...res.found, ...(pal?.accents ?? [])];
+        // Every potion gets some confetti; the Elixir of Life gets the full celebration.
+        if (final.index === top) {
+          sfx.choir();
+          fx.celebrate([...colors, '#ffffff']);
+        } else fx.confetti(colors, 50 + final.index * 45);
         const b = centerOf(craftTitle);
         fx.burst(b.x, b.y, pal?.accents ?? res.found, { count: 20 + final.index * 8, speed: 380, shapes: ['star', 'circle', 'square'] });
-        if (final.index >= 4) shake(screen, final.index === 5 ? 'hard' : 'soft');
+        if (final.index >= top - 1) shake(screen, final.index === top ? 'hard' : 'soft');
       });
       const offKeys = onKeys((e) => {
         if (e.key === 'Enter') sevenAgain();

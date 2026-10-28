@@ -124,6 +124,42 @@ class FxEngine {
     this.kick();
   }
 
+  /** Confetti fired from a point like a party cannon; `angle` in radians (−π/2 = straight up). */
+  cannon(x: number, y: number, angle: number, colors: string[], count = 60): void {
+    if (!this.ensure() || !colors.length) return;
+    const n = this.scale(count);
+    for (let i = 0; i < n; i++) {
+      const a = angle + (Math.random() - 0.5) * 0.6;
+      const v = 700 + Math.random() * 600;
+      this.add({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        life: 0,
+        max: 2.6 + Math.random() * 1.4,
+        size: 6 + Math.random() * 7,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: Math.random() < 0.6 ? 'ribbon' : Math.random() < 0.5 ? 'square' : 'circle',
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 14,
+        g: 420,
+        drag: 1.6,
+        fade: false,
+      });
+    }
+    this.kick();
+  }
+
+  /** The big moments (Flawless, the Elixir of Life): cannons from both bottom corners, then a shower. */
+  celebrate(colors: string[]): void {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.cannon(0, h, -Math.PI / 3, colors, 70);
+    this.cannon(w, h, (-2 * Math.PI) / 3, colors, 70);
+    window.setTimeout(() => this.confetti(colors, 120), reducedMotion() ? 0 : 350);
+  }
+
   /** Paint drops that splash from a point and fall. */
   splash(x: number, y: number, color: string, count = 14): void {
     this.burst(x, y, [color], { count, speed: 340, size: 8, gravity: 900, shapes: ['drop', 'circle'], up: true, spread: Math.PI * 1.2 });
