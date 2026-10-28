@@ -673,9 +673,10 @@ export function sevenScreen(r: SevenRun): void {
           const c = centerOf(craftStage);
           fx.burst(c.x, c.y, [sec.hex], { count: 16, speed: 200, size: 6 });
           floatText(c.x, c.y - 30, `+${sec.score}`, sec.hex);
-          paintBar(sec.total, now, true);
+          // On a rank-up the potion changes when the bar reaches the end of the old rank.
+          const filled = fillBar(before, sec.total);
           craftStage.classList.add('craft-out');
-          later(320, () => {
+          later(filled || 320, () => {
             craftStage.innerHTML = potionSvg(now.index, paletteFor('result'));
             craftStage.classList.remove('craft-out');
             craftStage.classList.add(promoted ? 'craft-promote' : 'craft-grow');
@@ -694,6 +695,36 @@ export function sevenScreen(r: SevenRun): void {
         nextBtn.disabled = false;
         nextBtn.focus();
       });
+
+      /**
+       * The bar fills toward the new total and never runs backwards: on a rank-up it fills
+       * the old rank to the end, starts again from empty and fills the new rank up to the
+       * total (60 + 60 with ranks every 100: 60 → 100, then 0 → 20). Returns when the bar
+       * reached the new rank (ms), or 0 if the rank didn't change.
+       */
+      function fillBar(from: number, to: number): number {
+        const start = craftTierFor(from).index;
+        const end = craftTierFor(to).index;
+        if (end === start) {
+          paintBar(to, craftTierFor(to), true);
+          return 0;
+        }
+        const step = 450;
+        const setFill = (pct: number, ms: number) => {
+          barFill.style.transition = ms ? `width ${ms}ms cubic-bezier(.4,0,.8,.6)` : 'none';
+          barFill.style.width = `${pct}%`;
+        };
+        setFill(100, step);
+        for (let i = start + 1; i <= end; i++) {
+          later((i - start) * step, () => {
+            setFill(0, 0);
+            void barFill.offsetWidth; // commit the empty bar before filling again
+            if (i < end) setFill(100, step);
+            else paintBar(to, craftTierFor(to), true);
+          });
+        }
+        return (end - start) * step;
+      }
 
       function paintBar(total: number, tier: ReturnType<typeof craftTierFor>, animate = false): void {
         const lo = SEVEN.craftTiers[tier.index].min;
