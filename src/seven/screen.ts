@@ -1,33 +1,36 @@
 // Seven Colors: one screen for the whole run. Each section: intro → hunt (live
-// camera, square framed in the target color, zoom, on the clock) → snap → result.
-// No editing: light is part of the game (shade it with a hand, change the angle).
+// camera, the color extracting machine framed in the target color, zoom, on the
+// clock) → snap → extraction → result sheet (precise judgement + the craft grows).
+// No editing and no correction: what the machine extracts is the color.
 
 import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
 import { Viewfinder } from '../camera/viewfinder';
 import { cameraSource, canvasSource, captureView, imageToCanvas, meanOfRect, squareRect, viewRect, type FrameSource } from '../camera/source';
-import { linearToHex, mixLab, oklabToHex } from '../color/oklab';
+import { hexToOklab, linearToHex, mixLab, oklabToHex } from '../color/oklab';
 import { centerOf, floatText, fx, shake } from '../ui/fx';
 import { ELEMENT_GLYPH, TIER_LABEL, type ColorDef } from '../data/colors';
 import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
-import { SquareAssayer } from '../scoring/square';
-import { h, append, toast, fmt, wait, reducedMotion } from '../ui/dom';
+import { craftTierFor } from '../scoring/extract';
+import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
+import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
+import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
-import { dealSection, finishSection, OPERATIONS, type Section, type SevenRun } from './run';
+import { dealSection, finishSection, OPERATIONS, runTotal, type Section, type SevenRun } from './run';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
 const TIPS = [
-  'Fill the square with the color.',
+  'Feed the machine one color. Fill it completely.',
+  'No orange? Put red and yellow in the machine together.',
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
   'Tilt shiny things to kill the glare.',
-  'Daylight is the purest reagent.',
-  'Faster snaps earn Quicksilver.',
+  'Compare the frame with the extracted swatch. Then snap.',
 ];
 
 interface PhotoDeck {
@@ -66,6 +69,8 @@ export function sevenScreen(r: SevenRun): void {
     let raf = 0;
     let resultAt = 0;
     let tipIndex = Math.floor(Math.random() * TIPS.length);
+    const timers: number[] = [];
+    const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, reducedMotion() ? Math.min(ms, 120) : ms));
 
     // --- DOM ----------------------------------------------------------------------
     const segments = Array.from({ length: SEVEN.sections }, () => h('span'));
@@ -82,18 +87,23 @@ export function sevenScreen(r: SevenRun): void {
       { class: 'tg' },
       h('figure', null, targetSw, h('figcaption', null, 'target')),
       h('div', { class: 'tg-body' }, nameEl, metaEl),
-      h('figure', null, yoursSw, h('figcaption', null, 'in the square')),
+      h('figure', null, yoursSw, h('figcaption', null, 'extracted')),
     );
 
     const vfCanvas = h('canvas', { class: 'vf-canvas', 'aria-label': 'Camera view' });
-    const reticle = h('div', { class: 'reticle', 'aria-hidden': 'true' }, h('span', { class: 'ret-in' }));
+    const retFill = h('span', { class: 'ret-in' });
+    const reticle = h('div', { class: 'reticle', 'aria-hidden': 'true' }, retFill, h('span', { class: 'ret-label' }, 'color extracting machine'));
     const warn = h('div', { class: 'scene-warning', hidden: true }, 'Too dark for alchemy. Find some light.');
     const intro = h('div', { class: 'vf-overlay intro', hidden: true });
-    const result = h('div', { class: 'vf-overlay result', hidden: true });
-    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, warn, intro, result);
+    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, warn, intro);
     const stageWrap = h('div', { class: 'stage-wrap' }, viewport);
     const vf = new Viewfinder(vfCanvas);
     if (!vf.ok) viewport.classList.add('no-gl');
+
+    // The result sheet rises over the hunt with its own palette.
+    const sheetInner = h('div', { class: 'sheet-inner' });
+    const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Result', hidden: true }, sheetInner);
+    applyPaletteTo(sheet, paletteFor('result'));
 
     const zoomOut = h('output', null, '1.0×');
     const zoomInput = h('input', { type: 'range', min: String(SEVEN.zoomMin), max: String(SEVEN.zoomMax), step: '0.01', value: '1', 'aria-label': 'Zoom' }) as HTMLInputElement;
@@ -101,7 +111,7 @@ export function sevenScreen(r: SevenRun): void {
     const zoomRow = h('label', { class: 'slider zoom' }, h('span', { class: 's-label' }, '⌕ Zoom'), zoomInput, zoomOut);
     const tipEl = h('p', { class: 'tip' }, TIPS[tipIndex]);
 
-    const shutter = h('button', { class: 'shutter', type: 'button', 'aria-label': 'Snap (Space)', onclick: () => void snap() }, h('span'));
+    const shutter = h('button', { class: 'shutter', type: 'button', 'aria-label': 'Extract (Space)', onclick: () => void snap() }, h('span'));
     const flipBtn = h(
       'button',
       {
@@ -148,7 +158,7 @@ export function sevenScreen(r: SevenRun): void {
           { class: 'hunt-side' },
           target,
           zoomRow,
-          h('p', { class: 'desk-only muted small' }, r.mode === 'camera' ? 'Hold things up to the camera. Space: snap · +/−: zoom · Esc: quit' : 'Drag to aim · Space: snap · +/−: zoom · arrows: aim · Esc: quit'),
+          h('p', { class: 'desk-only muted small' }, r.mode === 'camera' ? 'Hold things up to the camera. Space: extract · +/−: zoom · Esc: quit' : 'Drag to aim · Space: extract · +/−: zoom · arrows: aim · Esc: quit'),
         ),
         h(
           'div',
@@ -158,6 +168,7 @@ export function sevenScreen(r: SevenRun): void {
           tipEl,
         ),
       ),
+      sheet,
     );
 
     // --- helpers -------------------------------------------------------------------
@@ -200,7 +211,7 @@ export function sevenScreen(r: SevenRun): void {
     }
 
     function clampCenter(): void {
-      // Image sources: the square may reach any part of the image, so the view may pass the edges.
+      // Image sources: the machine may reach any part of the image, so the view may pass the edges.
       cx = Math.min(1, Math.max(0, cx));
       cy = Math.min(1, Math.max(0, cy));
     }
@@ -251,18 +262,18 @@ export function sevenScreen(r: SevenRun): void {
       lastTick = Math.ceil(remaining);
       timerEl.textContent = fmtTime(remaining);
       timerEl.classList.remove('urgent');
+      reticle.classList.remove('extracting');
+      retFill.style.background = '';
       stageEl.textContent = `${ROMAN[r.index]} · ${OPERATIONS[r.index]} · ${r.index + 1}/${SEVEN.sections}`;
       await prepareSource(def);
       phase = 'intro';
-      result.hidden = true;
-      intro.replaceChildren();
-      append(intro, [
+      intro.replaceChildren(
         h('p', { class: 'eyebrow' }, `${ROMAN[r.index]} · ${OPERATIONS[r.index]}`),
-        h('p', { class: 'intro-find' }, 'find'),
+        h('p', { class: 'intro-find' }, 'extract'),
         h('span', { class: 'intro-sw', style: { background: def.target } }),
         h('h2', { class: 'intro-name' }, def.name),
-        r.index === 0 && r.tutorial ? h('p', { class: 'small' }, 'Your jeans will do. Fill the square with Denim.') : null,
-      ]);
+        h('p', { class: 'small' }, r.index === 0 && r.tutorial ? 'Your jeans will do. Fill the machine with Denim.' : 'Fill the machine. Blend if you must.'),
+      );
       intro.hidden = false;
       sfx.clink(r.index);
       // The target color splashes in.
@@ -270,8 +281,8 @@ export function sevenScreen(r: SevenRun): void {
         const sw = intro.querySelector('.intro-sw');
         if (!sw) return;
         const c = centerOf(sw);
-        fx.splash(c.x, c.y, def.target, 18);
-        fx.burst(c.x, c.y, [def.target], { count: 10, speed: 160, size: 5, gravity: 0 });
+        fx.splash(c.x, c.y, def.target, 22);
+        fx.burst(c.x, c.y, [def.target], { count: 12, speed: 170, size: 5, gravity: 0 });
       });
       await wait(reducedMotion() ? 400 : SEVEN.introMs);
       if (phase === 'intro') beginHunt();
@@ -301,7 +312,6 @@ export function sevenScreen(r: SevenRun): void {
       vibrate(20);
       viewport.classList.add('flash');
       shake(viewport, 'soft');
-      const secondsLeft = Math.max(0, remaining);
       const plate = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
       viewport.classList.remove('flash');
       if (!plate) {
@@ -310,70 +320,167 @@ export function sevenScreen(r: SevenRun): void {
         toast('Capture failed. Try again.');
         return;
       }
-      showResult(finishSection(r, new SquareAssayer(plate), secondsLeft, zoom));
+      const before = runTotal(r);
+      const sec = finishSection(r, plate, zoom);
+      extractAnimation(sec, before);
     }
 
-    function showResult(sec: Section): void {
+    /** The machine fills with the extracted color and condenses into a drop. */
+    function extractAnimation(sec: Section, before: number): void {
       phase = 'result';
       viewport.classList.remove('urgent');
+      retFill.style.background = sec.hex;
+      reticle.classList.add('extracting');
+      sfx.pour();
+      const c = centerOf(reticle);
+      later(350, () => fx.burst(c.x, c.y, [sec.hex], { count: 14, speed: 120, size: 5, gravity: 0 }));
+      later(650, () => showResult(sec, before, c));
+    }
+
+    function showResult(sec: Section, before: number, dropFrom: { x: number; y: number }): void {
       paintSpectrum();
       resultAt = performance.now();
-      const accEl = h('span', { class: 'res-acc mono' }, '0');
       const last = r.index + 1 >= SEVEN.sections;
-      const stampEl = stamp(sec.grade, 'slam');
-      const pointsEl = h('p', { class: 'res-points mono' }, `+${fmt(sec.base)}`, sec.quicksilver ? h('span', { class: 'qs' }, ` +${sec.quicksilver} quicksilver`) : null);
-      result.replaceChildren(
+      const power = SEVEN.colorTiers.length - 1 - sec.tierIndex; // 0 = Botched … 5 = Flawless
+      const scoreEl = h('span', { class: 'res-acc mono' }, '0');
+      const stampEl = stamp(sec.tier, 'slam');
+      stampEl.hidden = true;
+      const prevCraft = craftTierFor(before);
+      const craftStage = h('div', { class: 'craft-stage' });
+      craftStage.innerHTML = craftSvg(prevCraft.index);
+      const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your craft begins' : prevCraft.name);
+      const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : CRAFT_BLURBS[prevCraft.index]);
+      const barFill = h('i');
+      const barLabel = h('span', { class: 'bar-label mono' });
+      const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, last ? 'Reveal the craft ▶' : `Next color · ${r.index + 2}/${SEVEN.sections} ▶`);
+      paintBar(before, prevCraft);
+
+      sheetInner.replaceChildren(
+        h('p', { class: 'eyebrow' }, `${ROMAN[sec.index]} · ${OPERATIONS[sec.index]}`),
         colorRamp(sec),
-        h('p', { class: 'res-name' }, sec.def.name),
-        accEl,
-        h('div', { class: 'res-stamp' }, stampEl),
-        pointsEl,
-        h('button', { class: 'btn primary res-next-btn', type: 'button' }, last ? 'See your Magnum Opus ▶' : `Next color · ${r.index + 2}/${SEVEN.sections} ▶`),
+        h('h2', { class: 'res-name' }, sec.def.name),
+        h('div', { class: 'res-score' }, scoreEl, h('div', { class: 'res-stamp' }, stampEl)),
+        h('p', { class: 'res-de mono' }, `ΔE ${sec.dE.toFixed(2)}`),
+        h(
+          'div',
+          { class: 'craft-panel' },
+          craftStage,
+          h('div', { class: 'craft-info' }, craftName, craftBlurb, h('div', { class: 'craft-bar' }, barFill), barLabel),
+        ),
+        nextBtn,
         h('p', { class: 'res-next small' }, last ? '' : 'Take your time. The clock starts with the next color.'),
       );
-      result.hidden = false;
-      // Juice scales with the grade: a puff for Sludge, fireworks for Quintessence.
-      const power = ['Sludge', 'Murk', 'Tincture', 'Elixir', 'Essence', 'Quintessence'].indexOf(sec.grade);
-      window.setTimeout(() => {
-        if (phase !== 'result') return;
+      sheet.hidden = false;
+      sheet.classList.remove('down');
+      sheet.scrollTop = 0;
+      sheetInner.scrollTop = 0;
+      sfx.whoosh();
+
+      // 1. The score counts up and the rank stamp slams.
+      later(450, () => countUp(scoreEl, sec.score, 700));
+      later(1150, () => {
+        stampEl.hidden = false;
         sfx.stamp();
         const c = centerOf(stampEl);
-        fx.burst(c.x, c.y, [sec.def.target, sec.hex], { count: 6 + power * 9, speed: 180 + power * 50, shapes: ['circle', 'star', 'square'] });
-        const p = centerOf(pointsEl);
-        floatText(p.x, p.y - 10, `+${fmt(sec.total)}`, sec.def.target);
+        fx.burst(c.x, c.y, [sec.def.target, sec.hex], { count: 5 + power * 9, speed: 160 + power * 50, shapes: ['circle', 'star', 'square'] });
+        if (power >= 4) shake(sheet, power === 5 ? 'hard' : 'soft');
+        if (power === 5) {
+          sfx.choir();
+          fx.confetti([sec.def.target, sec.hex, '#ffffff'], 140);
+        } else if (power >= 3) sfx.sparkle();
         const seg = segments[sec.index];
         seg.classList.remove('seg-pop');
         void seg.offsetWidth;
         seg.classList.add('seg-pop');
-        if (power >= 4) shake(screen, power === 5 ? 'hard' : 'soft');
-        if (power === 5) {
-          sfx.choir();
-          fx.confetti([sec.def.target, sec.hex, '#ffffff'], 120);
-        } else if (power >= 3) sfx.sparkle();
-      }, 260);
+      });
+      // 2. The extracted drop falls into the craft, which grows (or transforms).
+      later(1600, () => {
+        dropInto(dropFrom, craftStage, sec.hex, () => {
+          const now = craftTierFor(sec.total);
+          const promoted = now.index !== prevCraft.index || r.index === 0;
+          const c = centerOf(craftStage);
+          fx.burst(c.x, c.y, [sec.hex], { count: 16, speed: 200, size: 6 });
+          floatText(c.x, c.y - 30, `+${sec.score}`, sec.hex);
+          paintBar(sec.total, now, true);
+          craftStage.classList.add('craft-out');
+          later(320, () => {
+            craftStage.innerHTML = craftSvg(now.index);
+            craftStage.classList.remove('craft-out');
+            craftStage.classList.add(promoted ? 'craft-promote' : 'craft-grow');
+            craftName.textContent = now.name;
+            craftBlurb.textContent = CRAFT_BLURBS[now.index];
+            if (promoted) {
+              craftName.classList.add('promoted');
+              sfx.fanfare();
+              const cc = centerOf(craftStage);
+              fx.burst(cc.x, cc.y, paletteFor('result').accents, { count: 30 + now.index * 8, speed: 300, shapes: ['star', 'circle'] });
+            } else sfx.pop(3);
+          });
+        });
+      });
+      later(2300, () => {
+        nextBtn.disabled = false;
+        nextBtn.focus();
+      });
+
+      function paintBar(total: number, tier: ReturnType<typeof craftTierFor>, animate = false): void {
+        const lo = SEVEN.craftTiers[tier.index].min;
+        const hi = tier.next?.min ?? SEVEN.sections * 100;
+        barFill.style.transition = animate ? 'width .9s cubic-bezier(.2,.8,.2,1)' : 'none';
+        barFill.style.width = `${Math.max(3, Math.min(100, ((total - lo) / Math.max(1, hi - lo)) * 100))}%`;
+        barLabel.textContent = tier.next ? `${fmt(total)} · ${fmt(tier.next.min - total)} to ${tier.next.name}` : `${fmt(total)} · the highest craft`;
+      }
+    }
+
+    /** A drop of the extracted color arcs from the machine into the craft. */
+    function dropInto(from: { x: number; y: number }, to: HTMLElement, color: string, done: () => void): void {
+      const t = centerOf(to);
+      if (reducedMotion()) return done();
+      const drop = h('span', { class: 'fly-drop', style: { background: color, left: `${from.x}px`, top: `${from.y}px` } });
+      document.body.append(drop);
+      const dx = t.x - from.x;
+      const dy = t.y - from.y;
+      const anim = drop.animate(
+        [
+          { transform: 'translate(-50%, -50%) scale(1)' },
+          { transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - 90}px)) scale(1.3)`, offset: 0.5 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.5)` },
+        ],
+        { duration: 650, easing: 'cubic-bezier(.4,0,.6,1)' },
+      );
+      sfx.drip();
+      anim.onfinish = () => {
+        drop.remove();
+        done();
+      };
+    }
+
+    function countUp(el: HTMLElement, to: number, ms: number): void {
       const t0 = performance.now();
       const step = (now: number) => {
-        const t = Math.min(1, (now - t0) / 600);
-        accEl.textContent = String(Math.round(sec.acc * (1 - Math.pow(1 - t, 3))));
-        if (t < 1 && phase === 'result') requestAnimationFrame(step);
+        const t = Math.min(1, (now - t0) / ms);
+        el.textContent = String(Math.round(to * (1 - Math.pow(1 - t, 3))));
+        if (t < 1 && el.isConnected) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     }
 
     /**
-     * Target → yours as a walk through color: 1 step in between for Quintessence,
-     * up to 6 for Sludge (SEVEN.rampSteps), interpolated in OKLab so it looks even.
+     * Target → extracted as a walk through color: 1 step in between for Flawless,
+     * up to 6 for Botched (SEVEN.rampSteps), interpolated in OKLab so it looks even.
      */
     function colorRamp(sec: Section): HTMLElement {
-      const n = SEVEN.rampSteps[sec.grade] ?? 3;
-      const steps = Array.from({ length: n }, (_, k) => oklabToHex(mixLab(sec.def.lab, sec.mean, (k + 1) / (n + 1))));
+      const n = SEVEN.rampSteps[sec.tier] ?? 3;
+      const a = hexToOklab(sec.def.target);
+      const b = hexToOklab(sec.hex);
+      const steps = Array.from({ length: n }, (_, k) => oklabToHex(mixLab(a, b, (k + 1) / (n + 1))));
       const chip = (hex: string, i: number) => h('span', { class: 'ramp-chip', style: { background: hex, '--i': String(i) } });
       return h(
         'div',
         { class: 'res-ramp', 'aria-label': `${n} steps from the target to your color` },
         h('figure', null, swatch(sec.def.target), h('figcaption', null, 'target')),
         h('span', { class: 'ramp-steps' }, ...steps.map((hex, i) => chip(hex, i))),
-        h('figure', null, swatch(sec.hex), h('figcaption', null, 'yours')),
+        h('figure', null, swatch(sec.hex), h('figcaption', null, 'extracted')),
       );
     }
 
@@ -382,13 +489,19 @@ export function sevenScreen(r: SevenRun): void {
       if (phase !== 'result') return;
       // Ignore taps in the first moment, so a double-tap on the shutter can't skip the result.
       if (performance.now() - resultAt < SEVEN.resultGuardMs) return;
+      phase = 'capturing'; // in transit: ignore input until the next intro
       r.index++;
-      if (r.index >= SEVEN.sections) {
-        phase = 'done';
-        goSevenSummary(r);
-        return;
-      }
-      void startSection();
+      sfx.whoosh();
+      sheet.classList.add('down');
+      later(450, () => {
+        sheet.hidden = true;
+        if (r.index >= SEVEN.sections) {
+          phase = 'done';
+          goSevenSummary(r);
+          return;
+        }
+        void startSection();
+      });
     }
 
     // --- loop ---------------------------------------------------------------------------
@@ -423,11 +536,12 @@ export function sevenScreen(r: SevenRun): void {
         timerEl.classList.toggle('urgent', remaining <= 10);
         viewport.classList.toggle('urgent', remaining <= 10);
         if (remaining <= 0) {
-          toast('The flask seals itself.');
+          toast('The machine extracts on its own.');
           void snap();
         }
       }
-      if (src && phase !== 'result' && now - lastSwatch > 120) {
+      // The live "extracted" swatch is exactly what will be scored: the machine's average color.
+      if (src && (phase === 'hunt' || phase === 'intro') && now - lastSwatch > 120) {
         lastSwatch = now;
         const m = meanOfRect(src, squareRect(src, view(), SEVEN.squareFraction));
         if (m) {
@@ -453,8 +567,8 @@ export function sevenScreen(r: SevenRun): void {
     const pointers = new Map<number, { x: number; y: number }>();
     let pinchStart: { d: number; zoom: number } | null = null;
     viewport.addEventListener('pointerdown', (e) => {
-      if (phase === 'result') return advance();
       if (phase === 'intro') return beginHunt();
+      if (phase !== 'hunt') return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewport.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {
@@ -522,6 +636,7 @@ export function sevenScreen(r: SevenRun): void {
     return () => {
       cancelAnimationFrame(raf);
       clearInterval(tipTimer);
+      timers.forEach(clearTimeout);
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       offKeys();

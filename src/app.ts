@@ -56,7 +56,10 @@ export function show(render: (screen: HTMLElement) => Cleanup | void, theme: The
     return;
   }
   sfx.whoosh();
-  paintWipe(palette ? primaryAccent(palette) : current ? primaryAccent(current) : '#1a1a1f', swap);
+  // Rings: two accents of the page we're going to, then its background (or the neutral lab).
+  const pal = palette ?? current;
+  const rings = pal ? [pal.accents[2], primaryAccent(pal), palette ? palette.bg : '#0f0f12'] : ['#1a1a1f'];
+  paintWipe(rings, swap);
 }
 
 /** Big soft drifting blobs in the page's accents. */

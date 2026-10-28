@@ -41,8 +41,8 @@ export const PALETTES: Palette[] = [
   { name: 'Slate & Coral', mood: 'dull', bg: '#2f3640', fg: '#f5f6fa', accents: ['#ff7f6b', '#ffd479', '#7ed6df', '#c7ecee', '#e056fd'] },
 ];
 
-export type PageId = 'title' | 'howto' | 'prompt' | 'error' | 'board' | 'summary' | 'dialog';
-const PAGES: PageId[] = ['title', 'howto', 'prompt', 'error', 'board', 'summary', 'dialog'];
+export type PageId = 'title' | 'howto' | 'prompt' | 'error' | 'board' | 'summary' | 'dialog' | 'result';
+const PAGES: PageId[] = ['title', 'howto', 'prompt', 'error', 'board', 'summary', 'dialog', 'result'];
 
 /** Relative luminance (WCAG). */
 export function luminance(hex: string): number {

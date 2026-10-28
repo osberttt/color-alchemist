@@ -267,26 +267,29 @@ let lastPointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 window.addEventListener('pointerdown', (e) => (lastPointer = { x: e.clientX, y: e.clientY }), { capture: true });
 
 /**
- * Cover the screen with a circle of `color` growing from the last tap, run `swap`
- * under it, then shrink the circle away. Returns when the swap has happened.
+ * Pour paint over the screen: rings of `colors` grow from the last tap one after
+ * another, `swap` runs under the last one, then the rings drain back into the
+ * center to reveal the new screen. Slow enough to read as "the page is being
+ * remixed", short enough not to block play (~1.2 s total).
  */
-export function paintWipe(color: string, swap: () => void): void {
-  if (reducedMotion()) {
+export function paintWipe(colors: string[], swap: () => void): void {
+  if (reducedMotion() || !colors.length) {
     swap();
     return;
   }
   const { x, y } = lastPointer;
   const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)) + 40;
-  const el = document.createElement('div');
-  el.className = 'wipe';
-  el.style.background = color;
-  el.style.clipPath = `circle(0px at ${x}px ${y}px)`;
-  document.body.append(el);
-  const grow = el.animate([{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${r}px at ${x}px ${y}px)` }], {
-    duration: 280,
-    easing: 'cubic-bezier(.6,0,.3,1)',
-    fill: 'forwards',
+  const layers = colors.slice(0, 3).map((color, i) => {
+    const el = document.createElement('div');
+    el.className = 'wipe';
+    el.style.background = color;
+    el.style.zIndex = String(170 + i);
+    el.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+    document.body.append(el);
+    return el;
   });
+  const growMs = 460;
+  const stagger = 90;
   let swapped = false;
   const doSwap = () => {
     if (swapped) return;
@@ -295,15 +298,27 @@ export function paintWipe(color: string, swap: () => void): void {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
     const r2 = Math.hypot(cx, cy) + 40;
-    const out = el.animate([{ clipPath: `circle(${r2}px at ${cx}px ${cy}px)` }, { clipPath: `circle(0px at ${cx}px ${cy}px)` }], {
-      duration: 340,
-      easing: 'cubic-bezier(.5,0,.2,1)',
+    // Drain the top layer first, so the colors peel away in reverse.
+    [...layers].reverse().forEach((el, i) => {
+      const out = el.animate([{ clipPath: `circle(${r2}px at ${cx}px ${cy}px)` }, { clipPath: `circle(0px at ${cx}px ${cy}px)` }], {
+        duration: 520,
+        delay: i * 70,
+        easing: 'cubic-bezier(.5,0,.2,1)',
+        fill: 'forwards',
+      });
+      out.onfinish = () => el.remove();
+      setTimeout(() => el.remove(), 1300);
+    });
+  };
+  layers.forEach((el, i) => {
+    const grow = el.animate([{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${r}px at ${x}px ${y}px)` }], {
+      duration: growMs,
+      delay: i * stagger,
+      easing: 'cubic-bezier(.6,0,.3,1)',
       fill: 'forwards',
     });
-    out.onfinish = () => el.remove();
-    setTimeout(() => el.remove(), 800);
-  };
-  grow.onfinish = doSwap;
+    if (i === layers.length - 1) grow.onfinish = doSwap;
+  });
   // Safety net if animations are throttled (background tab).
-  setTimeout(doSwap, 450);
+  setTimeout(doSwap, growMs + stagger * layers.length + 200);
 }

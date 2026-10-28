@@ -1,13 +1,13 @@
-// Seven Colors run state: 7 sections, one color each, no editing (ANALYSIS §4.1–4.2).
-// What the camera sees inside the square is what gets scored. Light is part of the game.
+// Seven Colors run state: 7 sections, one color each (ANALYSIS §4.1–4.6).
+// Each color is judged by CIEDE2000 between the target and what the color
+// extracting machine captured. The run builds one craft, ranked by the total.
 
 import { COLORS, color, type ColorDef } from '../data/colors';
-import { SEVEN, TUNING } from '../data/tuning';
-import { oklabToHex, type Lab } from '../color/oklab';
+import { SEVEN } from '../data/tuning';
 import { mulberry32, pickWeighted, randomSeed, type Rng } from '../meta/rng';
 import { getSettings } from '../meta/storage';
-import { colorGrade, quicksilver, type Grade } from '../scoring/score';
-import type { SquareAssayer } from '../scoring/square';
+import { craftTierFor, extract, judge, type Extraction } from '../scoring/extract';
+import type { Plate } from '../color/plate';
 
 export type SevenMode = 'camera' | 'practice' | 'photo';
 
@@ -17,16 +17,18 @@ export const OPERATIONS = ['Calcination', 'Dissolution', 'Separation', 'Conjunct
 export interface Section {
   index: number;
   def: ColorDef;
-  acc: number;
-  grade: Grade;
-  /** The square's average color (linear-RGB mean → OKLab): the "yours" swatch. */
-  mean: Lab;
+  extracted: Extraction;
   hex: string;
+  /** CIEDE2000 between target and extracted. */
+  dE: number;
+  score: number;
+  tier: string;
+  tierIndex: number;
   zoom: number;
-  base: number;
-  quicksilver: number;
+  /** Running total and craft rank after this color. */
   total: number;
-  lightCorrected: boolean;
+  craft: string;
+  craftIndex: number;
 }
 
 export interface SevenRun {
@@ -77,23 +79,29 @@ export function dealSection(r: SevenRun): ColorDef {
   return def;
 }
 
-export function finishSection(r: SevenRun, assayer: SquareAssayer, secondsLeft: number, zoom: number): Section {
+export function runTotal(r: SevenRun): number {
+  return r.sections.reduce((t, s) => t + s.score, 0);
+}
+
+export function finishSection(r: SevenRun, view: Plate, zoom: number): Section {
   const def = r.current!;
-  const s = assayer.score(def, { ev: 0, sat: 0 });
-  const base = Math.round(10 * s.acc * TUNING.tierMult[def.tier]);
-  const qs = r.mode === 'camera' ? quicksilver(secondsLeft) : 0;
+  const extracted = extract(view);
+  const j = judge(def, extracted);
+  const total = runTotal(r) + j.score;
+  const craft = craftTierFor(total);
   const section: Section = {
     index: r.index,
     def,
-    acc: s.acc,
-    grade: colorGrade(s.acc, 1),
-    mean: s.mean,
-    hex: oklabToHex(s.mean),
+    extracted,
+    hex: extracted.hex,
+    dE: j.dE,
+    score: j.score,
+    tier: j.tier,
+    tierIndex: j.tierIndex,
     zoom,
-    base,
-    quicksilver: qs,
-    total: base + qs,
-    lightCorrected: s.variant === 'corrected',
+    total,
+    craft: craft.name,
+    craftIndex: craft.index,
   };
   r.sections.push(section);
   return section;
@@ -101,21 +109,13 @@ export function finishSection(r: SevenRun, assayer: SquareAssayer, secondsLeft: 
 
 export interface SevenResult {
   total: number;
-  stone: boolean;
-  band: string;
+  craft: string;
+  craftIndex: number;
   found: string[];
 }
 
 export function sevenResult(r: SevenRun): SevenResult {
-  const stone = r.sections.length === SEVEN.sections && r.sections.every((s) => s.acc >= 80);
-  const total = r.sections.reduce((t, s) => t + s.total, 0) + (stone ? SEVEN.stonePoints : 0);
-  let band: string = SEVEN.bands[0].name;
-  for (const b of SEVEN.bands) if (total >= b.min) band = b.name;
-  if (stone) band = 'FULL SPECTRUM';
-  return { total, stone, band, found: r.sections.map((s) => s.hex) };
-}
-
-export function nextSevenBand(total: number): { name: string; at: number } | null {
-  for (const b of SEVEN.bands) if (total < b.min) return { name: b.name, at: b.min };
-  return null;
+  const total = runTotal(r);
+  const c = craftTierFor(total);
+  return { total, craft: c.name, craftIndex: c.index, found: r.sections.map((s) => s.hex) };
 }

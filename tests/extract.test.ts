@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import { ciede2000, hexToCielab, linearToCielab } from '../src/color/cielab';
+import { hexToLinear } from '../src/color/oklab';
+import type { Plate } from '../src/color/plate';
+import { color } from '../src/data/colors';
+import { craftTierFor, extract, judge, machineRect, scoreFor, tierFor } from '../src/scoring/extract';
+
+describe('CIELAB', () => {
+  it('white is L 100, a = b = 0', () => {
+    const w = linearToCielab(1, 1, 1);
+    expect(w.L).toBeCloseTo(100, 2);
+    expect(w.a).toBeCloseTo(0, 2);
+    expect(w.b).toBeCloseTo(0, 2);
+  });
+
+  it('sRGB red matches the reference (53.24, 80.09, 67.20)', () => {
+    const r = hexToCielab('#ff0000');
+    expect(r.L).toBeCloseTo(53.24, 1);
+    expect(r.a).toBeCloseTo(80.09, 1);
+    expect(r.b).toBeCloseTo(67.2, 1);
+  });
+});
+
+describe('CIEDE2000 (Sharma, Wu & Dalal 2005 test data)', () => {
+  const cases: [number, number, number, number, number, number, number][] = [
+    [50, 2.6772, -79.7751, 50, 0, -82.7485, 2.0425],
+    [50, 0, 0, 50, -1, 2, 2.3669],
+    [50, 2.5, 0, 73, 25, -18, 27.1492],
+    [60.2574, -34.0099, 36.2677, 60.4626, -34.1751, 39.4387, 1.2644],
+    [50, 2.5, 0, 50, 0, -2.5, 4.3065],
+    [22.7233, 20.0904, -46.694, 23.0331, 14.973, -42.5619, 2.0373],
+  ];
+  it.each(cases)('pair (%f, %f, %f) vs (%f, %f, %f) = %f', (L1, a1, b1, L2, a2, b2, expected) => {
+    expect(ciede2000({ L: L1, a: a1, b: b1 }, { L: L2, a: a2, b: b2 })).toBeCloseTo(expected, 3);
+  });
+
+  it('is symmetric and zero for identical colors', () => {
+    const a = hexToCielab('#029386');
+    const b = hexToCielab('#ceb301');
+    expect(ciede2000(a, a)).toBe(0);
+    expect(ciede2000(a, b)).toBeCloseTo(ciede2000(b, a), 9);
+  });
+});
+
+function plate(w: number, h: number, fill: (x: number, y: number) => [number, number, number]): Plate {
+  const lin = new Float32Array(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) lin.set(fill(x, y), (y * w + x) * 3);
+  return { w, h, lin };
+}
+
+describe('the color extracting machine', () => {
+  it('extracts exactly the target and judges it Flawless with 100 points', () => {
+    const teal = color('teal');
+    const j = judge(teal, extract(plate(360, 480, () => hexToLinear(teal.target))));
+    expect(j.dE).toBeLessThan(0.3);
+    expect(j.tier).toBe('Flawless');
+    expect(j.score).toBeGreaterThanOrEqual(97);
+  });
+
+  it('only the machine counts, not the rest of the frame', () => {
+    const teal = color('teal');
+    const rect = machineRect({ w: 360, h: 480, lin: new Float32Array(0) });
+    const inside = (x: number, y: number) => x >= rect.x && x < rect.x + rect.side && y >= rect.y && y < rect.y + rect.side;
+    const j = judge(teal, extract(plate(360, 480, (x, y) => (inside(x, y) ? hexToLinear(teal.target) : [0.9, 0.1, 0.1]))));
+    expect(j.tier).toBe('Flawless');
+  });
+
+  it('blends what is inside: red + yellow halves extract as orange', () => {
+    const rect = machineRect({ w: 360, h: 480, lin: new Float32Array(0) });
+    const ex = extract(plate(360, 480, (x) => (x < rect.x + rect.side / 2 ? [1, 0, 0] : [1, 1, 0])));
+    // Linear-light average of red and yellow = (1, 0.5, 0) → an orange.
+    expect(ex.lin[0]).toBeCloseTo(1, 3);
+    expect(ex.lin[1]).toBeCloseTo(0.5, 2);
+    expect(ex.lin[2]).toBeCloseTo(0, 3);
+    expect(judge(color('tangerine'), ex).dE).toBeLessThan(judge(color('cherry-red'), ex).dE);
+  });
+
+  it('no leniency: a slightly darker teal is no longer Flawless', () => {
+    const teal = color('teal');
+    const [r, g, b] = hexToLinear(teal.target);
+    const j = judge(teal, extract(plate(360, 480, () => [r * 0.8, g * 0.8, b * 0.8])));
+    expect(j.tier).not.toBe('Flawless');
+  });
+});
+
+describe('ranks', () => {
+  it('color tiers by ΔE00', () => {
+    expect(tierFor(0.5).name).toBe('Flawless');
+    expect(tierFor(2).name).toBe('Harmonious');
+    expect(tierFor(4).name).toBe('Kindred');
+    expect(tierFor(8).name).toBe('Wavering');
+    expect(tierFor(15).name).toBe('Awry');
+    expect(tierFor(40).name).toBe('Botched');
+  });
+
+  it('score curve', () => {
+    expect(scoreFor(0)).toBe(100);
+    expect(scoreFor(1)).toBe(90);
+    expect(scoreFor(5)).toBe(61);
+    expect(scoreFor(10)).toBe(37);
+  });
+
+  it('craft tiers climb with the running total', () => {
+    expect(craftTierFor(40).name).toBe('Gunk');
+    expect(craftTierFor(150).name).toBe('Trinket');
+    expect(craftTierFor(250).name).toBe('Curio');
+    expect(craftTierFor(350).name).toBe('Marvel');
+    expect(craftTierFor(450).name).toBe('Quintessence');
+    expect(craftTierFor(600).name).toBe('Magnum Opus');
+    expect(craftTierFor(600).next).toBeNull();
+  });
+});

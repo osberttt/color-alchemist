@@ -94,11 +94,11 @@ export function howTo(onDone?: () => void): void {
       h(
         'ol',
         { class: 'steps' },
-        step('I', 'Seven colors', 'A run is seven colors, one at a time, one minute each. The square in the middle of the camera is framed in the color you need.'),
-        step('II', 'Fill the square', 'Point at something that color until it fills the square. Zoom in or walk closer. Light changes everything: shade it with your hand, tilt it, find a window.'),
-        step('III', 'Snap', 'The whole square is judged, from Sludge to Quintessence. Snap fast for Quicksilver. Seven colors make your Magnum Opus.'),
+        step('I', 'Seven colors', 'A run is seven colors, one at a time, one minute each. The color extracting machine in the middle of the camera is framed in the color you need.'),
+        step('II', 'Feed the machine', 'It extracts the average of everything inside it. Find the color, zoom, walk closer, shade the light with your hand. No orange? Blend red and yellow in the machine.'),
+        step('III', 'Extract', 'Judged with no mercy, from Botched to Flawless. Every color feeds your craft: from Gunk to Magnum Opus.'),
       ),
-      h('p', { class: 'muted small' }, 'Compare the frame with what is inside it. When they match, snap.'),
+      h('p', { class: 'muted small' }, 'Compare the frame with the extracted swatch. When they match, extract.'),
       h('button', { class: 'btn primary', type: 'button', onclick: close }, 'Understood'),
     ),
   );

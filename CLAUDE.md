@@ -2,7 +2,7 @@
 
 A mobile-first browser arcade game for the **Digit7 Jam** (HTML arcade game tournament). Tagline: **"is your life full of colors?"**
 
-**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is 7 colors, one at a time, 60 s each. The live camera shows a square at the center, framed in the target color, and a live "in the square" swatch. The player fills the square with that color (zoom in, walk closer, shade the light with a hand) and snaps. The **whole square** is scored (mean accuracy of its cells). There is **no editing** (no brightness/saturation/contrast), no Grimoire and no rerolls. See `docs/ANALYSIS.md` §4.1–4.2.
+**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is 7 colors, one at a time, 60 s each, and builds **one craft**. The live camera shows the **color extracting machine** (a centered square framed in the target color) and a live "extracted" swatch. The machine extracts the **average color of everything inside it** (blending is allowed), judged with **CIEDE2000**, with **no leniency and no correction**. Per-color ranks: Botched, Awry, Wavering, Kindred, Harmonious, Flawless. Craft ranks by running total: Gunk, Trinket, Curio, Marvel, Quintessence, Magnum Opus. No editing, no Grimoire, no rerolls, no time bonus. See `docs/GDD.md` §0 and `docs/ANALYSIS.md` §4.
 
 ## How to work with the user
 
@@ -32,16 +32,18 @@ Vite 7 + TypeScript (strict), plain DOM/CSS UI, Canvas2D for capture, WebGL1 for
 ```
 src/
   main.ts, app.ts, flow.ts     bootstrap, screen shell (no URL routing: iOS re-prompts for camera), navigation
-  seven/run.ts                 Seven Colors run state, dealing, per-section scoring
-  seven/screen.ts              the whole run on one screen: intro → hunt → snap → result ×7
-  seven/summary.ts             band, 7-square share text, offline leaderboard entry
+  seven/run.ts                 Seven Colors run state, dealing, per-section judging, running total
+  seven/screen.ts              the whole run on one screen: intro → hunt → extract → result sheet (+craft) ×7
+  seven/summary.ts             craft reveal, 7-square share text, offline leaderboard entry
   camera/camera.ts             getUserMedia wrapper (one stream per session, 1080p ideal)
   camera/source.ts             frame sources (camera / painted practice scene / dev test photo), grab, capture
   camera/viewfinder.ts         WebGL viewfinder: digital zoom, pan, mirror
-  color/oklab.ts               ★ color math: sRGB↔linear, OKLab, ΔE_CA, accuracy curve
-  color/plate.ts               plates (linear RGB), auto white balance, drop/cell grids
-  scoring/square.ts            ★ Seven Colors whole-square scoring
-  scoring/score.ts             grades, hints, quicksilver, shared helpers
+  color/oklab.ts               color math: sRGB↔linear, OKLab (UI mixing, ramps), ΔE_CA (Classic only)
+  color/cielab.ts              ★ CIELAB (D65) + CIEDE2000: the Seven Colors metric
+  color/plate.ts               plates (linear RGB), capture averaging
+  scoring/extract.ts           ★ the color extracting machine: extract (mean), judge (ΔE00 → score, rank), craft rank
+  scoring/score.ts, assay.ts   Classic-mode scoring (not used by Seven Colors)
+  ui/craft.ts                  generated craft art per rank (random palette each render)
   data/colors.ts, tuning.ts    55-color Codex; ALL tunable numbers (SEVEN = this mode)
   practice/plates.ts           painted still lifes for the no-camera practice mode
   meta/                        rng, storage (localStorage, try/catch), share text
@@ -54,10 +56,9 @@ docs/GDD.md, docs/ANALYSIS.md
 
 ## Color and scoring rules
 
-- One module owns the color math (`src/color`, `src/scoring`). The GLSL in `camera/*.ts` mirrors it; change both together. Never compute distances in raw sRGB.
-- ΔE_CA (GDD §8.4) plus a **greyish penalty** (`dullRelK`): without it a grey wall scored ~60 on Teal.
-- Seven Colors score per color: `round(10 · acc · tierMult) + quicksilver` (camera mode only). acc = mean cell accuracy over the square, best of raw vs auto-white-balanced (`SEVEN.autoLight`).
-- All numbers live in `src/data/tuning.ts` (`SEVEN` for this mode). Bands will need retuning from real playtests.
+- One module owns the color math (`src/color`, `src/scoring`). Never compute distances in raw sRGB.
+- Seven Colors: extraction = linear-RGB mean of the machine's pixels (what the live "extracted" swatch shows); distance = CIEDE2000 vs the target hex; score = `round(100·e^(−ΔE00/10))`; ranks and craft thresholds in `SEVEN` (`src/data/tuning.ts`). **No leniency, no light correction**: that was a deliberate user decision (ANALYSIS §4.6). CIEDE2000 is tested against Sharma 2005 reference pairs; keep those tests passing.
+- All numbers live in `src/data/tuning.ts` (`SEVEN` for this mode). Score scale and craft thresholds will need retuning from real playtests.
 
 ## Commands
 

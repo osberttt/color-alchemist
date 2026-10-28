@@ -2303,6 +2303,297 @@ body[data-theme='palette'] .btn.primary {
   grid-template-columns: 10.5ch 1fr 7ch;
 }
 
+/* ---------- The color extracting machine ---------- */
+
+.ret-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone);
+  text-shadow: 0 1px 3px #000;
+  opacity: 0.8;
+}
+.reticle .ret-in {
+  transition: background 0.25s;
+}
+.reticle.extracting {
+  animation: extract 0.65s cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+.reticle.extracting .ret-label {
+  opacity: 0;
+}
+@keyframes extract {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    border-radius: 6px;
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(1.08);
+    border-radius: 6px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.18);
+    border-radius: 50%;
+  }
+}
+.fly-drop {
+  position: fixed;
+  z-index: 175;
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.85),
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* ---------- Result sheet ---------- */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--bg);
+  color: var(--text);
+  overflow-y: auto;
+  animation: sheet-up 0.55s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.sheet.down {
+  animation: sheet-down 0.45s cubic-bezier(0.6, 0, 0.8, 0.4) forwards;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+    border-radius: 40px 40px 0 0;
+  }
+}
+@keyframes sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+.sheet-inner {
+  min-height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: calc(var(--safe-t) + 18px) 18px calc(var(--safe-b) + 18px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.sheet .res-ramp figure {
+  color: var(--muted);
+}
+.sheet .res-name {
+  font-size: clamp(26px, 8vw, 38px);
+  font-weight: 800;
+}
+.res-score {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+}
+.sheet .res-acc {
+  font-size: clamp(48px, 14vw, 64px);
+}
+.res-de {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: -6px;
+}
+.craft-panel {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-top: 6px;
+  border: 3px solid var(--text);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--panel));
+  box-shadow: 6px 6px 0 var(--p1);
+  text-align: left;
+}
+.craft-stage {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+}
+.craft-stage svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.craft-stage.hero {
+  width: min(62vw, 240px);
+  height: min(62vw, 240px);
+}
+.craft-name {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+.craft-name.promoted {
+  animation: slam 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+  transform: none;
+}
+.craft-blurb {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--muted);
+  min-height: 1em;
+}
+.craft-bar {
+  margin-top: 8px;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--line);
+  overflow: hidden;
+}
+.craft-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--p2), var(--p1));
+}
+.bar-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.craft-stage.craft-out {
+  transition:
+    transform 0.3s cubic-bezier(0.6, 0, 0.8, 0.4),
+    opacity 0.3s;
+  transform: scale(0.2) rotate(-90deg);
+  opacity: 0;
+}
+.craft-stage.craft-grow {
+  animation: craft-grow 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.craft-stage.craft-promote {
+  animation: craft-promote 0.8s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes craft-grow {
+  from {
+    transform: scale(0.6);
+  }
+}
+@keyframes craft-promote {
+  0% {
+    transform: scale(0) rotate(120deg);
+    filter: brightness(2.2);
+  }
+  60% {
+    transform: scale(1.18) rotate(-6deg);
+  }
+  100% {
+    transform: scale(1);
+    filter: none;
+  }
+}
+.sheet .res-next-btn {
+  margin-top: 8px;
+}
+.sheet .res-next {
+  color: var(--muted);
+}
+.band.final {
+  animation: slam 0.6s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+/* The craft's moving parts (SVG groups rotate around the viewBox center). */
+.craft-svg .spin-slow,
+.craft-svg .spin-rev,
+.craft-svg .spin-rev-slow,
+.craft-svg .spin-slower,
+.craft-svg .breathe,
+.craft-svg .ooze {
+  transform-origin: 0 0;
+}
+.craft-svg .spin-slow {
+  animation: spin 22s linear infinite;
+}
+.craft-svg .spin-slower {
+  animation: spin 40s linear infinite;
+}
+.craft-svg .spin-rev {
+  animation: spin 16s linear infinite reverse;
+}
+.craft-svg .spin-rev-slow {
+  animation: spin 30s linear infinite reverse;
+}
+.craft-svg .breathe {
+  animation: breathe 2.8s ease-in-out infinite;
+}
+.craft-svg .ooze {
+  transform-origin: 0 60px;
+  animation: ooze 3.2s ease-in-out infinite;
+}
+@keyframes ooze {
+  50% {
+    transform: scale(1.06, 0.94);
+  }
+}
+.craft-svg .drip {
+  animation: drip 2.4s ease-in infinite;
+}
+@keyframes drip {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+.craft-svg .bob {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bob 2.6s ease-in-out infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(-6px) rotate(6deg);
+  }
+}
+.craft-svg .twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 2.2s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    scale: 0.6;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.2;
+  }
+}
+
 /* ---------- Desktop (PC layout, GDD §16.7) ---------- */
 
 @media (min-width: 900px) and (min-aspect-ratio: 5/4) {

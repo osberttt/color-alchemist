@@ -257,6 +257,36 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.6 Precise CIEDE2000 judging, the color extracting machine, ranks and the craft (2026-10-28)
+
+**The change.**
+- **No leniency.** The camera's color is the color. Light correction, per-color tolerance and "teal registers as teal" are all gone.
+- **The square becomes the *color extracting machine*.** It extracts the average of everything inside it (linear-light mean), so **blending is allowed**: red and yellow objects side by side extract as orange. The live "extracted" swatch is exactly what gets scored.
+- **Judging is CIEDE2000** (the CIE standard for perceived color difference). Score = round(100 · e^(−ΔE00/10)).
+- **Per-color ranks:** Botched (> 20), Awry (≤ 20), Wavering (≤ 10), Kindred (≤ 5), Harmonious (≤ 2.5), Flawless (≤ 1, an invisible difference).
+- **The run builds one craft**, ranked by the running total (max 700): Gunk (< 100), Trinket, Curio (200), Marvel (300), Quintessence (420), Magnum Opus (550, about ΔE 2.5 on every color). The craft is shown after every color, like Krillion's depth.
+- **The craft's art** is generated abstract shapes that become more ordered and radiant per rank, recolored from a random palette on every render.
+- **Quicksilver (time bonus), tier multipliers and the Philosopher's Stone are removed.** The score is purely closeness.
+- **Transitions are slower and layered:** three paint rings, a result sheet that slides up, and the extracted color condensing into a drop that falls into the craft.
+
+**Market**
+- This is Krillion's structure almost one to one: 7 prompts, rarity-style ranks, and a cumulative meter (depth there, craft quality here). It's a proven loop with a fresh, physical input.
+- "Flawless" is our "One in a Krillion": rare, lucky, worth a screenshot. The craft names (Gunk → Magnum Opus) and the generated art give every run a shareable result that's different each time.
+- Blending is an emergent "aha" ("I made orange from a lemon and a tomato") that players tell each other about. It's free word of mouth.
+
+**Game design**
+- **Honest, readable and hard.** The extracted swatch is literally the score input, so there are no surprises. Players judge by eye and the game only measures. Flawless needs real luck plus control (angle, shading, distance), which is the intended "krillion" feeling.
+- **Risk: too harsh.** Phone cameras shift colors by several ΔE units under ordinary light, so most players will see Wavering and Awry. The continuous score (37 points at ΔE 10, 14 at ΔE 20) keeps small improvements rewarding, and the craft climbs anyway (Gunk → Trinket → Curio → Marvel for a decent run). Tune `scoreScale` and the craft thresholds after real playtests, not before.
+- **Why the average color, not cells:** the user wants blending, and averaging in linear light is how colors physically mix at a distance (optical mixing). It also removes the old mismatch between the shown swatch and the score.
+- **Why CIEDE2000:** it's the standard for small, precise differences, which is exactly the Flawless and Harmonious range that now matters most. For large misses it's less exact, but it never reverses an order. It's verified against the published reference pairs in `tests/extract.test.ts`.
+- **Removed time bonus:** pressure now comes only from the clock, so the score means "how close". Krillion works the same way.
+- **The hunt stays neutral grey.** The craft and the colorful result live on a separate sheet, so they never sit next to the color being judged.
+
+**Digit7 Jam**
+- **Judging:** "originality" and "art & polish" gain the most, from the generated craft art, the machine metaphor and the slower transitions. "Retention" benefits from a visible goal (reach Marvel, then Magnum Opus) and per-run variety.
+- **Technical:** the scoring is simpler than before (one average, one formula), with no new assets and no network. SVG animations are lightweight. Watch the frame rate of the Magnum Opus sprite on a budget Android.
+- **Schedule:** 3 days left. This should be the last design change. Freeze the design after one real-device playtest, then do the submission paperwork.
+
 ### 4.5 A color ramp instead of hint words (2026-10-26)
 
 **The change.** The result no longer says "too yellow, too light". It shows **target → yours as a color ramp**: 1 step between the two for Quintessence, 2 Essence, 3 Elixir, 4 Tincture, 5 Murk, 6 Sludge. The steps are interpolated in OKLab, so they look evenly spaced.

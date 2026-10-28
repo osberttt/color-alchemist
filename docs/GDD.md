@@ -16,24 +16,30 @@ Status: **jam build in progress** (Digit7 Jam, deadline 31 Oct 2026, 23:59:59 UT
 
 ---
 
-## 0. Current jam design: "Seven Colors" (v0.3, 2026-10-26). This section supersedes the rest
+## 0. Current jam design: "Seven Colors" (v0.4, 2026-10-28). This section supersedes the rest
 
-The sections after this one describe the original pair-based design ("Classic"). Where they conflict, **this section wins**. The reasons for each change are in `ANALYSIS.md` §4.1–4.2.
+The sections after this one describe the original pair-based design ("Classic"). Where they conflict, **this section wins**. The reasons for each change are in `ANALYSIS.md` §4.1–4.6.
 
 **Loop (Krillion-like, deliberately simple)**
-1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation*.
+1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation*. The run makes **one craft**.
 2. Each section deals **one** named color. Tier ladder: Lead, Lead, Lead, Silver, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
-3. **Intro beat** (~1.3 s): the operation, "find", a swatch and the color name.
-4. **Hunt (60 s)**: the live camera in full color. A **square at the center** (30 % of the short side) is framed in the target color. A panel shows the **target** swatch next to a live **"in the square"** swatch. The player can **zoom** (digital, 1–4×, pinch / slider / wheel / +−) and **snap**. Time runs out → auto-snap.
-5. **No editing.** No brightness, saturation, contrast or crop. Light is part of the game: shade with a hand, tilt, move to a window.
-6. **Result** (waits for the player, untimed): **target → yours as a color ramp** (1 in-between step for Quintessence … 6 for Sludge, OKLab-interpolated; no hint words), accuracy, grade stamp, points, and a **Next color** button. Nothing advances automatically; the next clock starts when the next color appears.
-7. After 7 colors: **Magnum Opus** summary with the band, total, 7 found swatches, the list of "<Grade> of <Virtue>" ingredients, a local leaderboard entry and a share text with a **7-square emoji row**. Restart is one tap ("Brew again").
+3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
+4. **Hunt (60 s)**: the live camera in full color. The **color extracting machine** (a centered square, 30 % of the short side) is framed in the target color. A panel shows the **target** swatch next to the live **extracted** swatch (exactly what will be scored). The player can **zoom** (digital, 1–4×) and **extract**. Time runs out → the machine extracts on its own.
+5. **No editing and no correction.** What the camera captures is the color. Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the machine extract as orange.
+6. **Extraction**: the machine fills with the extracted color and condenses into a drop. The **result sheet** slides up (its own palette):
+   - target → extracted as a **color ramp** (1 in-between step for Flawless … 6 for Botched)
+   - the score, the rank stamp and the exact ΔE00
+   - the **craft panel**: the drop falls into the craft, which grows or transforms to its new rank, plus a progress bar to the next rank
+   It waits for the player's tap; the next clock starts when the next color appears.
+7. After 7 colors, the **craft reveal**: the craft evolves rank by rank to its final form. You also get the total, the 7 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **7-square emoji row**. "Craft again" restarts in one tap.
 
-**Scoring**
-- The square is split into 10×10 cells. Each cell's mean color (linear RGB → OKLab) is scored with ΔE_CA (§8.4, plus the greyish penalty `dullRelK`) and the accuracy curve (§8.5). **acc = mean of the cell accuracies** (blown-out cells score 0). Free, invisible light help: the better of the raw square and an auto-white-balanced one (estimated on the whole frame).
-- Points per color = `round(10 × acc × tierMult) + quicksilver` (2 per second left, max 120, camera mode only).
-- Grades as §8.6 (Sludge → Quintessence). Philosopher's Stone: all 7 colors ≥ 80 → +500, band **FULL SPECTRUM**.
-- Bands (to retune after playtests): GRAYSCALE < 2 500 ≤ SEPIA < 4 000 ≤ PASTEL < 5 500 ≤ VIVID < 7 000 ≤ TECHNICOLOR.
+**Scoring (precise, no mercy)**
+- **Extraction** = the mean of every pixel in the machine, in linear RGB (4 camera frames averaged) → CIELAB (D65).
+- **Distance** = **CIEDE2000** (ΔE00) between the target's hex and the extraction. Verified against Sharma et al. 2005 reference pairs.
+- **Score per color** = `round(100 · e^(−ΔE00/10))`: ΔE 1 → 90, 2.5 → 78, 5 → 61, 10 → 37, 20 → 14. No time bonus, no tier multiplier.
+- **Per-color rank:** Flawless (ΔE ≤ 1, invisible difference), Harmonious (≤ 2.5), Kindred (≤ 5), Wavering (≤ 10), Awry (≤ 20), Botched (> 20).
+- **Craft rank** by the running total (max 700): Gunk < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 420 ≤ Quintessence < 550 ≤ Magnum Opus. Retune after real playtests.
+- **Craft art** (`src/ui/craft.ts`): generated abstract shapes per rank. Gunk is murky slumped blobs, Trinket loose simple shapes, Curio a faceted core with satellites, Marvel a 6-fold bloom, Quintessence an 8-fold glowing mandala, and Magnum Opus a 12-fold multi-layer mandala with rays. Recolored from a random palette every render.
 
 **Modes**
 - **Begin the hunt**: the camera.
@@ -45,9 +51,7 @@ The sections after this one describe the original pair-based design ("Classic").
 - **The hunt screen stays neutral grey**: surrounding colors would bias how players judge the square (simultaneous contrast). Its juice uses only the target and found colors.
 - **Juice** (`src/ui/fx.ts`): paint-wipe transitions, particles, confetti, floating points, shakes, staggered entrances, a bouncing logo. Everything respects `prefers-reduced-motion`.
 
-**How "yours" is computed:** the square's average in linear RGB (camera frames averaged), converted to OKLab. The score is not the distance of that average. It is the mean accuracy of the 10×10 cells, so a half-filled square shows a muddy average *and* scores about half.
-
-**Out of scope for the jam:** daily seed, online leaderboard, Grimoire, Lens color-splash, catalysts, transmute, editing sliders, Famous Formulae. Their code (Classic mode) is still in the repo but not reachable from the UI.
+**Out of scope for the jam:** daily seed, online leaderboard, Grimoire, Lens color-splash, catalysts, transmute, editing sliders, light correction, time bonus, Famous Formulae. Their code (Classic mode) is still in the repo but not reachable from the UI.
 
 ---
 

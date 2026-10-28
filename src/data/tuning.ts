@@ -87,34 +87,45 @@ export const TUNING = {
   undiscoveredWeight: 2,
 } as const;
 
-// "Seven Colors" mode: one color per section, live center square (ANALYSIS §4.1).
+// "Seven Colors" mode: one color per section, the color extracting machine (ANALYSIS §4.1–4.6).
 export const SEVEN = {
   sections: 7,
   /** Seconds per color. Test 30–40 s too: 7 × 60 s is twice Krillion's run length. */
   seconds: 60,
-  /** Square side as a fraction of the visible frame's short side. */
+  /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
-  /** The square is scored as an n×n grid of cells; the score is the mean cell accuracy. */
-  squareCells: 10,
   /** Short side of the captured view, in px. */
   viewShortSide: 360,
   zoomMin: 1,
   zoomMax: 4,
-  /** Free, invisible help: score the better of the raw square and an auto-white-balanced one. */
-  autoLight: true,
-  stonePoints: 500,
   tiers: ['lead', 'lead', 'lead', 'silver', 'silver', 'silver', 'gold'] as const,
   maxDarkPerRun: 2,
-  /** The result waits for the player's tap; taps earlier than this are ignored (double-tap guard). */
-  resultGuardMs: 600,
-  /** Result screen: steps in the target → yours color ramp. The further off, the longer the walk. */
-  rampSteps: { Quintessence: 1, Essence: 2, Elixir: 3, Tincture: 4, Murk: 5, Sludge: 6 } as Record<string, number>,
-  introMs: 1300,
-  bands: [
-    { name: 'GRAYSCALE', min: 0 },
-    { name: 'SEPIA', min: 2500 },
-    { name: 'PASTEL', min: 4000 },
-    { name: 'VIVID', min: 5500 },
-    { name: 'TECHNICOLOR', min: 7000 },
+  /**
+   * Score per color = round(100 · e^(−ΔE00 / scoreScale)).
+   * ΔE00 1 → 90, 2.5 → 78, 5 → 61, 10 → 37, 20 → 14.
+   */
+  scoreScale: 10,
+  /** Per-color rank by CIEDE2000 distance (≤ maxDE), best first. Flawless = invisible difference. */
+  colorTiers: [
+    { name: 'Flawless', maxDE: 1 },
+    { name: 'Harmonious', maxDE: 2.5 },
+    { name: 'Kindred', maxDE: 5 },
+    { name: 'Wavering', maxDE: 10 },
+    { name: 'Awry', maxDE: 20 },
+    { name: 'Botched', maxDE: Infinity },
   ],
+  /** Result screen: steps in the target → extracted ramp, per color rank. */
+  rampSteps: { Flawless: 1, Harmonious: 2, Kindred: 3, Wavering: 4, Awry: 5, Botched: 6 } as Record<string, number>,
+  /** The craft, ranked by the running total (max 700). Magnum Opus needs ~ΔE 2.5 on every color. */
+  craftTiers: [
+    { name: 'Gunk', min: 0 },
+    { name: 'Trinket', min: 100 },
+    { name: 'Curio', min: 200 },
+    { name: 'Marvel', min: 300 },
+    { name: 'Quintessence', min: 420 },
+    { name: 'Magnum Opus', min: 550 },
+  ],
+  /** The result waits for the player's tap; taps earlier than this are ignored (double-tap guard). */
+  resultGuardMs: 900,
+  introMs: 1700,
 } as const;
