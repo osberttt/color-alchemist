@@ -17,7 +17,9 @@ export const OPERATIONS = ['Calcination', 'Dissolution', 'Separation', 'Conjunct
 export interface Section {
   index: number;
   def: ColorDef;
-  extracted: Extraction;
+  /** Null when time ran out: nothing was extracted (Krillion's unanswered prompt, 0 points). */
+  extracted: Extraction | null;
+  empty: boolean;
   hex: string;
   /** CIEDE2000 between target and extracted. */
   dE: number;
@@ -83,17 +85,22 @@ export function runTotal(r: SevenRun): number {
   return r.sections.reduce((t, s) => t + s.score, 0);
 }
 
-export function finishSection(r: SevenRun, view: Plate, zoom: number): Section {
+/** Hex shown for an empty extraction (nothing in the flask). */
+export const EMPTY_HEX = '#3a3a40';
+
+/** `view` is null when time ran out: the machine extracted nothing and the color scores 0. */
+export function finishSection(r: SevenRun, view: Plate | null, zoom: number): Section {
   const def = r.current!;
-  const extracted = extract(view);
-  const j = judge(def, extracted);
+  const extracted = view ? extract(view) : null;
+  const j = extracted ? judge(def, extracted) : { dE: Infinity, score: SEVEN.emptyPoints, tier: 'Empty', tierIndex: SEVEN.colorTiers.length };
   const total = runTotal(r) + j.score;
   const craft = craftTierFor(total);
   const section: Section = {
     index: r.index,
     def,
     extracted,
-    hex: extracted.hex,
+    empty: !extracted,
+    hex: extracted ? extracted.hex : EMPTY_HEX,
     dE: j.dE,
     score: j.score,
     tier: j.tier,

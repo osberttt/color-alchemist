@@ -1,6 +1,7 @@
-// The color extracting machine (ANALYSIS §4.6): what the camera captured inside
-// the machine, averaged in linear light, IS the color. No correction, no leniency.
+// The color extracting machine (ANALYSIS §4.6–4.7): what the camera captured inside
+// the machine, averaged in linear light, IS the color. No correction.
 // Blending is allowed: red and yellow objects side by side extract as orange.
+// Judged by CIEDE2000 (hue weighted leniently), scored with Krillion's points.
 
 import { linearToHex } from '../color/oklab';
 import { ciede2000, hexToCielab, linearToCielab, type Lab76 } from '../color/cielab';
@@ -46,20 +47,63 @@ export function extract(plate: Plate, rect = machineRect(plate)): Extraction {
   return { lin, lab: linearToCielab(lin[0], lin[1], lin[2]), hex: linearToHex(lin[0], lin[1], lin[2]) };
 }
 
-export function tierFor(dE: number): { name: string; index: number } {
-  const i = SEVEN.colorTiers.findIndex((t) => dE <= t.maxDE);
-  const index = i < 0 ? SEVEN.colorTiers.length - 1 : i;
-  return { name: SEVEN.colorTiers[index].name, index };
+/**
+ * The machine's contents averaged into an n×n mosaic (8-bit sRGB RGBA), each cell
+ * mixed in linear light like the scorer. n = 1 is exactly the extracted color.
+ * Used for the blend-reveal animation.
+ */
+export function mosaic(plate: Plate, n: number, rect = machineRect(plate)): Uint8ClampedArray<ArrayBuffer> {
+  const out = new Uint8ClampedArray(n * n * 4);
+  for (let cy = 0; cy < n; cy++) {
+    for (let cx = 0; cx < n; cx++) {
+      const x0 = rect.x + Math.floor((cx * rect.side) / n);
+      const x1 = rect.x + Math.floor(((cx + 1) * rect.side) / n);
+      const y0 = rect.y + Math.floor((cy * rect.side) / n);
+      const y1 = rect.y + Math.floor(((cy + 1) * rect.side) / n);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let k = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0, i = (y * plate.w + x0) * 3; x < x1; x++, i += 3) {
+          r += plate.lin[i];
+          g += plate.lin[i + 1];
+          b += plate.lin[i + 2];
+          k++;
+        }
+      }
+      const hex = linearToHex(r / Math.max(1, k), g / Math.max(1, k), b / Math.max(1, k));
+      const j = (cy * n + cx) * 4;
+      out[j] = parseInt(hex.slice(1, 3), 16);
+      out[j + 1] = parseInt(hex.slice(3, 5), 16);
+      out[j + 2] = parseInt(hex.slice(5, 7), 16);
+      out[j + 3] = 255;
+    }
+  }
+  return out;
 }
 
+/** The game's distance: CIEDE2000 with the tuned weights. */
+export function distance(targetHex: string, lab: Lab76): number {
+  return ciede2000(hexToCielab(targetHex), lab, SEVEN.deltaWeights);
+}
+
+export function tierFor(dE: number): { name: string; index: number; points: number } {
+  const i = SEVEN.colorTiers.findIndex((t) => dE <= t.maxDE);
+  const index = i < 0 ? SEVEN.colorTiers.length - 1 : i;
+  const t = SEVEN.colorTiers[index];
+  return { name: t.name, index, points: t.points };
+}
+
+/** Krillion-style: the rank decides the points. */
 export function scoreFor(dE: number): number {
-  return Math.round(100 * Math.exp(-dE / SEVEN.scoreScale));
+  return tierFor(dE).points;
 }
 
 export function judge(target: ColorDef, extracted: Extraction): Judgement {
-  const dE = ciede2000(hexToCielab(target.target), extracted.lab);
+  const dE = distance(target.target, extracted.lab);
   const t = tierFor(dE);
-  return { dE, score: scoreFor(dE), tier: t.name, tierIndex: t.index };
+  return { dE, score: t.points, tier: t.name, tierIndex: t.index };
 }
 
 export function craftTierFor(total: number): { name: string; index: number; next: { name: string; min: number } | null } {

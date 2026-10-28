@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ciede2000, hexToCielab, linearToCielab } from '../src/color/cielab';
 import { hexToLinear } from '../src/color/oklab';
 import type { Plate } from '../src/color/plate';
-import { color } from '../src/data/colors';
-import { craftTierFor, extract, judge, machineRect, scoreFor, tierFor } from '../src/scoring/extract';
+import { COLORS, color } from '../src/data/colors';
+import { craftTierFor, distance, extract, judge, machineRect, mosaic, scoreFor, tierFor } from '../src/scoring/extract';
 
 describe('CIELAB', () => {
   it('white is L 100, a = b = 0', () => {
@@ -75,6 +75,13 @@ describe('the color extracting machine', () => {
     expect(judge(color('tangerine'), ex).dE).toBeLessThan(judge(color('cherry-red'), ex).dE);
   });
 
+  it("the blend reveal's last step is exactly the extracted color", () => {
+    const p = plate(360, 480, (x, y) => [((x * 7) % 255) / 255, ((y * 3) % 255) / 255, 0.3]);
+    const one = mosaic(p, 1);
+    const hex = '#' + [one[0], one[1], one[2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe(extract(p).hex);
+  });
+
   it('no leniency: a slightly darker teal is no longer Flawless', () => {
     const teal = color('teal');
     const [r, g, b] = hexToLinear(teal.target);
@@ -88,25 +95,62 @@ describe('ranks', () => {
     expect(tierFor(0.5).name).toBe('Flawless');
     expect(tierFor(2).name).toBe('Harmonious');
     expect(tierFor(4).name).toBe('Kindred');
-    expect(tierFor(8).name).toBe('Wavering');
-    expect(tierFor(15).name).toBe('Awry');
+    expect(tierFor(7).name).toBe('Wavering');
+    expect(tierFor(12).name).toBe('Awry');
+    expect(tierFor(15).name).toBe('Botched');
     expect(tierFor(40).name).toBe('Botched');
   });
 
-  it('score curve', () => {
-    expect(scoreFor(0)).toBe(100);
-    expect(scoreFor(1)).toBe(90);
-    expect(scoreFor(5)).toBe(61);
-    expect(scoreFor(10)).toBe(37);
+  it("Krillion's exact points per rank", () => {
+    expect([0.5, 2, 4, 7, 12, 40].map(scoreFor)).toEqual([100, 85, 60, 30, 15, 10]);
   });
 
   it('craft tiers climb with the running total', () => {
-    expect(craftTierFor(40).name).toBe('Gunk');
+    expect(craftTierFor(70).name).toBe('Gunk');
     expect(craftTierFor(150).name).toBe('Trinket');
     expect(craftTierFor(250).name).toBe('Curio');
-    expect(craftTierFor(350).name).toBe('Marvel');
-    expect(craftTierFor(450).name).toBe('Quintessence');
-    expect(craftTierFor(600).name).toBe('Magnum Opus');
-    expect(craftTierFor(600).next).toBeNull();
+    expect(craftTierFor(380).name).toBe('Marvel');
+    expect(craftTierFor(500).name).toBe('Quintessence');
+    expect(craftTierFor(700).name).toBe('Magnum Opus');
+    expect(craftTierFor(700).next).toBeNull();
+  });
+});
+
+describe('game weighting (kL 0.8, kC 1, kH 2 within 30°)', () => {
+  const teal = hexToCielab(color('teal').target);
+  const rot = (deg: number) => {
+    const C = Math.hypot(teal.a, teal.b);
+    const h0 = Math.atan2(teal.b, teal.a) + (deg * Math.PI) / 180;
+    return { L: teal.L, a: C * Math.cos(h0), b: C * Math.sin(h0) };
+  };
+
+  it('is more forgiving of small hue shifts than standard CIEDE2000', () => {
+    const s = rot(20);
+    const standard = ciede2000(teal, s);
+    const game = distance(color('teal').target, s);
+    expect(game).toBeCloseTo(standard / 2, 1);
+    // A hue shift that standard CIEDE2000 calls Wavering is Kindred in the game.
+    expect(tierFor(standard).name).toBe('Awry');
+    expect(tierFor(game).name).toBe('Kindred');
+  });
+
+  it('a grey is Botched for every color except Charcoal', () => {
+    for (const c of COLORS) {
+      if (c.id === 'charcoal') continue;
+      const t = hexToCielab(c.target);
+      // The best grey: same lightness, no chroma.
+      expect(tierFor(distance(c.target, { L: t.L, a: 0, b: 0 })).name, c.name).toBe('Botched');
+    }
+  });
+
+  it('does not forgive a clearly different hue (teal vs. orange)', () => {
+    const opposite = rot(160);
+    expect(distance(color('teal').target, opposite)).toBeCloseTo(ciede2000(teal, opposite), 6);
+    expect(['Awry', 'Botched']).toContain(tierFor(distance(color('teal').target, opposite)).name);
+  });
+
+  it('is a little stricter on lighter/darker', () => {
+    const darker = { ...teal, L: teal.L - 4 };
+    expect(distance(color('teal').target, darker)).toBeGreaterThan(ciede2000(teal, darker));
   });
 });

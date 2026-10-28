@@ -20,6 +20,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: 'es2020',
     assetsInlineLimit: 0,
+    // The scoring tuner ships only with the test deployment, never in the jam build.
+    rollupOptions: mode === 'pages' ? { input: { main: 'index.html', tuner: 'tuner.html' } } : undefined,
   },
   test: {
     include: ['tests/**/*.test.ts'],

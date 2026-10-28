@@ -1,0 +1,97 @@
+/* The craft's moving parts (src/ui/craft.ts). Shared by the game and the tuner.
+   SVG groups rotate around the viewBox center (0, 0). */
+
+.craft-stage svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.craft-svg .spin-slow,
+.craft-svg .spin-rev,
+.craft-svg .spin-rev-slow,
+.craft-svg .spin-slower,
+.craft-svg .breathe,
+.craft-svg .ooze {
+  transform-origin: 0 0;
+}
+.craft-svg .spin-slow {
+  animation: craft-spin 22s linear infinite;
+}
+.craft-svg .spin-slower {
+  animation: craft-spin 40s linear infinite;
+}
+.craft-svg .spin-rev {
+  animation: craft-spin 16s linear infinite reverse;
+}
+.craft-svg .spin-rev-slow {
+  animation: craft-spin 30s linear infinite reverse;
+}
+.craft-svg .breathe {
+  animation: craft-breathe 2.8s ease-in-out infinite;
+}
+.craft-svg .ooze {
+  transform-origin: 0 60px;
+  animation: craft-ooze 3.2s ease-in-out infinite;
+}
+.craft-svg .drip {
+  animation: craft-drip 2.4s ease-in infinite;
+}
+.craft-svg .bob {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: craft-bob 2.6s ease-in-out infinite;
+}
+.craft-svg .twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: craft-twinkle 2.2s ease-in-out infinite;
+}
+@keyframes craft-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes craft-breathe {
+  50% {
+    transform: scale(1.08);
+  }
+}
+@keyframes craft-ooze {
+  50% {
+    transform: scale(1.06, 0.94);
+  }
+}
+@keyframes craft-drip {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+@keyframes craft-bob {
+  50% {
+    transform: translateY(-6px) rotate(6deg);
+  }
+}
+@keyframes craft-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    scale: 0.6;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .craft-svg * {
+    animation: none !important;
+  }
+}

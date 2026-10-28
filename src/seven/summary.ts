@@ -18,7 +18,7 @@ import { OPERATIONS, sevenResult, type SevenRun } from './run';
 export function sevenShareText(r: SevenRun, total: number, craft: string): string {
   const counts = new Map<string, number>();
   for (const s of r.sections) counts.set(s.tier, (counts.get(s.tier) ?? 0) + 1);
-  const order = SEVEN.colorTiers.map((t) => t.name);
+  const order = [...SEVEN.colorTiers.map((t) => t.name), 'Empty'];
   const lines = [
     `Color Alchemist · Seven Colors${r.mode === 'camera' ? '' : ' (practice)'}`,
     `is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
@@ -92,7 +92,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
                 'li',
                 { style: { '--i': String(i) } },
                 h('span', { class: 'p-sw' }, swatch(s.def.target, 'target'), swatch(s.hex, 'extracted')),
-                h('span', { class: 'p-name' }, s.def.name, h('span', { class: 'muted small' }, ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`)),
+                h('span', { class: 'p-name' }, s.def.name, h('span', { class: 'muted small' }, s.empty ? ` · time ran out · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`)),
                 h('span', { class: 'mono' }, `+${s.score}`),
               ),
             ),

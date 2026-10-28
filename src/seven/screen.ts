@@ -7,13 +7,14 @@ import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
 import { Viewfinder } from '../camera/viewfinder';
 import { cameraSource, canvasSource, captureView, imageToCanvas, meanOfRect, squareRect, viewRect, type FrameSource } from '../camera/source';
-import { hexToOklab, linearToHex, mixLab, oklabToHex } from '../color/oklab';
+import { hexToOklab, mixLab, oklabToHex } from '../color/oklab';
 import { centerOf, floatText, fx, shake } from '../ui/fx';
 import { ELEMENT_GLYPH, TIER_LABEL, type ColorDef } from '../data/colors';
 import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
-import { craftTierFor } from '../scoring/extract';
+import { craftTierFor, mosaic } from '../scoring/extract';
+import type { Plate } from '../color/plate';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
 import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
@@ -30,7 +31,8 @@ const TIPS = [
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
   'Tilt shiny things to kill the glare.',
-  'Compare the frame with the extracted swatch. Then snap.',
+  'Trust your eyes: compare the frame with what is inside it.',
+  'Out of time? The machine runs dry and scores nothing.',
 ];
 
 interface PhotoDeck {
@@ -79,7 +81,8 @@ export function sevenScreen(r: SevenRun): void {
     const timerEl = h('span', { class: 'timer' }, '1:00');
 
     const targetSw = h('span', { class: 'big-sw target' });
-    const yoursSw = h('span', { class: 'big-sw yours' });
+    // The extracted color stays a mystery until the machine blends it (after the snap).
+    const yoursSw = h('span', { class: 'big-sw yours mystery' }, '?');
     const nameEl = h('span', { class: 'tg-name' });
     const metaEl = h('span', { class: 'tg-meta' });
     const target = h(
@@ -264,6 +267,10 @@ export function sevenScreen(r: SevenRun): void {
       timerEl.classList.remove('urgent');
       reticle.classList.remove('extracting');
       retFill.style.background = '';
+      reticle.querySelector('.ret-mosaic')?.remove();
+      yoursSw.style.background = '';
+      yoursSw.classList.add('mystery');
+      yoursSw.textContent = '?';
       stageEl.textContent = `${ROMAN[r.index]} · ${OPERATIONS[r.index]} · ${r.index + 1}/${SEVEN.sections}`;
       await prepareSource(def);
       phase = 'intro';
@@ -322,13 +329,63 @@ export function sevenScreen(r: SevenRun): void {
       }
       const before = runTotal(r);
       const sec = finishSection(r, plate, zoom);
-      extractAnimation(sec, before);
+      blendReveal(plate, sec, before);
+    }
+
+    /** Krillion rules: an unanswered prompt scores 0. The machine runs dry. */
+    function timeUp(): void {
+      if (phase !== 'hunt') return;
+      phase = 'capturing';
+      shutter.disabled = true;
+      timerEl.textContent = '0:00';
+      sfx.error();
+      shake(viewport, 'soft');
+      const before = runTotal(r);
+      const sec = finishSection(r, null, zoom);
+      phase = 'result';
+      viewport.classList.remove('urgent');
+      later(500, () => showResult(sec, before, centerOf(reticle)));
+    }
+
+/**
+     * The reveal: the frame freezes, and everything inside the machine blends
+     * together, a mosaic of shrinking resolution (mixed in linear light, like the
+     * scorer) down to one cell, the exact extracted color. Only now does the player
+     * see what they caught.
+     */
+    function blendReveal(plate: Plate, sec: Section, before: number): void {
+      phase = 'result';
+      viewport.classList.remove('urgent');
+      const steps = reducedMotion() ? [1] : [24, 12, 8, 5, 3, 2, 1];
+      const cv = h('canvas', { class: 'ret-mosaic' });
+      const ctx = cv.getContext('2d')!;
+      reticle.append(cv);
+      steps.forEach((n, i) =>
+        later(i * 170, () => {
+          cv.width = n;
+          cv.height = n;
+          ctx.putImageData(new ImageData(mosaic(plate, n), n, n), 0, 0);
+          cv.classList.remove('mix');
+          void cv.offsetWidth;
+          cv.classList.add('mix');
+          if (n > 1) sfx.bubble(i);
+        }),
+      );
+      const settled = steps.length * 170 + 150;
+      later(settled, () => {
+        // The exact color, at last: on the machine and in the panel.
+        sfx.drip();
+        const c = centerOf(reticle);
+        fx.burst(c.x, c.y, [sec.hex], { count: 18, speed: 150, size: 6, gravity: 0 });
+        yoursSw.classList.remove('mystery');
+        yoursSw.textContent = '';
+        yoursSw.style.background = sec.hex;
+      });
+      later(settled + 650, () => extractAnimation(sec, before));
     }
 
     /** The machine fills with the extracted color and condenses into a drop. */
     function extractAnimation(sec: Section, before: number): void {
-      phase = 'result';
-      viewport.classList.remove('urgent');
       retFill.style.background = sec.hex;
       reticle.classList.add('extracting');
       sfx.pour();
@@ -341,7 +398,7 @@ export function sevenScreen(r: SevenRun): void {
       paintSpectrum();
       resultAt = performance.now();
       const last = r.index + 1 >= SEVEN.sections;
-      const power = SEVEN.colorTiers.length - 1 - sec.tierIndex; // 0 = Botched … 5 = Flawless
+      const power = Math.max(0, SEVEN.colorTiers.length - 1 - sec.tierIndex); // 0 = Botched/Empty … 5 = Flawless
       const scoreEl = h('span', { class: 'res-acc mono' }, '0');
       const stampEl = stamp(sec.tier, 'slam');
       stampEl.hidden = true;
@@ -357,10 +414,10 @@ export function sevenScreen(r: SevenRun): void {
 
       sheetInner.replaceChildren(
         h('p', { class: 'eyebrow' }, `${ROMAN[sec.index]} · ${OPERATIONS[sec.index]}`),
-        colorRamp(sec),
+        sec.empty ? emptyMachine(sec) : colorRamp(sec),
         h('h2', { class: 'res-name' }, sec.def.name),
         h('div', { class: 'res-score' }, scoreEl, h('div', { class: 'res-stamp' }, stampEl)),
-        h('p', { class: 'res-de mono' }, `ΔE ${sec.dE.toFixed(2)}`),
+        h('p', { class: 'res-de mono' }, sec.empty ? 'time ran out · nothing extracted' : `ΔE ${sec.dE.toFixed(2)}`),
         h(
           'div',
           { class: 'craft-panel' },
@@ -394,7 +451,15 @@ export function sevenScreen(r: SevenRun): void {
         seg.classList.add('seg-pop');
       });
       // 2. The extracted drop falls into the craft, which grows (or transforms).
+      //    An empty machine has no drop: the craft just shrugs.
       later(1600, () => {
+        if (sec.empty) {
+          craftStage.classList.add('craft-grow');
+          craftName.textContent = craftTierFor(sec.total).name;
+          craftBlurb.textContent = CRAFT_BLURBS[craftTierFor(sec.total).index];
+          paintBar(sec.total, craftTierFor(sec.total), true);
+          return;
+        }
         dropInto(dropFrom, craftStage, sec.hex, () => {
           const now = craftTierFor(sec.total);
           const promoted = now.index !== prevCraft.index || r.index === 0;
@@ -484,6 +549,16 @@ export function sevenScreen(r: SevenRun): void {
       );
     }
 
+    function emptyMachine(sec: Section): HTMLElement {
+      return h(
+        'div',
+        { class: 'res-ramp empty' },
+        h('figure', null, swatch(sec.def.target), h('figcaption', null, 'target')),
+        h('span', { class: 'ramp-steps dry' }, h('span', { class: 'dry-text' }, 'the machine ran dry')),
+        h('figure', null, swatch('transparent'), h('figcaption', null, 'nothing')),
+      );
+    }
+
     /** The player moves on when ready; never automatically. */
     function advance(): void {
       if (phase !== 'result') return;
@@ -520,7 +595,9 @@ export function sevenScreen(r: SevenRun): void {
       raf = requestAnimationFrame(loop);
       const dt = (now - lastT) / 1000;
       lastT = now;
-      if (src) {
+      // After the snap the view freezes (the last frame stays) while the machine blends.
+      const live = phase === 'hunt' || phase === 'intro';
+      if (src && live) {
         if (vf.ok) vf.render(src, view(), 0, 0);
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
@@ -535,18 +612,14 @@ export function sevenScreen(r: SevenRun): void {
         timerEl.textContent = fmtTime(remaining);
         timerEl.classList.toggle('urgent', remaining <= 10);
         viewport.classList.toggle('urgent', remaining <= 10);
-        if (remaining <= 0) {
-          toast('The machine extracts on its own.');
-          void snap();
-        }
+        if (remaining <= 0) timeUp();
       }
-      // The live "extracted" swatch is exactly what will be scored: the machine's average color.
-      if (src && (phase === 'hunt' || phase === 'intro') && now - lastSwatch > 120) {
+      // The extracted color is never shown while hunting; this only drives the too-dark warning.
+      if (src && live && r.mode === 'camera' && now - lastSwatch > 250) {
         lastSwatch = now;
         const m = meanOfRect(src, squareRect(src, view(), SEVEN.squareFraction));
         if (m) {
-          yoursSw.style.background = linearToHex(m[0], m[1], m[2]);
-          warn.hidden = r.mode !== 'camera' || 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2] > 0.012;
+          warn.hidden = 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2] > 0.012;
         }
       }
     };

@@ -257,6 +257,46 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.8 Hue weight 2, tighter Wavering/Awry so greys are Botched (2026-10-28)
+
+**The change.**
+- kH 4 → **2** (still only for hue shifts ≤ 30°, easing to standard by 75°). kC stays 1 (standard).
+- **Wavering ≤ 10 → ≤ 8, Awry ≤ 20 → ≤ 14.**
+- Before, a grey object earned Awry (15 points) on many colors, so "any grey" was a safe fallback and Botched almost never happened.
+
+**Measured:** under these weights, the closest possible grey (same lightness, zero chroma) is at ΔE 14.1–29.5 from every color except Charcoal, with a median of 24.9 and 17.6+ for 9 colors in 10. With Awry ≤ 14, **a grey is Botched for every color except Charcoal**. A test enforces this for all 55 colors.
+
+- **Market:** the Krillion tiers only feel meaningful if the bottom tier happens. Plankton is Krillion's "obvious answer"; our "obvious answer" is grey, and now it lands there.
+- **Game design:** the ladder is denser at the top: Flawless 1, Harmonious 2.5, Kindred 5, Wavering 8, Awry 14. A miss in the right color family still earns 15–30, but a colorless capture earns 10. The weakest colors (Steel Blue, Denim, Beige, Baby Blue, Navy, Chocolate, Petrol) are close to grey by nature; their grey margin is small, so watch them in playtests.
+- **Jam:** no change to assets or tech. Saved tuner values are now ignored automatically when the defaults in `tuning.ts` change, so phones that tuned before see the new defaults after deploying.
+
+### 4.7 Generous on hue, stricter on lightness, Krillion's exact points, hidden extraction (2026-10-28)
+
+**The change.**
+- **Hue is much more generous**, but only for *small* shifts. CIEDE2000's hue weight kH = 4 applies to hue differences up to 30°, then eases back to standard by 75°.
+  - A hue shift that standard CIEDE2000 rates Wavering (ΔE ≈ 10) is now Harmonious (≈ 2.5).
+  - A clearly different hue (teal vs. orange) is still Awry or Botched.
+  - A plain kH = 4 was tried first. The tuner showed it made *every* hue at most Wavering, so a near-miss and a wrong color scored the same.
+- **Lightness is a little stricter**: kL = 0.8, so lighter/darker differences count 1.25×.
+- **Krillion's exact scoring.** Per color: Flawless 100, Harmonious 85, Kindred 60, Wavering 30, Awry 15, Botched 10 (One in a Krillion, Deep Cut, Rare, Schooler, Too Clever, Plankton). Running out of time scores **0**, like Krillion's unanswered prompt: the machine "runs dry". The run total, max 700, drives the craft, like Krillion's total drives depth.
+  - Craft thresholds are now 150 / 250 / 380 / 500 / 620. Krillion doesn't publish its depth-zone thresholds, so these are ours.
+  - Sources: [aiidelist guide](https://aiidelist.com/blog/krillion-game-guide-how-to-play-rare-answers), [SimilarLabs](https://similarlabs.com/p/krillion).
+- **The extracted color is hidden while hunting** (a "?" swatch). After the snap the frame freezes and the machine *blends*: its contents become a mosaic of shrinking resolution (mixed in linear light, like the scorer) down to one cell, the exact extracted color. Only then does the player see it.
+
+**Market**
+- Krillion's discrete tiers make results instantly comparable and shareable ("I got 2 Harmonious and a Flawless"). The exact point values make the Krillion lineage obvious to anyone who plays it.
+- The blend reveal is a strong "moment" for screenshots and the demo video: a frozen photo dissolving into one color.
+
+**Game design**
+- **Hue leniency fits the fantasy**: "teal-ish blue-green" feels like teal to a person, so small hue errors shouldn't cost much. Lightness is the dimension players *can* control physically (shade, angle, distance), so it's fair to be stricter there.
+- **Discrete points make every rank feel distinct**, and the gaps reward pushing one rank higher (30 → 60 for Wavering → Kindred). The continuous ΔE is still shown for players who want precision.
+- **Hiding the live color restores judgement and suspense.** The player must read the scene with their own eyes and commit, then watch the verdict form. It's harder, which matches the "once in a krillion" goal, and the reveal itself becomes a payoff.
+- **The 0 on timeout makes the clock real.** Before, time running out still extracted something worth 10+.
+
+**Digit7 Jam**
+- No new assets or network. The tuner remains a test-build-only tool; the jam build uses `tuning.ts`.
+- **Retune after real playtests:** the craft thresholds assume typical Kindred/Wavering results. Use the tuner's live camera check on a phone before freezing them.
+
 ### 4.6 Precise CIEDE2000 judging, the color extracting machine, ranks and the craft (2026-10-28)
 
 **The change.**

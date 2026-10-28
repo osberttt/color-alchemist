@@ -24,7 +24,8 @@ The sections after this one describe the original pair-based design ("Classic").
 1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation*. The run makes **one craft**.
 2. Each section deals **one** named color. Tier ladder: Lead, Lead, Lead, Silver, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
-4. **Hunt (60 s)**: the live camera in full color. The **color extracting machine** (a centered square, 30 % of the short side) is framed in the target color. A panel shows the **target** swatch next to the live **extracted** swatch (exactly what will be scored). The player can **zoom** (digital, 1–4×) and **extract**. Time runs out → the machine extracts on its own.
+4. **Hunt (60 s)**: the live camera in full color. The **color extracting machine** (a centered square, 30 % of the short side) is framed in the target color. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**. Time runs out → the machine **runs dry: 0 points** (Krillion's unanswered prompt).
+   - **Blend reveal:** after extracting, the frame freezes and the machine's contents blend into a mosaic of shrinking resolution down to one cell, the exact extracted color. Only then is the color revealed.
 5. **No editing and no correction.** What the camera captures is the color. Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the machine extract as orange.
 6. **Extraction**: the machine fills with the extracted color and condenses into a drop. The **result sheet** slides up (its own palette):
    - target → extracted as a **color ramp** (1 in-between step for Flawless … 6 for Botched)
@@ -35,10 +36,25 @@ The sections after this one describe the original pair-based design ("Classic").
 
 **Scoring (precise, no mercy)**
 - **Extraction** = the mean of every pixel in the machine, in linear RGB (4 camera frames averaged) → CIELAB (D65).
-- **Distance** = **CIEDE2000** (ΔE00) between the target's hex and the extraction. Verified against Sharma et al. 2005 reference pairs.
-- **Score per color** = `round(100 · e^(−ΔE00/10))`: ΔE 1 → 90, 2.5 → 78, 5 → 61, 10 → 37, 20 → 14. No time bonus, no tier multiplier.
-- **Per-color rank:** Flawless (ΔE ≤ 1, invisible difference), Harmonious (≤ 2.5), Kindred (≤ 5), Wavering (≤ 10), Awry (≤ 20), Botched (> 20).
-- **Craft rank** by the running total (max 700): Gunk < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 420 ≤ Quintessence < 550 ≤ Magnum Opus. Retune after real playtests.
+- **Distance** = **CIEDE2000** (ΔE00) between the target's hex and the extraction, with the game's weights:
+  - **kL 0.8:** lighter/darker a little stricter.
+  - **kC 1.**
+  - **kH 2 for hue shifts up to 30°**, easing back to standard by 75°: near hues are forgiven, wrong hues aren't.
+  - The plain formula is verified against Sharma et al. 2005 reference pairs.
+- **Per-color rank and points (Krillion's exact values):**
+
+  | Rank | ΔE | Points |
+  |---|---|---|
+  | Flawless | ≤ 1 | 100 |
+  | Harmonious | ≤ 2.5 | 85 |
+  | Kindred | ≤ 5 | 60 |
+  | Wavering | ≤ 8 | 30 |
+  | Awry | ≤ 14 | 15 |
+  | Botched | > 14 (any grey, except for Charcoal) | 10 |
+  | Empty (time ran out) | — | 0 |
+
+  No time bonus, no tier multiplier.
+- **Craft rank** by the running total (max 700): Gunk < 150 ≤ Trinket < 250 ≤ Curio < 380 ≤ Marvel < 500 ≤ Quintessence < 620 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).
 - **Craft art** (`src/ui/craft.ts`): generated abstract shapes per rank. Gunk is murky slumped blobs, Trinket loose simple shapes, Curio a faceted core with satellites, Marvel a 6-fold bloom, Quintessence an 8-fold glowing mandala, and Magnum Opus a 12-fold multi-layer mandala with rays. Recolored from a random palette every render.
 
 **Modes**

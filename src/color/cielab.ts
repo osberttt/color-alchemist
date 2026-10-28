@@ -35,6 +35,38 @@ export function hexToCielab(hex: string): Lab76 {
   return linearToCielab(r, g, b);
 }
 
+function fInv(t: number): number {
+  return t > 6 / 29 ? t * t * t : 3 * (6 / 29) ** 2 * (t - 4 / 29);
+}
+
+/** CIELAB (D65) → linear sRGB. May fall outside 0..1 for colors a screen can't show. */
+export function cielabToLinear(lab: Lab76): [number, number, number] {
+  const fy = (lab.L + 16) / 116;
+  const x = XN * fInv(fy + lab.a / 500);
+  const y = YN * fInv(fy);
+  const z = ZN * fInv(fy - lab.b / 200);
+  return [
+    3.2404542 * x - 1.5371385 * y - 0.4985314 * z,
+    -0.969266 * x + 1.8760108 * y + 0.041556 * z,
+    0.0556434 * x - 0.2040259 * y + 1.0572252 * z,
+  ];
+}
+
+/** Polar CIELAB: lightness, chroma, hue in degrees. */
+export interface LCh76 {
+  L: number;
+  C: number;
+  h: number;
+}
+
+export function toLCh(lab: Lab76): LCh76 {
+  return { L: lab.L, C: Math.hypot(lab.a, lab.b), h: hueDeg(lab.b, lab.a) };
+}
+
+export function fromLCh(c: LCh76): Lab76 {
+  return { L: c.L, a: c.C * Math.cos(c.h * RAD), b: c.C * Math.sin(c.h * RAD) };
+}
+
 const RAD = Math.PI / 180;
 const POW25_7 = 25 ** 7;
 
@@ -44,8 +76,30 @@ function hueDeg(b: number, a: number): number {
   return h < 0 ? h + 360 : h;
 }
 
-/** CIEDE2000 color difference (kL = kC = kH = 1). */
-export function ciede2000(c1: Lab76, c2: Lab76): number {
+/** CIEDE2000's parametric weights. Larger = more forgiving of that kind of difference. */
+export interface DeltaWeights {
+  kL: number;
+  kC: number;
+  kH: number;
+  /**
+   * Optional (non-standard): kH applies fully only to small hue shifts. From
+   * `hueLenientTo` to `hueStrictFrom` degrees of hue difference it eases back to 1,
+   * so near hues are forgiven but clearly different hues are not.
+   */
+  hueLenientTo?: number;
+  hueStrictFrom?: number;
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  if (b <= a) return x >= b ? 1 : 0;
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+const STANDARD: DeltaWeights = { kL: 1, kC: 1, kH: 1 };
+
+/** CIEDE2000 color difference. Standard when weights are omitted (kL = kC = kH = 1). */
+export function ciede2000(c1: Lab76, c2: Lab76, k: DeltaWeights = STANDARD): number {
   const C1 = Math.hypot(c1.a, c1.b);
   const C2 = Math.hypot(c2.a, c2.b);
   const Cbar7 = ((C1 + C2) / 2) ** 7;
@@ -91,8 +145,12 @@ export function ciede2000(c1: Lab76, c2: Lab76): number {
   // The blue-region rotation term: hue and chroma differences interact there.
   const Rt = -Math.sin(2 * dTheta * RAD) * Rc;
 
-  const l = dLp / Sl;
-  const c = dCp / Sc;
-  const hh = dHp / Sh;
+  let kH = k.kH;
+  if (k.hueLenientTo !== undefined && k.hueStrictFrom !== undefined) {
+    kH = kH + (1 - kH) * smoothstep(k.hueLenientTo, k.hueStrictFrom, Math.abs(dhp));
+  }
+  const l = dLp / (k.kL * Sl);
+  const c = dCp / (k.kC * Sc);
+  const hh = dHp / (kH * Sh);
   return Math.sqrt(l * l + c * c + hh * hh + Rt * c * hh);
 }
