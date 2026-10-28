@@ -15,7 +15,7 @@ import { ELEMENT_GLYPH, TIER_LABEL, type ColorDef } from '../data/colors';
 import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
-import { craftTierFor, mosaic } from '../scoring/extract';
+import { craftTierFor, machineRect, mosaic } from '../scoring/extract';
 import { applyEdits, type Plate } from '../color/plate';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
@@ -438,7 +438,7 @@ export function sevenScreen(r: SevenRun): void {
       lastTick = Math.ceil(remaining);
       timerEl.textContent = fmtTime(remaining);
       timerEl.classList.remove('urgent');
-      reticle.querySelector('.ret-mosaic')?.remove();
+      reticle.querySelector('.ret-gather')?.remove();
       reticle.querySelector('.ret-blob')?.remove();
       bars.forEach((b) => b.set(0));
       yoursSw.style.background = '';
@@ -532,10 +532,10 @@ export function sevenScreen(r: SevenRun): void {
     }
 
     /**
-     * The reveal: the frame freezes and everything inside the machine blends together,
-     * a mosaic of shrinking resolution (mixed in linear light, like the scorer) down to
-     * one color. It collapses into a round blob at the very center and flies straight
-     * into the extracted swatch. Only then does the player see what they caught.
+     * The reveal: the frame freezes and everything inside the machine comes together at
+     * once, swirling into a round blob of the extracted color at the very center, which
+     * flies straight into the extracted swatch. Only then does the player see what they
+     * caught.
      */
     function blendReveal(plate: Plate, sec: Section, before: number): void {
       phase = 'result';
@@ -545,39 +545,35 @@ export function sevenScreen(r: SevenRun): void {
         later(400, () => showResult(sec, before, centerOf(yoursSw)));
         return;
       }
-      const steps = [16, 8, 4, 2, 1];
-      const cv = h('canvas', { class: 'ret-mosaic' });
-      const ctx = cv.getContext('2d')!;
-      reticle.append(cv);
-      steps.forEach((n, i) =>
-        later(i * 150, () => {
-          cv.width = n;
-          cv.height = n;
-          ctx.putImageData(new ImageData(mosaic(plate, n), n, n), 0, 0);
-          cv.classList.remove('mix');
-          void cv.offsetWidth;
-          cv.classList.add('mix');
-          if (n > 1) sfx.bubble(i);
-        }),
+      // 1. Everything in the square comes together at once: the frozen contents swirl and
+      //    shrink into a round blob at the very center, melting into the one extracted color.
+      const n = machineRect(plate).side;
+      const cv = h('canvas', { class: 'ret-gather' });
+      cv.width = cv.height = n;
+      cv.getContext('2d')!.putImageData(new ImageData(mosaic(plate, n), n, n), 0, 0);
+      const blob = h('span', { class: 'ret-blob', style: { background: sec.hex, opacity: '0' } });
+      reticle.append(cv, blob);
+      sfx.pour();
+      const gather = { duration: 760, easing: 'cubic-bezier(.55,0,.35,1)', fill: 'forwards' as FillMode };
+      cv.animate(
+        [
+          { transform: 'scale(1) rotate(0deg)', borderRadius: '2px', opacity: 1 },
+          { transform: 'scale(0.6) rotate(70deg)', borderRadius: '30%', opacity: 1, offset: 0.5 },
+          { transform: 'scale(0.36) rotate(160deg)', borderRadius: '50%', opacity: 0 },
+        ],
+        gather,
       );
-      // 1. One color: it gathers into a blob at the very center.
-      const blended = steps.length * 150 + 120;
-      const blob = h('span', { class: 'ret-blob', style: { background: sec.hex } });
-      later(blended, () => {
-        cv.remove();
-        reticle.append(blob);
-        sfx.pour();
-        blob.animate(
-          [
-            { transform: 'scale(1)', borderRadius: '3px' },
-            { transform: 'scale(0.55, 0.5)', borderRadius: '38%', offset: 0.55 },
-            { transform: 'scale(0.36)', borderRadius: '50%' },
-          ],
-          { duration: 520, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' },
-        );
-      });
+      blob.animate(
+        [
+          { transform: 'scale(1)', borderRadius: '2px', opacity: 0 },
+          { transform: 'scale(0.6)', borderRadius: '30%', opacity: 0.35, offset: 0.5 },
+          { transform: 'scale(0.36)', borderRadius: '50%', opacity: 1 },
+        ],
+        gather,
+      );
+      later(gather.duration, () => cv.remove());
       // 2. The blob flies straight into the extracted swatch.
-      later(blended + 560, () => {
+      later(gather.duration + 120, () => {
         const from = centerOf(blob);
         blob.remove();
         dropInto(from, yoursSw, sec.hex, () => {
@@ -662,7 +658,7 @@ export function sevenScreen(r: SevenRun): void {
       //    An empty machine has no drop: the craft just shrugs.
       later(1600, () => {
         if (sec.empty) {
-          craftStage.classList.add('craft-grow');
+          nudge(craftStage, false);
           craftName.textContent = craftTierFor(sec.total).name;
           craftBlurb.textContent = POTION_BLURBS[craftTierFor(sec.total).index];
           paintBar(sec.total, craftTierFor(sec.total), true);
@@ -674,13 +670,16 @@ export function sevenScreen(r: SevenRun): void {
           const c = centerOf(craftStage);
           fx.burst(c.x, c.y, [sec.hex], { count: 16, speed: 200, size: 6 });
           floatText(c.x, c.y - 30, `+${sec.score}`, sec.hex);
-          // On a rank-up the potion changes when the bar reaches the end of the old rank.
+          // The potion never vanishes: the drop lands with a nudge, and on a rank-up it turns
+          // into the new potion in place, with a bigger nudge, when the bar reaches the end of
+          // the old rank. Without a rank-up it stays the same potion.
           const filled = fillBar(before, sec.total);
-          craftStage.classList.add('craft-out');
+          nudge(craftStage, false);
           later(filled || 320, () => {
-            craftStage.innerHTML = potionSvg(now.index, paletteFor('result'));
-            craftStage.classList.remove('craft-out');
-            craftStage.classList.add(promoted ? 'craft-promote' : 'craft-grow');
+            if (promoted) {
+              craftStage.innerHTML = potionSvg(now.index, paletteFor('result'));
+              nudge(craftStage, true);
+            }
             craftName.textContent = now.name;
             craftBlurb.textContent = POTION_BLURBS[now.index];
             if (promoted) {
@@ -741,6 +740,13 @@ export function sevenScreen(r: SevenRun): void {
       }
     }
 
+    /** A squash-and-wobble on the potion (restarts if it's already moving); `big` for a rank-up. */
+    function nudge(el: HTMLElement, big: boolean): void {
+      el.classList.remove('craft-nudge', 'craft-nudge-big');
+      void el.offsetWidth;
+      el.classList.add(big ? 'craft-nudge-big' : 'craft-nudge');
+    }
+
     /** A drop of the extracted color arcs from the machine into the craft. */
     function dropInto(from: { x: number; y: number }, to: HTMLElement, color: string, done: () => void): void {
       const t = centerOf(to);
@@ -775,20 +781,19 @@ export function sevenScreen(r: SevenRun): void {
     }
 
     /**
-     * Target → extracted as a walk through color: 1 step in between for Flawless,
-     * up to 6 for Botched (SEVEN.rampSteps), interpolated in OKLab so it looks even.
+     * Target → extracted as one continuous spectrum, blended in OKLab so it looks even
+     * (CSS gradients would blend in sRGB and go muddy in the middle).
      */
     function colorRamp(sec: Section): HTMLElement {
-      const n = SEVEN.rampSteps[sec.tier] ?? 3;
       const a = hexToOklab(sec.def.target);
       const b = hexToOklab(sec.hex);
-      const steps = Array.from({ length: n }, (_, k) => oklabToHex(mixLab(a, b, (k + 1) / (n + 1))));
-      const chip = (hex: string, i: number) => h('span', { class: 'ramp-chip', style: { background: hex, '--i': String(i) } });
+      const n = 12;
+      const stops = Array.from({ length: n + 1 }, (_, k) => `${oklabToHex(mixLab(a, b, k / n))} ${((k / n) * 100).toFixed(1)}%`);
       return h(
         'div',
-        { class: 'res-ramp', 'aria-label': `${n} steps from the target to your color` },
+        { class: 'res-ramp', 'aria-label': 'A spectrum from the target to your color' },
         h('figure', null, swatch(sec.def.target), h('figcaption', null, 'target')),
-        h('span', { class: 'ramp-steps' }, ...steps.map((hex, i) => chip(hex, i))),
+        h('span', { class: 'ramp-steps' }, h('span', { class: 'ramp-flow', style: { background: `linear-gradient(to right, ${stops.join(', ')})` } })),
         h('figure', null, swatch(sec.hex), h('figcaption', null, 'extracted')),
       );
     }

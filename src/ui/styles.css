@@ -2211,17 +2211,21 @@ body[data-theme='palette'] .btn.primary {
   height: 56px;
   align-items: stretch;
 }
-.ramp-chip {
-  flex: 1 1 0;
-  max-width: 34px;
-  min-width: 8px;
-  border-radius: 6px;
+/* Target → extracted as one continuous spectrum; it flows in from the target's side. */
+.ramp-flow {
+  flex: 1;
+  border-radius: 8px;
   margin: 8px 0;
-  animation: chip-in 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) both;
-  animation-delay: calc(var(--i) * 70ms + 120ms);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  animation: ramp-flow 0.7s cubic-bezier(0.3, 0.7, 0.3, 1) 0.12s both;
 }
-.ramp-steps:has(.ramp-chip:only-child) {
-  justify-content: center;
+@keyframes ramp-flow {
+  from {
+    clip-path: inset(0 100% 0 0 round 8px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 8px);
+  }
 }
 .ramp-steps.dry {
   align-items: center;
@@ -2235,12 +2239,6 @@ body[data-theme='palette'] .btn.primary {
   font-family: var(--display);
   font-style: italic;
   font-size: 13px;
-}
-@keyframes chip-in {
-  from {
-    opacity: 0;
-    transform: scaleY(0.1);
-  }
 }
 .spectrum span.seg-pop {
   animation: seg-pop 0.6s cubic-bezier(0.2, 1.8, 0.4, 1);
@@ -2484,22 +2482,13 @@ body[data-theme='palette'] .btn.primary {
   transition: background 0.25s;
 }
 /* The blend reveal: the machine's contents mix into one color, step by step. */
-.ret-mosaic {
+/* The reveal: the square's frozen contents, gathering into the blob. */
+.ret-gather {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
   border-radius: 2px;
-}
-.ret-mosaic.mix {
-  animation: mix 0.17s ease-out;
-}
-@keyframes mix {
-  from {
-    filter: blur(3px) saturate(1.3);
-    transform: scale(0.94) rotate(-3deg);
-  }
 }
 /* The extracted swatch is a mystery until the machine blends it. */
 .big-sw.mystery {
@@ -2664,23 +2653,35 @@ body[data-theme='palette'] .btn.primary {
   font-size: 11px;
   color: var(--muted);
 }
-.craft-stage.craft-out {
-  transition:
-    transform 0.3s cubic-bezier(0.6, 0, 0.8, 0.4),
-    opacity 0.3s;
-  transform: scale(0.2) rotate(-90deg);
-  opacity: 0;
+/* Result sheet: the potion never vanishes; a drop lands with a nudge, a rank-up with a bigger one. */
+.craft-stage.craft-nudge {
+  animation: craft-nudge 0.5s ease-out;
 }
-.craft-stage.craft-grow {
-  animation: craft-grow 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+.craft-stage.craft-nudge-big {
+  animation: craft-nudge-big 0.7s ease-out;
+}
+@keyframes craft-nudge {
+  30% {
+    transform: scale(1.08, 0.92);
+  }
+  60% {
+    transform: scale(0.96, 1.05) rotate(-2deg);
+  }
+}
+@keyframes craft-nudge-big {
+  20% {
+    transform: scale(1.18, 0.86) rotate(-5deg);
+    filter: brightness(1.6);
+  }
+  45% {
+    transform: scale(0.92, 1.12) rotate(4deg);
+  }
+  70% {
+    transform: scale(1.05) rotate(-2deg);
+  }
 }
 .craft-stage.craft-promote {
   animation: craft-promote 0.8s cubic-bezier(0.2, 1.4, 0.4, 1);
-}
-@keyframes craft-grow {
-  from {
-    transform: scale(0.6);
-  }
 }
 @keyframes craft-promote {
   0% {

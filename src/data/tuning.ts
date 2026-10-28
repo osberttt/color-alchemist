@@ -130,8 +130,6 @@ export const SEVEN = {
   ],
   /** Points when nothing could be extracted (the timed-out capture failed). When time runs out the machine normally extracts on its own. */
   emptyPoints: 0,
-  /** Result screen: steps in the target → extracted ramp, per color rank. */
-  rampSteps: { Flawless: 1, Harmonious: 2, Kindred: 3, Wavering: 4, Awry: 5, Botched: 6 } as Record<string, number>,
   /**
    * The potion the run brews, ranked by the running total of points (max 500: 5 colors
    * × 100). (Called "craft" in code.) Krillion doesn't publish its depth-zone thresholds;
