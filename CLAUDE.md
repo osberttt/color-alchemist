@@ -2,7 +2,7 @@
 
 A mobile-first browser arcade game for the **Digit7 Jam** (HTML arcade game tournament). Tagline: **"is your life full of colors?"**
 
-**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is **5 colors** (the code still calls the mode "Seven Colors"), one at a time, **30 s** each, and builds **one craft**. **The whole camera view is the color extracting machine**: a frame in the target color with pipes through two side bars (brightness, saturation: small nudges only) into a centered square. The machine extracts the **average color of everything inside the square**, as adjusted by the bars (blending is allowed); the color is hidden until the reveal: the square blends, gathers into a blob at the center and flies straight into the extracted swatch. The bars' nudge also shows on the machine's frame, pipes and bars (CSS `--adj`), never on the square's frame or the target swatch. It's judged with **weighted CIEDE2000** (forgiving on small hue shifts, a bit strict on lightness, no light correction) and scored with **Krillion's exact points** per rank: Botched 10, Awry 15, Wavering 30, Kindred 60, Harmonious 85, Flawless 100; when time runs out the machine extracts whatever it holds. Craft ranks by running total (max 500, one per 100 points): Prima Materia ("a starter batch", never framed as failure), Trinket, Curio, Marvel, Magnum Opus. No other editing, no Grimoire, no rerolls, no time bonus. See `docs/GDD.md` §0 and `docs/ANALYSIS.md` §4.
+**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is **5 colors** (the code still calls the mode "Seven Colors"), one at a time, **30 s** each, and brews **one potion** (the Elixir of Life is the goal; "craft" in code). **The whole camera view is the color extracting machine**: a frame in the target color with pipes through two side bars (brightness, saturation: small nudges only) into a centered square. The machine extracts the **average color of everything inside the square**, as adjusted by the bars (blending is allowed); the color is hidden until the reveal: the square blends, gathers into a blob at the center and flies straight into the extracted swatch. The bars' nudge also shows on the machine's frame, pipes and bars (CSS `--adj`), never on the square's frame or the target swatch. It's judged with **weighted CIEDE2000** (forgiving on small hue shifts, a bit strict on lightness, no light correction) and scored with **Krillion's exact points** per rank: Botched 10, Awry 15, Wavering 30, Kindred 60, Harmonious 85, Flawless 100; when time runs out the machine extracts whatever it holds. Potion ranks by running total (max 500, one per 100 points): Gunk ("a starter batch", never framed as failure), Stimulant, Antidote, Panacea, Elixir of Life. The art is code-drawn SVG (`ui/potion.ts`), no image assets. No other editing, no Grimoire, no rerolls, no time bonus. See `docs/GDD.md` §0 and `docs/ANALYSIS.md` §4.
 
 ## How to work with the user
 
@@ -34,7 +34,7 @@ src/
   main.ts, app.ts, flow.ts     bootstrap, screen shell (no URL routing: iOS re-prompts for camera), navigation
   seven/run.ts                 Seven Colors run state, dealing, per-section judging, running total
   seven/screen.ts              the whole run on one screen: intro → hunt → extract → result sheet (+craft) ×7
-  seven/summary.ts             craft reveal, 7-square share text, offline leaderboard entry
+  seven/summary.ts             potion reveal, share text (a square per color), offline leaderboard entry
   camera/camera.ts             getUserMedia wrapper (one stream per session, 1080p ideal)
   camera/source.ts             frame sources (camera / painted practice scene / dev test photo), grab, capture
   camera/viewfinder.ts         WebGL viewfinder: digital zoom, pan, mirror
@@ -43,7 +43,7 @@ src/
   color/plate.ts               plates (linear RGB), capture averaging
   scoring/extract.ts           ★ the color extracting machine: extract (mean), judge (ΔE00 → score, rank), craft rank
   scoring/score.ts, assay.ts   Classic-mode scoring (not used by Seven Colors)
-  ui/craft.ts                  generated craft art per rank, in the page's palette nudged per rank (Marvel's attractor is drawn just after insertion)
+  ui/potion.ts                 the potion art per rank (code-drawn SVG, page palette); motion in ui/potion-anim.css
   data/colors.ts, tuning.ts    55-color Codex; ALL tunable numbers (SEVEN = this mode)
   practice/plates.ts           painted still lifes for the no-camera practice mode
   meta/                        rng, storage (localStorage, try/catch), share text

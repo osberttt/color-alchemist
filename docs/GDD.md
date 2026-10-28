@@ -33,7 +33,7 @@ The sections after this one describe the original pair-based design ("Classic").
    - the score, the rank stamp and the exact ΔE00
    - the **craft panel**: the drop falls into the craft, which grows or transforms to its new rank, plus a progress bar to the next rank
    It waits for the player's tap; the next clock starts when the next color appears.
-7. After 5 colors, the **craft reveal**: the craft evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Craft again" restarts in one tap.
+7. After 5 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Brew again" restarts in one tap.
 
 **Scoring (precise, no mercy)**
 - **Extraction** = the mean of every pixel in the machine, in linear RGB (4 camera frames averaged) → CIELAB (D65).
@@ -55,13 +55,13 @@ The sections after this one describe the original pair-based design ("Classic").
   | Empty (the timed-out capture failed) | — | 0 |
 
   No time bonus, no tier multiplier.
-- **Craft rank** by the running total (max 500), one rank per 100 points: Prima Materia ("a starter batch") < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 400 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).
-- **Craft art** (`src/ui/craft.ts`), drawn in the palette of the page it's on (result sheet, summary), with new random shapes every render. Each rank uses more of the palette's colors, nudged a little: Prima Materia muddy, Trinket 3 colors a touch dull, Curio 4 as they are, Marvel 5 a little brighter, Magnum Opus 8 (the 5 accents plus blends) brighter still.
-  - **Prima Materia:** dull, round-ish blobs slumped together, with drips.
-  - **Trinket:** polygons (5–8 sides) budding out of a rocking core, drifting a little and fading; every piece always touches the core.
-  - **Curio:** an artifact: a polygonal plate inlaid with two rings of slightly irregular, sheened polygons and crowned with rays. Everything is connected. A bulge flows round each ring while the rings turn slowly against each other.
-  - **Marvel:** a Clifford attractor in three layers that drift like shining gas.
-  - **Magnum Opus:** two counter-rotating Maurer roses in the full spectrum; the outer one always fills the circle.
+- **The potion.** The alchemist brews the **Elixir of Life**; each extracted color is a drop in the brew. Potion rank by the running total (max 500), one rank per 100 points: **Gunk** ("a starter batch") < 100 ≤ **Stimulant** < 200 ≤ **Antidote** < 300 ≤ **Panacea** < 400 ≤ **Elixir of Life**. Retune after real playtests with the tuner (`tuner.html`).
+- **Potion art** (`src/ui/potion.ts`, code-drawn SVG: no image files), in the palette of the page it's on (result sheet, summary). Each rank uses more of the palette's colors, nudged a little: Gunk muddy, Stimulant 2, Antidote 3, Panacea 5 a little brighter, Elixir 8 (the 5 accents plus blends) brighter still. On light pages the glass edge takes the page's text color.
+  - **Gunk:** a cracked clay crock; sludge oozes over the rim, bubbles pop, a drip falls, a fly circles.
+  - **Stimulant:** a corked round-bottom flask, fizzing; it twitches now and then, with little energy zaps.
+  - **Antidote:** an apothecary bottle with two settled layers, a parchment label with a herb leaf, a sprig tied at the neck, a glass stopper; it sways.
+  - **Panacea:** a faceted teardrop bottle with a gold collar and rounded gold stopper; glowing currents of color; it floats, with a halo and sparkles.
+  - **Elixir of Life:** a heart-shaped flask holding every color, glowing and swirling, motes of light rising, a glowing orb stopper, a halo and turning rays.
 
 **Modes**
 - **Begin the hunt**: the camera.

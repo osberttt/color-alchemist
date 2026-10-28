@@ -257,6 +257,32 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.19 Brewing the Elixir of Life: potions replace the math crafts (2026-10-28)
+
+**The change (the user's call).**
+- The alchemist brews the **Elixir of Life**. The run's object is now a **potion**, ranked **Gunk → Stimulant → Antidote → Panacea → Elixir of Life** (still one rank per 100 points). The abstract math art (budding polygons, artifact, attractor, Maurer roses) is gone.
+- **Potion art** is code-drawn SVG in `src/ui/potion.ts`, in the page's palette:
+  - Gunk: a cracked clay crock oozing sludge, with a fly.
+  - Stimulant: a fizzing corked flask that twitches.
+  - Antidote: an apothecary bottle with a leaf label and a sprig.
+  - Panacea: a faceted teardrop with a gold stopper and glowing currents.
+  - Elixir of Life: a heart flask holding every color, with an orb stopper, halo and rays.
+- **User revisions:** no plus sign on the Antidote (a leaf instead), no diamond on the Panacea, no crown or wings on the Elixir.
+- **Text:** "Your potion", "your brew begins", "Brew again", and the how-to "every color is a drop in your brew".
+
+**Market**
+- "Brew the Elixir of Life" says what the game is in one line. Potion bottles are a well-loved, readable casual-game visual. The whole fantasy is now coherent: alchemist, machine, extracted drops, the brew.
+
+**Game design**
+- **The drop already falls into the craft on the result sheet;** now it falls into a bottle, which reads naturally.
+- **The ranks tell a story** (sludge → remedy → cure-all → immortality) and the vessel improves as visibly as the liquid. Gunk stays positive ("a starter batch") and comical (the fly), not a failure.
+
+**Digit7 Jam**
+- **Art & polish / product fit** improve.
+- **No image files:** nothing to credit or declare as an asset, no load cost, and drawing a potion costs about as much as the old crafts (Marvel's deferred canvas work is gone).
+- **Reduced motion** shows still bottles.
+- **Also fixed:** the dev-only test-photo manifest had a malformed entry (one wrapped group of 9 photos), which sometimes stalled the photo mode and the smoke test. It now lists all 24 photos.
+
 ### 4.18 When time runs out, the machine extracts (2026-10-28)
 
 **The change (the user's call).** At 0:00 the machine extracts on its own with the last aim, zoom and bar settings, then plays the normal blob reveal and judging. This replaces Krillion's "unanswered = 0" (§4.7). A 0 now only happens if that capture fails.

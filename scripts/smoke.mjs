@@ -38,7 +38,7 @@ async function session(name, viewport, mobile) {
           const r = el.getBoundingClientRect();
           return r.width > 0 && (r.right > vw + 1 || r.left < -1) && getComputedStyle(el).position !== 'fixed' && !el.closest('.flood, .decor');
         })
-        .map((el) => el.className || el.tagName)
+        .map((el) => `${el.tagName.toLowerCase()}.${(el.className?.baseVal ?? el.className) || ''}`)
         .slice(0, 5);
       return { sw: document.documentElement.scrollWidth, cw: vw, bad };
     });

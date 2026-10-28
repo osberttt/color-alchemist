@@ -4,7 +4,7 @@ import '@fontsource-variable/inter/wght.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/700.css';
 import './ui/styles.css';
-import './ui/craft-anim.css';
+import './ui/potion-anim.css';
 import { goTitle } from './flow';
 import { unlockAudio } from './audio/sfx';
 

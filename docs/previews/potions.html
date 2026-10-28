@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Potion art preview</title>
+    <!-- Dev-only preview of the game's potions (src/ui/potion.ts): open
+         http://localhost:5173/docs/previews/potions.html with `npm run dev` to see them move. -->
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #1c1b22;
+        color: #eee;
+        font: 14px system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      p.lead {
+        margin: 0 0 12px;
+        color: #a9a9b3;
+      }
+      button {
+        font: inherit;
+        margin-bottom: 12px;
+      }
+      .band {
+        display: grid;
+        grid-template-columns: repeat(5, 230px);
+        gap: 4px 16px;
+        padding: 8px 12px;
+        border-radius: 14px;
+        margin-bottom: 10px;
+      }
+      .band > p {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-weight: 700;
+      }
+      figure {
+        margin: 0;
+        display: grid;
+        justify-items: center;
+        gap: 2px;
+        text-align: center;
+      }
+      .stage {
+        width: 230px;
+        height: 230px;
+      }
+      .stage svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .name {
+        font-weight: 700;
+      }
+      .blurb {
+        font-style: italic;
+        font-size: 12px;
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Potions: Gunk → Elixir of Life</h1>
+    <p class="lead">Each row is one game palette on its own background (the potion uses the page's colors). Shapes and motion are fixed per rank; color order and bubbles vary every render.</p>
+    <button type="button" id="roll">Re-roll</button>
+    <div id="grid"></div>
+    <script type="module">
+      import { POTION_BLURBS, potionName, potionSvg } from '/src/ui/potion.ts';
+      import { PALETTES } from '/src/ui/palettes.ts';
+      import '/src/ui/potion-anim.css';
+
+      // Dark, light, colored and dull: the four cases the art must survive.
+      const picks = ['Deep Sea', 'Riso Print', 'Grape Soda', 'Matcha Latte'].map((n) => PALETTES.find((p) => p.name === n));
+      const grid = document.getElementById('grid');
+      function roll() {
+        grid.replaceChildren();
+        picks.forEach((pal, row) => {
+          const band = document.createElement('div');
+          band.className = 'band';
+          band.style.background = pal.bg;
+          band.style.color = pal.fg;
+          band.innerHTML =
+            `<p>${pal.name}</p>` +
+            POTION_BLURBS.map((blurb, tier) => `<figure><div class="stage">${potionSvg(tier, pal)}</div>${row === picks.length - 1 ? `<span class="name">${potionName(tier)}</span><span class="blurb">${blurb}</span>` : ''}</figure>`).join('');
+          grid.append(band);
+        });
+      }
+      document.getElementById('roll').addEventListener('click', roll);
+      roll();
+    </script>
+  </body>
+</html>

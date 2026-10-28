@@ -15,8 +15,8 @@ import { camera, CAMERA_ERROR_TEXT } from '../camera/camera';
 import { cameraSource, meanOfRect, squareRect, viewRect } from '../camera/source';
 import { scoreFor, tierFor } from '../scoring/extract';
 import { h } from '../ui/dom';
-import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
-import '../ui/craft-anim.css';
+import { POTION_BLURBS, potionSvg } from '../ui/potion';
+import '../ui/potion-anim.css';
 
 interface Target {
   name: string;
@@ -612,7 +612,7 @@ root.replaceChildren(
         h('h3', null, 'Points per rank (Krillion: 100 / 85 / 60 / 30 / 15 / 10)'),
         ...pointFields.map((f) => f.el),
         h('p', { class: 'muted small' }, `Time runs out: ${SEVEN.emptyPoints} points (Krillion's unanswered prompt).`),
-        h('h3', null, `Craft ranks (running total of ${SEVEN.sections} colors, max ${SEVEN.sections * 100})`),
+        h('h3', null, `Potion ranks (running total of ${SEVEN.sections} colors, max ${SEVEN.sections * 100})`),
         ...craftFields.map((f) => f.el),
       ),
     ),
@@ -651,8 +651,8 @@ root.replaceChildren(
       h(
         'section',
         { class: 'panel' },
-        h('h3', null, 'Craft art'),
-        h('p', { class: 'muted small' }, 'In the game a craft uses the palette of its page; here every render picks a random palette and new random shapes.'),
+        h('h3', null, 'Potion art'),
+        h('p', { class: 'muted small' }, 'In the game a potion uses the palette of its page; here every render picks a random palette.'),
         h('button', { class: 'btn', type: 'button', onclick: () => paintCrafts() }, 'Re-roll'),
         craftGallery,
       ),
@@ -664,8 +664,8 @@ function paintCrafts(): void {
   craftGallery.replaceChildren(
     ...CRAFT_NAMES.map((name, i) => {
       const stage = h('div', { class: 'craft-stage' });
-      stage.innerHTML = craftSvg(i);
-      return h('figure', { class: 'craft-cell' }, stage, h('figcaption', null, h('strong', null, name), h('br'), h('span', { class: 'muted small' }, CRAFT_BLURBS[i])));
+      stage.innerHTML = potionSvg(i);
+      return h('figure', { class: 'craft-cell' }, stage, h('figcaption', null, h('strong', null, name), h('br'), h('span', { class: 'muted small' }, POTION_BLURBS[i])));
     }),
   );
 }

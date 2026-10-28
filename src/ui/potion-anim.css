@@ -1,0 +1,193 @@
+/* The potion's moving parts (src/ui/potion.ts). Shared by the game and the tuner.
+   SVG transforms are in the potion's own units: the viewBox center is (0, 0). */
+
+.craft-stage svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* The liquid's surface rolls by one wave period (30 units) and repeats. */
+.potion .wave {
+  animation: potion-wave 1.6s linear infinite;
+}
+.potion .wave.back {
+  animation-duration: 2.2s;
+  animation-direction: reverse;
+}
+.potion .bubble {
+  animation: potion-bubble 2s ease-in infinite;
+}
+.potion .bob {
+  animation: potion-bob 3.2s ease-in-out infinite;
+}
+.potion .sway {
+  transform-origin: 0px 78px;
+  animation: potion-sway 3.6s ease-in-out infinite;
+}
+.potion .jitter {
+  transform-origin: 0px 70px;
+  animation: potion-jitter 2.4s linear infinite;
+}
+.potion .swirl {
+  animation: potion-spin 7s linear infinite;
+}
+.potion .swirl.rev {
+  animation-direction: reverse;
+}
+.potion .rays {
+  transform-origin: 0 0;
+  animation: potion-spin 40s linear infinite;
+}
+.potion .glow {
+  animation: potion-glow 2.4s ease-in-out infinite;
+}
+.potion .twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: potion-twinkle 2.2s ease-in-out infinite;
+}
+.potion .zap {
+  animation: potion-zap 1.2s steps(2) infinite;
+}
+.potion .ooze {
+  transform-origin: 0px -32px;
+  animation: potion-ooze 3s ease-in-out infinite;
+}
+.potion .pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: potion-pop 1.8s ease-in infinite;
+}
+.potion .drip {
+  animation: potion-drip 2.6s ease-in infinite;
+}
+.potion .fly {
+  transform-origin: 0px -66px;
+  animation: potion-spin 3.2s linear infinite;
+}
+.potion .wing {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: potion-buzz 0.12s linear infinite alternate;
+}
+
+@keyframes potion-wave {
+  to {
+    transform: translateX(30px);
+  }
+}
+@keyframes potion-bubble {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(var(--rise)) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes potion-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes potion-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+@keyframes potion-jitter {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0deg);
+  }
+  83% {
+    transform: rotate(-3deg);
+  }
+  86% {
+    transform: rotate(3deg);
+  }
+  89% {
+    transform: rotate(-2deg);
+  }
+  92% {
+    transform: rotate(1deg);
+  }
+}
+@keyframes potion-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes potion-glow {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes potion-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    scale: 0.6;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.2;
+  }
+}
+@keyframes potion-zap {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes potion-ooze {
+  50% {
+    transform: scale(1.06, 0.9);
+  }
+}
+@keyframes potion-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0.9;
+  }
+  80% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+@keyframes potion-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(44px);
+    opacity: 0;
+  }
+}
+@keyframes potion-buzz {
+  to {
+    transform: scaleY(0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .potion * {
+    animation: none !important;
+  }
+}

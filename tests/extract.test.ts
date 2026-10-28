@@ -141,11 +141,11 @@ describe('ranks', () => {
   });
 
   it('craft tiers climb with the running total', () => {
-    expect(craftTierFor(70).name).toBe('Prima Materia');
-    expect(craftTierFor(100).name).toBe('Trinket');
-    expect(craftTierFor(200).name).toBe('Curio');
-    expect(craftTierFor(300).name).toBe('Marvel');
-    expect(craftTierFor(400).name).toBe('Magnum Opus');
+    expect(craftTierFor(70).name).toBe('Gunk');
+    expect(craftTierFor(100).name).toBe('Stimulant');
+    expect(craftTierFor(200).name).toBe('Antidote');
+    expect(craftTierFor(300).name).toBe('Panacea');
+    expect(craftTierFor(400).name).toBe('Elixir of Life');
     expect(craftTierFor(500).next).toBeNull();
   });
 });

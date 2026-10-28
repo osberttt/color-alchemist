@@ -133,16 +133,17 @@ export const SEVEN = {
   /** Result screen: steps in the target → extracted ramp, per color rank. */
   rampSteps: { Flawless: 1, Harmonious: 2, Kindred: 3, Wavering: 4, Awry: 5, Botched: 6 } as Record<string, number>,
   /**
-   * The craft, ranked by the running total of points (max 500: 5 colors × 100).
-   * Krillion doesn't publish its depth-zone thresholds; these are ours: an even 100 per
-   * rank. Averages per color: Trinket 20, Curio 40, Marvel 60 (Kindred), Magnum Opus 80.
+   * The potion the run brews, ranked by the running total of points (max 500: 5 colors
+   * × 100). (Called "craft" in code.) Krillion doesn't publish its depth-zone thresholds;
+   * these are ours: an even 100 per rank. Averages per color: Stimulant 20, Antidote 40,
+   * Panacea 60 (Kindred), Elixir of Life 80.
    */
   craftTiers: [
-    { name: 'Prima Materia', min: 0 },
-    { name: 'Trinket', min: 100 },
-    { name: 'Curio', min: 200 },
-    { name: 'Marvel', min: 300 },
-    { name: 'Magnum Opus', min: 400 },
+    { name: 'Gunk', min: 0 },
+    { name: 'Stimulant', min: 100 },
+    { name: 'Antidote', min: 200 },
+    { name: 'Panacea', min: 300 },
+    { name: 'Elixir of Life', min: 400 },
   ],
   /** The result waits for the player's tap; taps earlier than this are ignored (double-tap guard). */
   resultGuardMs: 900,

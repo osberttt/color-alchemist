@@ -19,7 +19,7 @@ import { craftTierFor, mosaic } from '../scoring/extract';
 import { applyEdits, type Plate } from '../color/plate';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
-import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
+import { POTION_BLURBS, potionSvg } from '../ui/potion';
 import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
@@ -46,8 +46,9 @@ interface PhotoDeck {
 async function loadPhotoDeck(): Promise<PhotoDeck> {
   try {
     const res = await fetch('./test-photos/manifest.json');
-    const list = (await res.json()) as { file: string }[];
-    const urls = list.map((x) => `./test-photos/${x.file}`);
+    const list = (await res.json()) as { file?: unknown }[];
+    // Skip malformed entries: one bad file name would fail to decode and stall the section.
+    const urls = list.filter((x) => typeof x.file === 'string').map((x) => `./test-photos/${x.file}`);
     for (let i = urls.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [urls[i], urls[j]] = [urls[j], urls[i]];
@@ -609,10 +610,10 @@ export function sevenScreen(r: SevenRun): void {
       stampEl.hidden = true;
       const prevCraft = craftTierFor(before);
       const craftStage = h('div', { class: 'craft-stage' });
-      // The craft is drawn in the result sheet's palette.
-      craftStage.innerHTML = craftSvg(prevCraft.index, paletteFor('result'));
-      const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your craft begins' : prevCraft.name);
-      const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : CRAFT_BLURBS[prevCraft.index]);
+      // The potion is drawn in the result sheet's palette.
+      craftStage.innerHTML = potionSvg(prevCraft.index, paletteFor('result'));
+      const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your brew begins' : prevCraft.name);
+      const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : POTION_BLURBS[prevCraft.index]);
       const barFill = h('i');
       const barLabel = h('span', { class: 'bar-label mono' });
       const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, last ? 'Reveal the craft ▶' : `Next color · ${r.index + 2}/${SEVEN.sections} ▶`);
@@ -662,7 +663,7 @@ export function sevenScreen(r: SevenRun): void {
         if (sec.empty) {
           craftStage.classList.add('craft-grow');
           craftName.textContent = craftTierFor(sec.total).name;
-          craftBlurb.textContent = CRAFT_BLURBS[craftTierFor(sec.total).index];
+          craftBlurb.textContent = POTION_BLURBS[craftTierFor(sec.total).index];
           paintBar(sec.total, craftTierFor(sec.total), true);
           return;
         }
@@ -675,11 +676,11 @@ export function sevenScreen(r: SevenRun): void {
           paintBar(sec.total, now, true);
           craftStage.classList.add('craft-out');
           later(320, () => {
-            craftStage.innerHTML = craftSvg(now.index, paletteFor('result'));
+            craftStage.innerHTML = potionSvg(now.index, paletteFor('result'));
             craftStage.classList.remove('craft-out');
             craftStage.classList.add(promoted ? 'craft-promote' : 'craft-grow');
             craftName.textContent = now.name;
-            craftBlurb.textContent = CRAFT_BLURBS[now.index];
+            craftBlurb.textContent = POTION_BLURBS[now.index];
             if (promoted) {
               craftName.classList.add('promoted');
               sfx.fanfare();
@@ -699,7 +700,7 @@ export function sevenScreen(r: SevenRun): void {
         const hi = tier.next?.min ?? SEVEN.sections * 100;
         barFill.style.transition = animate ? 'width .9s cubic-bezier(.2,.8,.2,1)' : 'none';
         barFill.style.width = `${Math.max(3, Math.min(100, ((total - lo) / Math.max(1, hi - lo)) * 100))}%`;
-        barLabel.textContent = tier.next ? `${fmt(total)} · ${fmt(tier.next.min - total)} to ${tier.next.name}` : `${fmt(total)} · the highest craft`;
+        barLabel.textContent = tier.next ? `${fmt(total)} · ${fmt(tier.next.min - total)} to ${tier.next.name}` : `${fmt(total)} · the finest potion`;
       }
     }
 

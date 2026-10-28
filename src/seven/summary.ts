@@ -8,7 +8,7 @@ import { addToBoard, getSettings, getStats, recordRun, renameBoardEntry, updateS
 import { emojiFor, share } from '../meta/share';
 import { h, fmt, toast, reducedMotion } from '../ui/dom';
 import { swatch } from '../ui/components';
-import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
+import { POTION_BLURBS, potionSvg } from '../ui/potion';
 import { goBoard, goTitle, sevenAgain } from '../flow';
 import { sfx } from '../audio/sfx';
 import { SEVEN } from '../data/tuning';
@@ -67,11 +67,11 @@ export function sevenSummaryScreen(r: SevenRun): void {
       });
       const final = craftTierFor(res.total);
       const hero = h('div', { class: 'craft-stage hero' });
-      // The craft is drawn in this page's palette.
+      // The potion is drawn in this page's palette.
       const pagePalette = currentPalette() ?? undefined;
-      hero.innerHTML = craftSvg(0, pagePalette);
+      hero.innerHTML = potionSvg(0, pagePalette);
       const craftTitle = h('h2', { class: 'band' }, SEVEN.craftTiers[0].name);
-      const blurb = h('p', { class: 'opus' }, CRAFT_BLURBS[0]);
+      const blurb = h('p', { class: 'opus' }, POTION_BLURBS[0]);
       const totalEl = h('p', { class: 'total mono' }, '0');
 
       screen.append(
@@ -79,7 +79,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
         h(
           'div',
           { class: 'summary' },
-          h('p', { class: 'eyebrow' }, r.mode === 'camera' ? 'Your craft' : r.mode === 'practice' ? 'Practice craft' : 'Test-photo craft (not recorded)'),
+          h('p', { class: 'eyebrow' }, r.mode === 'camera' ? 'Your potion' : r.mode === 'practice' ? 'Practice potion' : 'Test-photo potion (not recorded)'),
           h('p', { class: 'tagline' }, 'is your life full of colors?'),
           hero,
           craftTitle,
@@ -122,7 +122,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
               },
               'Share',
             ),
-            h('button', { class: 'btn primary', type: 'button', onclick: () => sevenAgain() }, 'Craft again ▶'),
+            h('button', { class: 'btn primary', type: 'button', onclick: () => sevenAgain() }, 'Brew again ▶'),
           ),
           h(
             'div',
@@ -152,10 +152,10 @@ export function sevenSummaryScreen(r: SevenRun): void {
         at(evolveStart + (t - 1) * stepMs, () => {
           hero.classList.remove('craft-promote');
           void hero.offsetWidth;
-          hero.innerHTML = craftSvg(t, pagePalette);
+          hero.innerHTML = potionSvg(t, pagePalette);
           hero.classList.add('craft-promote');
           craftTitle.textContent = SEVEN.craftTiers[t].name;
-          blurb.textContent = CRAFT_BLURBS[t];
+          blurb.textContent = POTION_BLURBS[t];
           const c = centerOf(hero);
           fx.burst(c.x, c.y, currentPalette()?.accents ?? res.found, { count: 14 + t * 4, speed: 220, shapes: ['star', 'circle'] });
           sfx.pop(t + 2);
