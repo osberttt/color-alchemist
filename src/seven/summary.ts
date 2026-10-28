@@ -94,7 +94,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
                 'li',
                 { style: { '--i': String(i) } },
                 h('span', { class: 'p-sw' }, swatch(s.def.target, 'target'), swatch(s.hex, 'extracted')),
-                h('span', { class: 'p-name' }, s.def.name, h('span', { class: 'muted small' }, s.empty ? ` · time ran out · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`)),
+                h('span', { class: 'p-name' }, s.def.name, h('span', { class: 'muted small' }, s.empty ? ` · nothing extracted · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`)),
                 h('span', { class: 'mono' }, `+${s.score}`),
               ),
             ),

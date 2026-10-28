@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ciede2000, ciede2000Parts, hexToCielab, linearToCielab } from '../src/color/cielab';
+import { ciede2000, ciede2000Parts, hexToCielab, linearToCielab, toLCh } from '../src/color/cielab';
+import { applyEdits, NO_EDITS } from '../src/color/plate';
 import { hexToLinear } from '../src/color/oklab';
 import type { Plate } from '../src/color/plate';
 import { COLORS, color } from '../src/data/colors';
@@ -97,6 +98,30 @@ describe('the color extracting machine', () => {
     const [r, g, b] = hexToLinear(teal.target);
     const j = judge(teal, extract(plate(360, 480, () => [r * 0.8, g * 0.8, b * 0.8])));
     expect(j.tier).not.toBe('Flawless');
+  });
+});
+
+describe("the machine's adjustment bars", () => {
+  const orange = plate(4, 4, () => [0.6, 0.2, 0.04]);
+
+  it('no adjustment changes nothing', () => {
+    expect(applyEdits(orange, NO_EDITS)).toBe(orange);
+  });
+
+  it('brightness scales linear light and clips at white, like the viewfinder', () => {
+    const q = applyEdits(orange, { ev: 0.5, sat: 0 });
+    expect(q.lin[1]).toBeCloseTo(0.2 * Math.SQRT2, 6);
+    expect(q.lin[0]).toBeCloseTo(Math.min(1, 0.6 * Math.SQRT2), 6);
+    expect(applyEdits(plate(1, 1, () => [0.9, 0.9, 0.9]), { ev: 0.5, sat: 0 }).lin[0]).toBe(1);
+  });
+
+  it('saturation changes chroma but not hue, and a grey stays grey', () => {
+    const grey = applyEdits(plate(1, 1, () => [0.3, 0.3, 0.3]), { ev: 0, sat: 0.25 });
+    for (const v of grey.lin) expect(v).toBeCloseTo(0.3, 4);
+    const before = toLCh(extract(orange).lab);
+    const after = toLCh(extract(applyEdits(orange, { ev: 0, sat: 0.25 })).lab);
+    expect(after.C).toBeGreaterThan(before.C * 1.1);
+    expect(Math.abs(after.h - before.h)).toBeLessThan(3);
   });
 });
 

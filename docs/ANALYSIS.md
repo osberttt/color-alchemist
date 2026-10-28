@@ -257,6 +257,48 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.18 When time runs out, the machine extracts (2026-10-28)
+
+**The change (the user's call).** At 0:00 the machine extracts on its own with the last aim, zoom and bar settings, then plays the normal blob reveal and judging. This replaces Krillion's "unanswered = 0" (§4.7). A 0 now only happens if that capture fails.
+
+- **Market:** no run ends in a dead "nothing" screen, which is friendlier for casual players and short sessions.
+- **Game design:** with 30 s (§4.17), a hard 0 would punish slow but careful players too much. Now the clock still matters, because you get whatever is in the square, but aiming well until the last second pays. The tip text says "Keep it aimed."
+- **Jam:** retention and fun gain (fewer zero runs). No new assets or tech.
+- **Same day (user):**
+  - The blob now flies straight from the center into the extracted swatch, with no rise up the pipe. That's a shorter, clearer reveal.
+  - The bars' nudge also shows on the machine itself (frame, pipes, joints, nameplate, bar tracks), so brightness and saturation changes are easy to see.
+  - The square's frame and the target swatch keep the true target color, so the inside-vs-frame comparison stays honest, and the final color is still hidden.
+
+### 4.17 The whole view is the machine: adjustment bars, the blob reveal, 30 s (2026-10-28)
+
+**The change (the user's call).**
+- **The machine is the whole camera view:** a frame in the target color, with pipes from the frame through two side bars into the square, and up and down from the square to the frame. Corner brackets, joints, and a nameplate on the bottom pipe.
+- **Two small adjustment bars:**
+  - Left is brightness: ±0.5 stops in linear light, about −29 % … +41 % light.
+  - Right is saturation: ±25 % OKLab chroma.
+  - The viewfinder shows the nudge, and the capture applies it to every pixel (`applyEdits`, the same math as the shader), so the extraction is exactly what the player saw.
+  - The bars reset for every color.
+- **Reveal:** the square blends (mosaic), gathers into a round blob at the very center, rises up the top pipe, and flies into the extracted swatch, which pops to show the color.
+- **Timer: 30 s** per color (was 60).
+- This partly reverses §4.2's "no editing". The range is deliberately small: it can't change hue or turn a grey into a color, so the grey-wall case (§4.12) doesn't get stronger.
+
+**Market**
+- A machine you operate is more toy-like and more memorable than a bare camera reticle, and it reads at a glance in screenshots and the demo video.
+- Small "dials" are a familiar camera-app gesture (exposure slider), so they need no teaching.
+- 30 s per color makes a full run about 2.5 minutes of hunting: arcade pacing, good for a jam judge's first session.
+
+**Game design**
+- **Agency without a solver:** with the color hidden (§4.7), players had no way to respond to their camera's bias. Now they can correct a "too dark" or "too dull" read by eye, within limits. Skill is still finding the right object and light.
+- **Readable cause and effect:** the bars sit on pipes that feed the square, so the player sees what they're adjusting.
+- **The reveal tells the story:** the blend gathers into a blob, which travels up the machine into the swatch. The extracted color comes out of the machine, not from nowhere.
+- **Risk:** 30 s is tight for real-world camera hunting, especially the first color. Watch playtests. The between-color pause is unlimited, so players can plan.
+- **Suggested, not added:** showing the bar settings on the result sheet; a "steady hands" bonus for leaving the bars at zero.
+
+**Digit7 Jam**
+- **Performance:** the machine is one SVG redrawn only on resize, and the bars are DOM elements. The capture adds one pass over the 360-px plate (about 170 k pixels), negligible.
+- **Accessibility:** the bars are focusable sliders (ARIA role, arrow keys, Home resets) with 44-px touch targets, and have keyboard shortcuts (W/S, E/D). With reduced motion, the reveal skips straight to the swatch.
+- **Browsers:** WebGL shows the exact nudge. Without WebGL, CSS filters approximate it, and the capture stays exact.
+
 ### 4.16 The craft uses the page's palette (2026-10-28)
 
 **The change (the user's call).**

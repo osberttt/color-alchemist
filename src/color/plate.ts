@@ -294,30 +294,62 @@ export function renderPlate(plate: Plate, edits: Edits, out: Uint8ClampedArray):
   }
   const lut = LINEAR_TO_SRGB8;
   const n = plate.w * plate.h;
-  const { lin } = plate;
+  const px: [number, number, number] = [0, 0, 0];
   for (let i = 0, j = 0; i < n; i++, j += 4) {
-    let r = Math.min(1, lin[i * 3] * k);
-    let g = Math.min(1, lin[i * 3 + 1] * k);
-    let b = Math.min(1, lin[i * 3 + 2] * k);
-    if (s !== 1) {
-      // Scale chroma in OKLab: via cbrt-LMS, cheap enough at plate size.
-      const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-      const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-      const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-      const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
-      const A = (1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_) * s;
-      const B = (0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_) * s;
-      const l2 = L + 0.3963377774 * A + 0.2158037573 * B;
-      const m2 = L - 0.1055613458 * A - 0.0638541728 * B;
-      const s2 = L - 0.0894841775 * A - 1.291485548 * B;
-      const l3 = l2 * l2 * l2, m3 = m2 * m2 * m2, s3 = s2 * s2 * s2;
-      r = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
-      g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
-      b = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3;
-    }
-    out[j] = lut[Math.max(0, Math.min(4095, (r * 4095) | 0))];
-    out[j + 1] = lut[Math.max(0, Math.min(4095, (g * 4095) | 0))];
-    out[j + 2] = lut[Math.max(0, Math.min(4095, (b * 4095) | 0))];
+    editPixel(plate.lin, i * 3, k, s, px);
+    out[j] = lut[Math.max(0, Math.min(4095, (px[0] * 4095) | 0))];
+    out[j + 1] = lut[Math.max(0, Math.min(4095, (px[1] * 4095) | 0))];
+    out[j + 2] = lut[Math.max(0, Math.min(4095, (px[2] * 4095) | 0))];
     out[j + 3] = 255;
   }
+}
+
+/**
+ * One pixel with edits applied: exposure ×k in linear light (clipping at white, like a
+ * sensor), then chroma ×s in OKLab. The viewfinder's GLSL does the same; keep them together.
+ */
+function editPixel(lin: Float32Array, i: number, k: number, s: number, out: [number, number, number]): void {
+  let r = Math.min(1, lin[i] * k);
+  let g = Math.min(1, lin[i + 1] * k);
+  let b = Math.min(1, lin[i + 2] * k);
+  if (s !== 1) {
+    // Scale chroma in OKLab: via cbrt-LMS, cheap enough at plate size.
+    const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
+    const A = (1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_) * s;
+    const B = (0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_) * s;
+    const l2 = L + 0.3963377774 * A + 0.2158037573 * B;
+    const m2 = L - 0.1055613458 * A - 0.0638541728 * B;
+    const s2 = L - 0.0894841775 * A - 1.291485548 * B;
+    const l3 = l2 * l2 * l2;
+    const m3 = m2 * m2 * m2;
+    const s3 = s2 * s2 * s2;
+    r = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+    g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+    b = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3;
+  }
+  out[0] = Math.min(1, Math.max(0, r));
+  out[1] = Math.min(1, Math.max(0, g));
+  out[2] = Math.min(1, Math.max(0, b));
+}
+
+/**
+ * The plate as the player saw it through the viewfinder, edits applied to every pixel
+ * (Seven Colors: the machine's brightness and saturation bars). Extraction averages this.
+ */
+export function applyEdits(plate: Plate, edits: Edits): Plate {
+  if (!edits.ev && !edits.sat) return plate;
+  const k = Math.pow(2, edits.ev);
+  const s = 1 + edits.sat;
+  const lin = new Float32Array(plate.lin.length);
+  const px: [number, number, number] = [0, 0, 0];
+  for (let i = 0; i < lin.length; i += 3) {
+    editPixel(plate.lin, i, k, s, px);
+    lin[i] = px[0];
+    lin[i + 1] = px[1];
+    lin[i + 2] = px[2];
+  }
+  return { w: plate.w, h: plate.h, lin };
 }

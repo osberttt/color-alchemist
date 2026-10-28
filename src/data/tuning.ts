@@ -91,7 +91,13 @@ export const TUNING = {
 export const SEVEN = {
   sections: 5,
   /** Seconds per color. */
-  seconds: 60,
+  seconds: 30,
+  /**
+   * The machine's side bars nudge what the camera sees, a little (ANALYSIS §4.17):
+   * brightness ±evMax stops in linear light (0.5 ≈ −29 % … +41 % light), saturation
+   * ±satMax of OKLab chroma. Hue can't change, and a grey stays grey.
+   */
+  adjust: { evMax: 0.5, satMax: 0.25 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */
@@ -122,7 +128,7 @@ export const SEVEN = {
     { name: 'Awry', maxDE: 40, points: 15 },
     { name: 'Botched', maxDE: Infinity, points: 10 },
   ],
-  /** Krillion: an unanswered prompt scores 0. Here: time runs out, nothing is extracted. */
+  /** Points when nothing could be extracted (the timed-out capture failed). When time runs out the machine normally extracts on its own. */
   emptyPoints: 0,
   /** Result screen: steps in the target → extracted ramp, per color rank. */
   rampSteps: { Flawless: 1, Harmonious: 2, Kindred: 3, Wavering: 4, Awry: 5, Botched: 6 } as Record<string, number>,

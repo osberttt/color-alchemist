@@ -24,10 +24,11 @@ The sections after this one describe the original pair-based design ("Classic").
 1. A run is **5 sections**, named after five operations of the Great Work: *Calcination, Dissolution, Conjunction, Distillation, Coagulation*. The run makes **one craft**. (The mode keeps its code name "Seven Colors".)
 2. Each section deals **one** named color. Tier ladder: Lead, Lead, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
-4. **Hunt (60 s)**: the live camera in full color. The **color extracting machine** (a centered square, 30 % of the short side) is framed in the target color. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**. Time runs out → the machine **runs dry: 0 points** (Krillion's unanswered prompt).
-   - **Blend reveal:** after extracting, the frame freezes and the machine's contents blend into a mosaic of shrinking resolution down to one cell, the exact extracted color. Only then is the color revealed.
-5. **No editing and no correction.** What the camera captures is the color. Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the machine extract as orange.
-6. **Extraction**: the machine fills with the extracted color and condenses into a drop. The **result sheet** slides up (its own palette):
+4. **Hunt (30 s)**: the live camera in full color. **The whole camera view is the color extracting machine**: a frame in the target color, with pipes from the frame through two side bars into the centered square (30 % of the short side), and up and down from the square to the frame. A nameplate sits on the bottom pipe. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×), nudge the bars and **extract**. Time runs out → the machine **extracts on its own**, from wherever the player left it (aim, zoom and bars), and it's judged normally. Only if that capture fails does the color score 0.
+   - **Side bars:** left = brightness (±0.5 stops in linear light, about −29 % … +41 % light), right = saturation (±25 % OKLab chroma). Drag, tap, wheel, arrow keys when focused, or W/S and E/D; double-tap resets; reset for every color. The camera view shows the nudge, and the capture applies it to every pixel, so what you see is what's extracted. The machine's frame, pipes, joints, nameplate and bar tracks also brighten/dim and gain/lose saturation with the bars, so the change is easy to see; the square's frame and the target swatch keep the true target color. Hue can't change, and a grey stays grey.
+   - **Blend reveal** (after the player's extraction or when time runs out): the frame freezes and the square's contents blend into a mosaic of shrinking resolution down to one color. It gathers into a round blob at the very center and flies straight into the extracted swatch, which shows the color at last.
+5. **No other correction.** Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the square extract as orange.
+6. **Extraction**: once the swatch shows the color, the **result sheet** slides up (its own palette):
    - target → extracted as a **color ramp** (1 in-between step for Flawless … 6 for Botched)
    - the score, the rank stamp and the exact ΔE00
    - the **craft panel**: the drop falls into the craft, which grows or transforms to its new rank, plus a progress bar to the next rank
@@ -51,7 +52,7 @@ The sections after this one describe the original pair-based design ("Classic").
   | Wavering | ≤ 30 (a grey, for 53 of 55 colors) | 30 |
   | Awry | ≤ 40 | 15 |
   | Botched | > 40 | 10 |
-  | Empty (time ran out) | — | 0 |
+  | Empty (the timed-out capture failed) | — | 0 |
 
   No time bonus, no tier multiplier.
 - **Craft rank** by the running total (max 500), one rank per 100 points: Prima Materia ("a starter batch") < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 400 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).

@@ -1,7 +1,9 @@
 // Seven Colors: one screen for the whole run. Each section: intro → hunt (live
 // camera, the color extracting machine framed in the target color, zoom, on the
 // clock) → snap → extraction → result sheet (precise judgement + the craft grows).
-// No editing and no correction: what the machine extracts is the color.
+// The whole camera view is the machine: a frame with pipes to two side bars that
+// nudge brightness and saturation a little (what you see is what's extracted), and
+// into the square. No other correction.
 
 import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
@@ -14,7 +16,7 @@ import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
 import { craftTierFor, mosaic } from '../scoring/extract';
-import type { Plate } from '../color/plate';
+import { applyEdits, type Plate } from '../color/plate';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
 import { CRAFT_BLURBS, craftSvg } from '../ui/craft';
@@ -31,8 +33,9 @@ const TIPS = [
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
   'Tilt shiny things to kill the glare.',
+  'Nudge the side bars: a little brighter, a little more vivid.',
   'Trust your eyes: compare the frame with what is inside it.',
-  'Out of time? The machine runs dry and scores nothing.',
+  'When time runs out, the machine extracts whatever it holds. Keep it aimed.',
 ];
 
 interface PhotoDeck {
@@ -71,6 +74,9 @@ export function sevenScreen(r: SevenRun): void {
     let raf = 0;
     let resultAt = 0;
     let tipIndex = Math.floor(Math.random() * TIPS.length);
+    // The machine's side bars, in exposure stops and chroma fraction (SEVEN.adjust).
+    let ev = 0;
+    let sat = 0;
     const timers: number[] = [];
     const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, reducedMotion() ? Math.min(ms, 120) : ms));
 
@@ -78,7 +84,7 @@ export function sevenScreen(r: SevenRun): void {
     const segments = Array.from({ length: SEVEN.sections }, () => h('span'));
     const spectrum = h('div', { class: 'spectrum', 'aria-hidden': 'true' }, ...segments);
     const stageEl = h('span', { class: 'stage-label' });
-    const timerEl = h('span', { class: 'timer' }, '1:00');
+    const timerEl = h('span', { class: 'timer' });
 
     const targetSw = h('span', { class: 'big-sw target' });
     // The extracted color stays a mystery until the machine blends it (after the snap).
@@ -95,10 +101,26 @@ export function sevenScreen(r: SevenRun): void {
 
     const vfCanvas = h('canvas', { class: 'vf-canvas', 'aria-label': 'Camera view' });
     const retFill = h('span', { class: 'ret-in' });
-    const reticle = h('div', { class: 'reticle', 'aria-hidden': 'true' }, retFill, h('span', { class: 'ret-label' }, 'color extracting machine'));
+    const reticle = h('div', { class: 'reticle', 'aria-hidden': 'true' }, retFill);
+    // The machine's nameplate, on its bottom pipe by the frame (clear of the side bars).
+    const nameplate = h('span', { class: 'ret-label', 'aria-hidden': 'true' }, 'color extracting machine');
     const warn = h('div', { class: 'scene-warning', hidden: true }, 'Too dark for alchemy. Find some light.');
     const intro = h('div', { class: 'vf-overlay intro', hidden: true });
-    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, warn, intro);
+    // The frame, pipes and joints of the machine (drawn to size in layout()).
+    const machine = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    machine.classList.add('machine');
+    machine.setAttribute('aria-hidden', 'true');
+    const signed = (n: number) => (n > 0 ? `+${n}%` : n < 0 ? `−${-n}%` : '0');
+    const brightBar = adjBar('Brightness', '☀', (v) => signed(Math.round((Math.pow(2, v * SEVEN.adjust.evMax) - 1) * 100)), (v) => {
+      ev = v * SEVEN.adjust.evMax;
+      paintAdjust();
+    });
+    const satBar = adjBar('Saturation', '◐', (v) => signed(Math.round(v * SEVEN.adjust.satMax * 100)), (v) => {
+      sat = v * SEVEN.adjust.satMax;
+      paintAdjust();
+    });
+    const bars = [brightBar, satBar];
+    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, machine, nameplate, brightBar.el, satBar.el, warn, intro);
     const stageWrap = h('div', { class: 'stage-wrap' }, viewport);
     const vf = new Viewfinder(vfCanvas);
     if (!vf.ok) viewport.classList.add('no-gl');
@@ -161,7 +183,13 @@ export function sevenScreen(r: SevenRun): void {
           { class: 'hunt-side' },
           target,
           zoomRow,
-          h('p', { class: 'desk-only muted small' }, r.mode === 'camera' ? 'Hold things up to the camera. Space: extract · +/−: zoom · Esc: quit' : 'Drag to aim · Space: extract · +/−: zoom · arrows: aim · Esc: quit'),
+          h(
+            'p',
+            { class: 'desk-only muted small' },
+            r.mode === 'camera'
+              ? 'Hold things up to the camera. Space: extract · +/−: zoom · W/S: brightness · E/D: saturation · Esc: quit'
+              : 'Drag to aim · Space: extract · +/−: zoom · W/S: brightness · E/D: saturation · arrows: aim · Esc: quit',
+          ),
         ),
         h(
           'div',
@@ -192,6 +220,143 @@ export function sevenScreen(r: SevenRun): void {
       viewport.style.height = `${Math.floor(hh)}px`;
       const side = Math.min(w, hh) * SEVEN.squareFraction;
       reticle.style.width = reticle.style.height = `${Math.round(side)}px`;
+      drawMachine(Math.floor(w), Math.floor(hh), Math.round(side));
+    }
+
+    /**
+     * The whole view as one machine: a frame round the camera in the target color, pipes
+     * from the frame through the two bars into the square, and up and down from the
+     * square to the frame (the extracted blob leaves by the top pipe).
+     */
+    function drawMachine(W: number, H: number, S: number): void {
+      const mx = W / 2;
+      const my = H / 2;
+      const xL = mx - S / 2;
+      const xR = mx + S / 2;
+      const m = 5; // frame inset
+      const barH = Math.round(Math.min(H * 0.56, Math.max(S * 1.6, 120)));
+      const xb = [xL / 2, W - xL / 2];
+      bars.forEach((b, i) => {
+        b.el.style.left = `${Math.round(xb[i] - 22)}px`;
+        b.el.style.top = `${Math.round(my - barH / 2)}px`;
+        b.el.style.height = `${barH}px`;
+      });
+      const tw = 12; // half the bar's track width
+      const pipe = (x1: number, y1: number, x2: number, y2: number) => {
+        const d = `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`;
+        return `<path class="pipe-o" d="${d}"/><path class="pipe-i" d="${d}"/>`;
+      };
+      const joints = [
+        [m, my],
+        [W - m, my],
+        [mx, m],
+        [mx, H - m],
+        [xL, my],
+        [xR, my],
+        [mx, my - S / 2],
+        [mx, my + S / 2],
+      ];
+      const L = Math.min(28, W * 0.09);
+      const brackets = `M${m},${m + L}V${m}H${m + L}M${W - m - L},${m}H${W - m}V${m + L}M${W - m},${H - m - L}V${H - m}H${W - m - L}M${m + L},${H - m}H${m}V${H - m - L}`;
+      machine.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      // The view outside the square is dimmed a little, so the eye goes to the square.
+      const hole = `M${xL},${my - S / 2}H${xR}V${my + S / 2}H${xL}Z`;
+      machine.innerHTML =
+        `<path class="shade" fill-rule="evenodd" d="M0,0H${W}V${H}H0Z${hole}"/>` +
+        `<rect class="frame-o" x="${m}" y="${m}" width="${W - 2 * m}" height="${H - 2 * m}" rx="14"/>` +
+        `<rect class="frame-i" x="${m}" y="${m}" width="${W - 2 * m}" height="${H - 2 * m}" rx="14"/>` +
+        pipe(m, my, xb[0] - tw, my) +
+        pipe(xb[0] + tw, my, xL, my) +
+        pipe(xR, my, xb[1] - tw, my) +
+        pipe(xb[1] + tw, my, W - m, my) +
+        pipe(mx, m, mx, my - S / 2) +
+        pipe(mx, my + S / 2, mx, H - m) +
+        `<path class="bracket" d="${brackets}"/>` +
+        joints.map(([x, y]) => `<circle class="joint" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5"/>`).join('');
+    }
+
+    /**
+     * The bars' nudge shows on the whole machine, not just the camera: frame, pipes,
+     * joints, nameplate and bar tracks brighten/darken and gain/lose saturation with it,
+     * so the change is easy to see. The square's frame and the target swatch keep the
+     * true target color: comparing inside vs. frame must stay honest. The camera view
+     * itself shows the exact nudge (WebGL), never the final color.
+     */
+    function paintAdjust(): void {
+      viewport.style.setProperty('--adj', ev || sat ? `brightness(${Math.pow(2, ev).toFixed(3)}) saturate(${(1 + sat).toFixed(3)})` : 'none');
+    }
+
+    interface AdjBar {
+      el: HTMLElement;
+      track: HTMLElement;
+      /** −1 … 1 across the bar's (small) range. */
+      value: number;
+      set(v: number, notify?: boolean): void;
+    }
+
+    /** A vertical adjustment bar on the machine: drag, tap, wheel, arrow keys; double-tap resets. */
+    function adjBar(label: string, icon: string, show: (v: number) => string, onChange: (v: number) => void): AdjBar {
+      const thumb = h('span', { class: 'adj-thumb' });
+      const out = h('span', { class: 'adj-value mono' }, '0');
+      const track = h('span', { class: 'adj-track' }, h('span', { class: 'adj-zero' }), thumb);
+      const el = h(
+        'div',
+        { class: 'adj', role: 'slider', tabindex: '0', 'aria-label': label, 'aria-valuemin': '-100', 'aria-valuemax': '100', 'aria-valuenow': '0' },
+        h('span', { class: 'adj-icon', 'aria-hidden': 'true' }, icon),
+        track,
+        out,
+      );
+      const bar: AdjBar = {
+        el,
+        track,
+        value: 0,
+        set(v: number, notify = true) {
+          bar.value = Math.round(Math.min(1, Math.max(-1, v)) * 50) / 50;
+          thumb.style.top = `${(1 - (bar.value + 1) / 2) * 100}%`;
+          out.textContent = show(bar.value);
+          el.setAttribute('aria-valuenow', String(Math.round(bar.value * 100)));
+          el.setAttribute('aria-valuetext', out.textContent);
+          if (notify) onChange(bar.value);
+        },
+      };
+      const fromY = (y: number) => {
+        const r = track.getBoundingClientRect();
+        return 1 - 2 * ((y - r.top) / Math.max(1, r.height));
+      };
+      // The bars sit on the viewport: keep their touches away from its pan and pinch.
+      el.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (phase === 'intro') return beginHunt();
+        if (phase !== 'hunt') return;
+        el.setPointerCapture(e.pointerId);
+        bar.set(fromY(e.clientY));
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (phase === 'hunt' && el.hasPointerCapture(e.pointerId)) bar.set(fromY(e.clientY));
+      });
+      el.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (phase === 'hunt') bar.set(0);
+      });
+      el.addEventListener(
+        'wheel',
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (phase === 'hunt') bar.set(bar.value + (e.deltaY < 0 ? 0.1 : -0.1));
+        },
+        { passive: false },
+      );
+      el.addEventListener('keydown', (e) => {
+        const step = { ArrowUp: 0.1, ArrowRight: 0.1, ArrowDown: -0.1, ArrowLeft: -0.1 }[e.key];
+        if (step === undefined && e.key !== 'Home') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (phase === 'hunt') bar.set(step === undefined ? 0 : bar.value + step);
+      });
+      // Draw the resting state; the screen isn't built yet, so don't notify.
+      bar.set(0, false);
+      return bar;
     }
     const ro = new ResizeObserver(layout);
     ro.observe(stageWrap);
@@ -221,7 +386,14 @@ export function sevenScreen(r: SevenRun): void {
 
     function paintTarget(def: ColorDef): void {
       targetSw.style.background = def.target;
-      reticle.style.setProperty('--ing', def.target);
+      // The whole machine (frame, pipes, bars, square) is drawn in the target color.
+      viewport.style.setProperty('--ing', def.target);
+      // The bars show which way they push, in the target's own color (exaggerated: the
+      // real nudge is small).
+      const t = hexToOklab(def.target);
+      const tone = (dL: number, k: number) => oklabToHex({ L: Math.min(0.97, Math.max(0.08, t.L + dL)), a: t.a * k, b: t.b * k });
+      brightBar.track.style.background = `linear-gradient(to top, ${tone(-0.28, 1)}, ${def.target}, ${tone(0.22, 1)})`;
+      satBar.track.style.background = `linear-gradient(to top, ${tone(0, 0)}, ${def.target}, ${tone(0, 1.6)})`;
       nameEl.textContent = def.name;
       metaEl.textContent = `${ELEMENT_GLYPH[def.element]} ${def.element} · ${TIER_LABEL[def.tier]}`;
     }
@@ -265,9 +437,9 @@ export function sevenScreen(r: SevenRun): void {
       lastTick = Math.ceil(remaining);
       timerEl.textContent = fmtTime(remaining);
       timerEl.classList.remove('urgent');
-      reticle.classList.remove('extracting');
-      retFill.style.background = '';
       reticle.querySelector('.ret-mosaic')?.remove();
+      reticle.querySelector('.ret-blob')?.remove();
+      bars.forEach((b) => b.set(0));
       yoursSw.style.background = '';
       yoursSw.classList.add('mystery');
       yoursSw.textContent = '?';
@@ -305,11 +477,13 @@ export function sevenScreen(r: SevenRun): void {
       reticle.classList.add('ret-go');
     }
 
-    async function snap(): Promise<void> {
+    /** `timedOut`: the clock ran out, so the machine extracts on its own, from wherever the player left it. */
+    async function snap(timedOut = false): Promise<void> {
       if (phase === 'intro') return beginHunt();
       if (phase === 'result') return advance();
       if (phase !== 'hunt' || !src) return;
       if (!src.ready()) {
+        if (timedOut) return runDry();
         toast('The camera is still waking up…');
         return;
       }
@@ -319,10 +493,13 @@ export function sevenScreen(r: SevenRun): void {
       vibrate(20);
       viewport.classList.add('flash');
       shake(viewport, 'soft');
-      const plate = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
+      const shot = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
       viewport.classList.remove('flash');
+      // The machine extracts what the player saw: the bars' nudges applied to every pixel.
+      const plate = shot && applyEdits(shot, { ev, sat });
       if (!plate) {
         phase = 'hunt';
+        if (timedOut) return runDry();
         shutter.disabled = false;
         toast('Capture failed. Try again.');
         return;
@@ -332,12 +509,18 @@ export function sevenScreen(r: SevenRun): void {
       blendReveal(plate, sec, before);
     }
 
-    /** Krillion rules: an unanswered prompt scores 0. The machine runs dry. */
+    /** Time's up: the machine extracts what's in it right now (aim, zoom and bars as left). */
     function timeUp(): void {
       if (phase !== 'hunt') return;
+      timerEl.textContent = '0:00';
+      toast("Time's up! The machine extracts what it holds.");
+      void snap(true);
+    }
+
+    /** Only if the timed-out capture itself fails: nothing extracted, 0 points. */
+    function runDry(): void {
       phase = 'capturing';
       shutter.disabled = true;
-      timerEl.textContent = '0:00';
       sfx.error();
       shake(viewport, 'soft');
       const before = runTotal(r);
@@ -347,21 +530,26 @@ export function sevenScreen(r: SevenRun): void {
       later(500, () => showResult(sec, before, centerOf(reticle)));
     }
 
-/**
-     * The reveal: the frame freezes, and everything inside the machine blends
-     * together, a mosaic of shrinking resolution (mixed in linear light, like the
-     * scorer) down to one cell, the exact extracted color. Only now does the player
-     * see what they caught.
+    /**
+     * The reveal: the frame freezes and everything inside the machine blends together,
+     * a mosaic of shrinking resolution (mixed in linear light, like the scorer) down to
+     * one color. It collapses into a round blob at the very center and flies straight
+     * into the extracted swatch. Only then does the player see what they caught.
      */
     function blendReveal(plate: Plate, sec: Section, before: number): void {
       phase = 'result';
       viewport.classList.remove('urgent');
-      const steps = reducedMotion() ? [1] : [24, 12, 8, 5, 3, 2, 1];
+      if (reducedMotion()) {
+        revealSwatch(sec);
+        later(400, () => showResult(sec, before, centerOf(yoursSw)));
+        return;
+      }
+      const steps = [16, 8, 4, 2, 1];
       const cv = h('canvas', { class: 'ret-mosaic' });
       const ctx = cv.getContext('2d')!;
       reticle.append(cv);
       steps.forEach((n, i) =>
-        later(i * 170, () => {
+        later(i * 150, () => {
           cv.width = n;
           cv.height = n;
           ctx.putImageData(new ImageData(mosaic(plate, n), n, n), 0, 0);
@@ -371,27 +559,44 @@ export function sevenScreen(r: SevenRun): void {
           if (n > 1) sfx.bubble(i);
         }),
       );
-      const settled = steps.length * 170 + 150;
-      later(settled, () => {
-        // The exact color, at last: on the machine and in the panel.
-        sfx.drip();
-        const c = centerOf(reticle);
-        fx.burst(c.x, c.y, [sec.hex], { count: 18, speed: 150, size: 6, gravity: 0 });
-        yoursSw.classList.remove('mystery');
-        yoursSw.textContent = '';
-        yoursSw.style.background = sec.hex;
+      // 1. One color: it gathers into a blob at the very center.
+      const blended = steps.length * 150 + 120;
+      const blob = h('span', { class: 'ret-blob', style: { background: sec.hex } });
+      later(blended, () => {
+        cv.remove();
+        reticle.append(blob);
+        sfx.pour();
+        blob.animate(
+          [
+            { transform: 'scale(1)', borderRadius: '3px' },
+            { transform: 'scale(0.55, 0.5)', borderRadius: '38%', offset: 0.55 },
+            { transform: 'scale(0.36)', borderRadius: '50%' },
+          ],
+          { duration: 520, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' },
+        );
       });
-      later(settled + 650, () => extractAnimation(sec, before));
+      // 2. The blob flies straight into the extracted swatch.
+      later(blended + 560, () => {
+        const from = centerOf(blob);
+        blob.remove();
+        dropInto(from, yoursSw, sec.hex, () => {
+          revealSwatch(sec);
+          later(650, () => showResult(sec, before, centerOf(yoursSw)));
+        });
+      });
     }
 
-    /** The machine fills with the extracted color and condenses into a drop. */
-    function extractAnimation(sec: Section, before: number): void {
-      retFill.style.background = sec.hex;
-      reticle.classList.add('extracting');
-      sfx.pour();
-      const c = centerOf(reticle);
-      later(350, () => fx.burst(c.x, c.y, [sec.hex], { count: 14, speed: 120, size: 5, gravity: 0 }));
-      later(650, () => showResult(sec, before, c));
+    /** The extracted color, at last, in the panel. */
+    function revealSwatch(sec: Section): void {
+      yoursSw.classList.remove('mystery');
+      yoursSw.textContent = '';
+      yoursSw.style.background = sec.hex;
+      yoursSw.classList.remove('sw-pop');
+      void yoursSw.offsetWidth;
+      yoursSw.classList.add('sw-pop');
+      sfx.pop(3);
+      const c = centerOf(yoursSw);
+      fx.burst(c.x, c.y, [sec.hex], { count: 18, speed: 150, size: 6, gravity: 0 });
     }
 
     function showResult(sec: Section, before: number, dropFrom: { x: number; y: number }): void {
@@ -418,7 +623,7 @@ export function sevenScreen(r: SevenRun): void {
         sec.empty ? emptyMachine(sec) : colorRamp(sec),
         h('h2', { class: 'res-name' }, sec.def.name),
         h('div', { class: 'res-score' }, scoreEl, h('div', { class: 'res-stamp' }, stampEl)),
-        h('p', { class: 'res-de mono' }, sec.empty ? 'time ran out · nothing extracted' : `ΔE ${sec.dE.toFixed(2)}`),
+        h('p', { class: 'res-de mono' }, sec.empty ? 'nothing extracted' : `ΔE ${sec.dE.toFixed(2)}`),
         h(
           'div',
           { class: 'craft-panel' },
@@ -589,7 +794,11 @@ export function sevenScreen(r: SevenRun): void {
     const fallbackStyle = () => {
       if (vf.ok || !src) return;
       const mirror = src.mirrored ? ' scaleX(-1)' : '';
-      (src.el as HTMLElement).style.transform = `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)${mirror}`;
+      const el = src.el as HTMLElement;
+      el.style.transform = `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)${mirror}`;
+      // Without WebGL the bars' preview is approximate (CSS filters work in sRGB); the
+      // capture itself is exact.
+      el.style.filter = ev || sat ? `brightness(${Math.pow(2, ev).toFixed(3)}) saturate(${(1 + sat).toFixed(3)})` : '';
     };
 
     const loop = (now: number) => {
@@ -599,7 +808,7 @@ export function sevenScreen(r: SevenRun): void {
       // After the snap the view freezes (the last frame stays) while the machine blends.
       const live = phase === 'hunt' || phase === 'intro';
       if (src && live) {
-        if (vf.ok) vf.render(src, view(), 0, 0);
+        if (vf.ok) vf.render(src, view(), ev, sat);
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
       }
@@ -690,7 +899,10 @@ export function sevenScreen(r: SevenRun): void {
       }
       if (k === 'Escape') return void quitSeven();
       if ((e.target as HTMLElement)?.tagName === 'INPUT' && k.startsWith('Arrow')) return;
-      if (k === '+' || k === '=') setZoom(zoom * 1.1);
+      const nudge = { w: [brightBar, 0.1], s: [brightBar, -0.1], e: [satBar, 0.1], d: [satBar, -0.1] }[k.toLowerCase()] as [AdjBar, number] | undefined;
+      if (nudge) {
+        if (phase === 'hunt') nudge[0].set(nudge[0].value + nudge[1]);
+      } else if (k === '+' || k === '=') setZoom(zoom * 1.1);
       else if (k === '-' || k === '_') setZoom(zoom / 1.1);
       else if ((k === 'n' || k === 'N') && r.mode === 'photo') void nextPhoto();
       else if (src?.pannable && k.startsWith('Arrow')) {

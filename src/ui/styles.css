@@ -2318,19 +2318,167 @@ body[data-theme='palette'] .btn.primary {
 
 /* ---------- The color extracting machine ---------- */
 
+/* A nameplate mounted on the machine's bottom pipe, just above the frame. */
 .ret-label {
   position: absolute;
+  z-index: 3;
   left: 50%;
-  top: calc(100% + 10px);
+  bottom: 14px;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--bone);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(10, 10, 12, 0.88);
+  box-shadow: 0 0 0 1.5px var(--ing, var(--bone));
+}
+
+/* In Seven Colors the dimming around the square is part of the machine drawing, so the
+   square (and the blob and nameplate inside it) can sit above the pipes. Overlays stay on top. */
+.seven-vp .reticle {
+  z-index: 3;
+  box-shadow:
+    0 0 0 2px rgba(15, 15, 18, 0.85),
+    inset 0 0 0 2px rgba(15, 15, 18, 0.85);
+}
+.seven-vp .vf-overlay,
+.seven-vp .scene-warning {
+  z-index: 5;
+}
+.machine .shade {
+  fill: rgba(10, 10, 12, 0.28);
+}
+/* The bars' nudge, shown on the machine itself (set as --adj by the hunt screen). */
+.seven-vp .machine .frame-o,
+.seven-vp .machine .frame-i,
+.seven-vp .machine .pipe-o,
+.seven-vp .machine .pipe-i,
+.seven-vp .machine .bracket,
+.seven-vp .machine .joint,
+.seven-vp .ret-label,
+.seven-vp .adj-track {
+  filter: var(--adj, none);
+  transition: filter 0.12s linear;
+}
+
+/* The whole view is the machine: frame, pipes and joints in the target color. */
+.machine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.machine .frame-o,
+.machine .frame-i {
+  fill: none;
+}
+.machine .frame-o {
+  stroke: rgba(10, 10, 12, 0.7);
+  stroke-width: 6;
+}
+.machine .frame-i {
+  stroke: var(--ing, var(--bone));
+  stroke-width: 2;
+  opacity: 0.9;
+}
+.machine .pipe-o {
+  stroke: rgba(10, 10, 12, 0.85);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+.machine .pipe-i {
+  stroke: var(--ing, var(--bone));
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.machine .bracket {
+  fill: none;
+  stroke: var(--ing, var(--bone));
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.machine .joint {
+  fill: var(--ing, var(--bone));
+  stroke: rgba(10, 10, 12, 0.9);
+  stroke-width: 2.5;
+}
+
+/* The two adjustment bars, mounted on the machine's side pipes. 44 px wide to touch;
+   the visible track is 24 px. */
+.adj {
+  position: absolute;
+  z-index: 2;
+  width: 44px;
+  touch-action: none;
+  cursor: ns-resize;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.adj-track {
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 2.5px rgba(10, 10, 12, 0.88),
+    0 0 0 4.5px var(--ing, var(--bone));
+}
+.adj:focus-visible .adj-track {
+  box-shadow:
+    0 0 0 2.5px rgba(10, 10, 12, 0.88),
+    0 0 0 4.5px var(--ing, var(--bone)),
+    0 0 0 8px rgba(237, 234, 227, 0.55);
+}
+.adj-zero {
+  position: absolute;
+  left: -5px;
+  right: -5px;
+  top: calc(50% - 1px);
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(10, 10, 12, 0.75);
+}
+.adj-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 7px;
+  background: var(--bone);
+  box-shadow:
+    0 0 0 2.5px rgba(10, 10, 12, 0.9),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: top 0.08s ease-out;
+}
+.adj-icon,
+.adj-value {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: var(--bone);
   text-shadow: 0 1px 3px #000;
-  opacity: 0.8;
+  pointer-events: none;
+}
+.adj-icon {
+  bottom: calc(100% + 8px);
+  font-size: 15px;
+  line-height: 1;
+}
+.adj-value {
+  top: calc(100% + 8px);
+  font-size: 10px;
 }
 .reticle .ret-in {
   transition: background 0.25s;
@@ -2363,24 +2511,22 @@ body[data-theme='palette'] .btn.primary {
   color: var(--fog);
   background: repeating-linear-gradient(45deg, var(--ash) 0 6px, var(--soot) 6px 12px);
 }
-.reticle.extracting {
-  animation: extract 0.65s cubic-bezier(0.5, 0, 0.3, 1) forwards;
+/* The blended color gathers into a blob, rises up the top pipe and flies to the swatch.
+   Above the machine's pipes, so it travels along them, not under them. */
+.ret-blob {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.85),
+    0 6px 18px rgba(0, 0, 0, 0.35);
 }
-.reticle.extracting .ret-label {
-  opacity: 0;
+.big-sw.sw-pop {
+  animation: sw-pop 0.5s cubic-bezier(0.2, 1.8, 0.4, 1);
 }
-@keyframes extract {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    border-radius: 6px;
-  }
-  45% {
-    transform: translate(-50%, -50%) scale(1.08);
-    border-radius: 6px;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(0.18);
-    border-radius: 50%;
+@keyframes sw-pop {
+  40% {
+    transform: scale(1.25);
   }
 }
 .fly-drop {

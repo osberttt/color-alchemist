@@ -17,7 +17,7 @@ export const OPERATIONS = ['Calcination', 'Dissolution', 'Conjunction', 'Distill
 export interface Section {
   index: number;
   def: ColorDef;
-  /** Null when time ran out: nothing was extracted (Krillion's unanswered prompt, 0 points). */
+  /** Null only if the timed-out capture failed: nothing was extracted (0 points). */
   extracted: Extraction | null;
   empty: boolean;
   hex: string;
@@ -88,7 +88,10 @@ export function runTotal(r: SevenRun): number {
 /** Hex shown for an empty extraction (nothing in the flask). */
 export const EMPTY_HEX = '#3a3a40';
 
-/** `view` is null when time ran out: the machine extracted nothing and the color scores 0. */
+/**
+ * `view` is null only if the capture failed when time ran out (normally the machine
+ * extracts on its own then): nothing extracted, the color scores 0.
+ */
 export function finishSection(r: SevenRun, view: Plate | null, zoom: number): Section {
   const def = r.current!;
   const extracted = view ? extract(view) : null;
