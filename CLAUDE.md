@@ -43,7 +43,7 @@ src/
   color/plate.ts               plates (linear RGB), capture averaging
   scoring/extract.ts           ★ the color extracting machine: extract (mean), judge (ΔE00 → score, rank), craft rank
   scoring/score.ts, assay.ts   Classic-mode scoring (not used by Seven Colors)
-  ui/craft.ts                  generated craft art per rank (random palette each render; Marvel's attractor is drawn just after insertion)
+  ui/craft.ts                  generated craft art per rank, in the page's palette nudged per rank (Marvel's attractor is drawn just after insertion)
   data/colors.ts, tuning.ts    55-color Codex; ALL tunable numbers (SEVEN = this mode)
   practice/plates.ts           painted still lifes for the no-camera practice mode
   meta/                        rng, storage (localStorage, try/catch), share text

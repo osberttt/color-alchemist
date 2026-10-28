@@ -404,7 +404,8 @@ export function sevenScreen(r: SevenRun): void {
       stampEl.hidden = true;
       const prevCraft = craftTierFor(before);
       const craftStage = h('div', { class: 'craft-stage' });
-      craftStage.innerHTML = craftSvg(prevCraft.index);
+      // The craft is drawn in the result sheet's palette.
+      craftStage.innerHTML = craftSvg(prevCraft.index, paletteFor('result'));
       const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your craft begins' : prevCraft.name);
       const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : CRAFT_BLURBS[prevCraft.index]);
       const barFill = h('i');
@@ -469,7 +470,7 @@ export function sevenScreen(r: SevenRun): void {
           paintBar(sec.total, now, true);
           craftStage.classList.add('craft-out');
           later(320, () => {
-            craftStage.innerHTML = craftSvg(now.index);
+            craftStage.innerHTML = craftSvg(now.index, paletteFor('result'));
             craftStage.classList.remove('craft-out');
             craftStage.classList.add(promoted ? 'craft-promote' : 'craft-grow');
             craftName.textContent = now.name;

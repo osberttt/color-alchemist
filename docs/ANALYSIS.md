@@ -257,6 +257,22 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.16 The craft uses the page's palette (2026-10-28)
+
+**The change (the user's call).**
+- The craft is drawn in the palette of the page it appears on: the result sheet's palette during the run, the summary page's at the end. Only the tuner and previews, which have no palette, pick one at random.
+- Each rank nudges those colors a little:
+  - Trinket: 3 colors, chroma ×0.85.
+  - Curio: 4 colors, as they are.
+  - Marvel: 5 colors, +0.04 lightness, chroma ×1.1.
+  - Magnum Opus: the 5 accents plus 3 blends of neighbors, +0.06 lightness, chroma ×1.2.
+- Prima Materia stays muddy.
+- On light pages, highlights (edges, sparkles, rose outlines) take the page's text color, and the attractor doesn't burn to white, which would vanish.
+
+- **Market:** each page reads as one designed image, with the craft matching its frame. That's better for screenshots and the demo video.
+- **Game design:** the climb still shows (more colors, slightly brighter), but it's subtler than before. A dull palette gives a muted Magnum Opus, and the shape and motion carry the rank. That supersedes §4.9's fixed brightness ladder at the user's request.
+- **Jam:** no cost. All palettes still pass the contrast tests.
+
 ### 4.15 Prima Materia returns; a rank every 100 points (2026-10-28)
 
 **The change (the user's call).**

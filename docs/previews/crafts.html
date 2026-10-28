@@ -52,25 +52,35 @@
   </head>
   <body>
     <h1>Craft art: Prima Materia → Magnum Opus</h1>
-    <p>Three random rolls. Every render picks a random palette and new shapes; colors get more varied and brighter rank by rank.</p>
+    <p>Each row is one random palette, on its own background, as on a game page: the craft uses that page's colors, more of them and a little brighter rank by rank. New shapes every render.</p>
     <button type="button" id="roll">Re-roll</button>
-    <div class="grid" id="grid"></div>
+    <div id="grid"></div>
     <script type="module">
       import { CRAFT_BLURBS, craftName, craftSvg } from '/src/ui/craft.ts';
+      import { PALETTES } from '/src/ui/palettes.ts';
       import '/src/ui/craft-anim.css';
 
       const grid = document.getElementById('grid');
       function roll() {
         grid.replaceChildren();
-        for (let row = 0; row < 3; row++) {
+        const picks = [...PALETTES].sort(() => Math.random() - 0.5).slice(0, 3);
+        picks.forEach((pal, row) => {
+          const band = document.createElement('div');
+          band.className = 'grid';
+          band.style.cssText = `background:${pal.bg};color:${pal.fg};padding:8px 12px;border-radius:14px;margin-bottom:10px`;
+          const label = document.createElement('p');
+          label.style.cssText = `grid-column:1/-1;margin:0;color:${pal.fg};font-weight:700`;
+          label.textContent = pal.name;
+          band.append(label);
           for (let tier = 0; tier < 5; tier++) {
             const cell = document.createElement('figure');
             cell.className = 'cell';
             cell.style.margin = '0';
-            cell.innerHTML = `<div class="craft-stage">${craftSvg(tier)}</div>` + (row === 2 ? `<span class="name">${craftName(tier)}</span><span class="blurb">${CRAFT_BLURBS[tier]}</span>` : '');
-            grid.append(cell);
+            cell.innerHTML = `<div class="craft-stage">${craftSvg(tier, pal)}</div>` + (row === 2 ? `<span class="name">${craftName(tier)}</span><span class="blurb" style="color:inherit;opacity:.75">${CRAFT_BLURBS[tier]}</span>` : '');
+            band.append(cell);
           }
-        }
+          grid.append(band);
+        });
       }
       document.getElementById('roll').addEventListener('click', roll);
       roll();

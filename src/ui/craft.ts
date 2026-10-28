@@ -5,11 +5,12 @@
 //   Curio          an artifact: a plate inlaid with rings of shiny, slightly irregular polygons
 //   Marvel         a Clifford attractor, drifting like shining gas
 //   Magnum Opus    big, full Maurer roses in every color
-// Recolored from a random palette every time it's drawn.
+// Drawn in the palette of the page it appears on (random where there is none, like the
+// tuner), with fresh random shapes every time.
 
-import { hexToOklab, hue, mixLab, oklabToHex } from '../color/oklab';
+import { hexToOklab, mixLab, oklabToHex } from '../color/oklab';
 import { SEVEN } from '../data/tuning';
-import { PALETTES, type Palette } from './palettes';
+import { PALETTES, luminance, type Palette } from './palettes';
 
 export const CRAFT_BLURBS = ['a starter batch', 'a modest bauble', 'a curious contraption', 'a thing of wonder', 'the Great Work, complete'];
 
@@ -111,28 +112,39 @@ function sparkles(rng: Rng, n: number, fills: string[]): string {
   }).join('');
 }
 
-// The color ladder. Lightness and chroma are set per rank, not taken from the palette,
-// so a dull palette can't make a high rank look duller than a low one. Prima Materia
-// keeps its own muddy look (no ladder colors). Trinket uses the palette's own hues;
-// Curio and Marvel fan out from the palette's lead hue and Magnum Opus holds the whole
-// spectrum. (Trinket: 3 colors, Curio 4, Marvel 5, Magnum Opus 8.)
+// The color ladder. Every rank uses the palette it's drawn in (the page's), nudged a
+// little: higher ranks use more of its colors and lift them slightly brighter and more
+// saturated, Trinket is a touch dull, and Prima Materia keeps its own muddy look (no
+// ladder colors). (Trinket: 3 colors, Curio 4, Marvel 5, Magnum Opus 8.)
 const LADDER = [
-  { count: 0, L: 0, C: 0, fan: 0 },
-  { count: 3, L: 0.64, C: 0.125, fan: 0 },
-  { count: 4, L: 0.72, C: 0.13, fan: 150 },
-  { count: 5, L: 0.8, C: 0.17, fan: 260 },
-  { count: 8, L: 0.8, C: 0.2, fan: 360 },
+  { count: 0, dL: 0, dC: 1 },
+  { count: 3, dL: -0.02, dC: 0.85 },
+  { count: 4, dL: 0, dC: 1 },
+  { count: 5, dL: 0.04, dC: 1.1 },
+  { count: 8, dL: 0.06, dC: 1.2 },
 ];
 
-/** The colors a rank may use: more of them, and brighter, the higher the rank. */
+/** `count` colors from the palette's accents; past five, blends of neighbors slot in between. */
+function spread(c: string[], count: number): string[] {
+  if (count <= c.length) return c.slice(0, count);
+  const out: string[] = [];
+  let extra = count - c.length;
+  c.forEach((hex, i) => {
+    out.push(hex);
+    if (extra > 0 && i < c.length - 1) {
+      out.push(mixHex(hex, c[i + 1], 0.5));
+      extra--;
+    }
+  });
+  return out;
+}
+
+/** The colors a rank uses: the palette's own, more of them and a little brighter the higher the rank. */
 function tones(c: string[], tier: number): string[] {
-  const { count, L, C, fan } = LADDER[tier];
-  const h0 = hue(hexToOklab(c[0]));
-  return Array.from({ length: count }, (_, i) => {
-    const h = (fan ? h0 + (fan * i) / (fan >= 360 ? count : count - 1) : hue(hexToOklab(c[i]))) * RAD;
-    // A little lightness variety within the rank, so neighbors still separate.
-    const l = L + ((i % 3) - 1) * 0.035;
-    return oklabToHex({ L: l, a: C * Math.cos(h), b: C * Math.sin(h) });
+  const { count, dL, dC } = LADDER[tier];
+  return spread(c, count).map((hex) => {
+    const lab = hexToOklab(hex);
+    return oklabToHex({ L: Math.min(0.93, Math.max(0.2, lab.L + dL)), a: lab.a * dC, b: lab.b * dC });
   });
 }
 
@@ -186,7 +198,7 @@ function boxBlur(src: Float32Array, size: number, r: number): Float32Array {
  * not SVG dots: tens of thousands of points stay cheap to move, and the density
  * is what makes it look like gas.
  */
-function attractorLayer(p: [number, number, number, number], cols: string[], size: number): string | null {
+function attractorLayer(p: [number, number, number, number], cols: string[], size: number, shine = true): string | null {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
@@ -247,8 +259,8 @@ function attractorLayer(p: [number, number, number, number], cols: string[], siz
   for (let o = 0; o < acc.length; o += 4) {
     const n = acc[o + 3] + haze[o + 3] * 0.3;
     if (n < 1e-3) continue;
-    // Shine: the densest filaments burn toward white.
-    const w = Math.min(0.6, acc[o + 3] / 18);
+    // Shine: the densest filaments burn toward white (not on light pages, where white vanishes).
+    const w = shine ? Math.min(0.6, acc[o + 3] / 18) : 0;
     img.data[o] = ((acc[o] + haze[o] * 0.3) / n) * (1 - w) + 255 * w;
     img.data[o + 1] = ((acc[o + 1] + haze[o + 1] * 0.3) / n) * (1 - w) + 255 * w;
     img.data[o + 2] = ((acc[o + 2] + haze[o + 2] * 0.3) / n) * (1 - w) + 255 * w;
@@ -311,6 +323,10 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
   tier = Math.max(0, Math.min(LADDER.length - 1, tier));
   const c = shuffle(rng, palette.accents);
   const col = tones(c, tier);
+  // Highlights are white on dark and colored pages; on light pages white disappears, so
+  // edges and sparkles take the page's text color and the attractor doesn't burn white.
+  const light = luminance(palette.bg) > 0.5;
+  const glint = light ? palette.fg : '#ffffff';
   // Unique ids: several crafts can share a page.
   const uid = `c${Math.floor(rng() * 1e9).toString(36)}`;
   let defs = '';
@@ -376,13 +392,13 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
       for (let j = 0; j < 12; j++) outer += piece(j, 12, 2, 0.25, facet(39, 9 + rng() * 2, j % 4));
       for (let j = 0; j < 7; j++) inner += piece(j, 7, 1, 0, facet(22, 9 + rng() * 2, (j % 3) + 1));
       body = `<circle r="74" fill="url(#${uid}-halo)"/>
-        <g stroke="#fff" stroke-opacity=".5" stroke-width="0.9" stroke-linejoin="round">
+        <g stroke="${glint}" stroke-opacity=".5" stroke-width="0.9" stroke-linejoin="round">
           <g class="spin-slower">${rays}<path d="${irregular(rng, 16, 49, 0.06)}" fill="url(#${uid}-plate)"/></g>
           <g class="spin-rev-slow">${outer}</g>
           <g class="spin-slow">${inner}</g>
           <g class="rock"><g class="pulse"><path d="${irregular(rng, 7, 14, 0.2)}" fill="url(#${uid}-sheen0)"/><path d="${irregular(rng, 5, 6, 0.2)}" fill="url(#${uid}-sheen2)"/></g></g>
         </g>
-        ${sparkles(rng, 4, ['#ffffff', ...col])}`;
+        ${sparkles(rng, 4, [glint, ...col])}`;
       break;
     }
     case 3: {
@@ -392,7 +408,7 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
       const base = CLIFFORD[Math.floor(rng() * CLIFFORD.length)];
       const params = [0, 1, 2].map(() => base.map((v) => v + (rng() - 0.5) * 0.08) as [number, number, number, number]);
       const layers = params.map((_, i) => `<g class="gas gas-${i}"><image id="${uid}-gas${i}" class="cloud" x="-95" y="-95" width="190" height="190"/></g>`);
-      body = `<circle r="98" fill="url(#${uid}-halo)"/>${layers.join('')}${sparkles(rng, 12, ['#ffffff', ...col])}`;
+      body = `<circle r="98" fill="url(#${uid}-halo)"/>${layers.join('')}${sparkles(rng, 12, [glint, ...col])}`;
       // A layer takes ~15–40 ms to draw, too long for the frame that shows the craft. So
       // the layers are drawn just after it's on screen, one per task, and fade in as they're
       // ready: the essence condenses. A layer whose craft was already replaced is skipped.
@@ -402,7 +418,7 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
             const el = document.getElementById(`${uid}-gas${i}`);
             if (!el) return;
             const wheel = [...col.slice(i), ...col.slice(0, i)];
-            const url = attractorLayer(p, wheel, 220) ?? attractorLayer(base, wheel, 220);
+            const url = attractorLayer(p, wheel, 220, !light) ?? attractorLayer(base, wheel, 220, !light);
             if (!url) return;
             el.setAttribute('href', url);
             requestAnimationFrame(() => el.classList.add('on'));
@@ -418,10 +434,10 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
       const [n1, d1] = MAURER_OUTER[Math.floor(rng() * MAURER_OUTER.length)];
       const [n2, d2] = MAURER_INNER[Math.floor(rng() * MAURER_INNER.length)];
       body = `<circle r="99" fill="url(#${uid}-halo)"/>
-        <g class="spin-slower">${maurer(n1, d1, 96, col, 0.95)}<path d="${rose(n1, 96)}" fill="none" stroke="#fff" stroke-width="1.3" stroke-opacity=".75"/></g>
-        <g class="spin-rev-slow">${maurer(n2, d2, 50, col, 0.8, 0.5)}<path d="${rose(n2, 50)}" fill="none" stroke="#fff" stroke-width="1" stroke-opacity=".8"/></g>
-        <g class="breathe"><path d="${star(8, 13, 4.5)}" fill="#fff"/></g>
-        ${sparkles(rng, 16, ['#ffffff', ...col])}`;
+        <g class="spin-slower">${maurer(n1, d1, 96, col, 0.95)}<path d="${rose(n1, 96)}" fill="none" stroke="${glint}" stroke-width="1.3" stroke-opacity="${light ? 0.45 : 0.75}"/></g>
+        <g class="spin-rev-slow">${maurer(n2, d2, 50, col, 0.8, 0.5)}<path d="${rose(n2, 50)}" fill="none" stroke="${glint}" stroke-width="1" stroke-opacity="${light ? 0.5 : 0.8}"/></g>
+        <g class="breathe"><path d="${star(8, 13, 4.5)}" fill="${light ? col[0] : '#fff'}"/></g>
+        ${sparkles(rng, 16, [glint, ...col])}`;
     }
   }
   const halo = col.length ? col[(tier + 1) % col.length] : '#000';
@@ -431,7 +447,7 @@ export function craftSvg(tier: number, palette: Palette = randomPalette(), rng: 
 </svg>`;
 }
 
-/** A craft element with its own random palette. */
+/** A craft element in a random palette (callers on a palette page pass craftSvg their own). */
 export function craftEl(tier: number, cls = ''): HTMLElement {
   const el = document.createElement('div');
   el.className = `craft tier-${tier} ${cls}`.trim();

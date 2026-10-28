@@ -55,7 +55,7 @@ The sections after this one describe the original pair-based design ("Classic").
 
   No time bonus, no tier multiplier.
 - **Craft rank** by the running total (max 500), one rank per 100 points: Prima Materia ("a starter batch") < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 400 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).
-- **Craft art** (`src/ui/craft.ts`), recolored from a random palette every render; more colors and brighter rank by rank (muddy, then 3, 4, 5, 8 colors):
+- **Craft art** (`src/ui/craft.ts`), drawn in the palette of the page it's on (result sheet, summary), with new random shapes every render. Each rank uses more of the palette's colors, nudged a little: Prima Materia muddy, Trinket 3 colors a touch dull, Curio 4 as they are, Marvel 5 a little brighter, Magnum Opus 8 (the 5 accents plus blends) brighter still.
   - **Prima Materia:** dull, round-ish blobs slumped together, with drips.
   - **Trinket:** polygons (5–8 sides) budding out of a rocking core, drifting a little and fading; every piece always touches the core.
   - **Curio:** an artifact: a polygonal plate inlaid with two rings of slightly irregular, sheened polygons and crowned with rays. Everything is connected. A bulge flows round each ring while the rings turn slowly against each other.

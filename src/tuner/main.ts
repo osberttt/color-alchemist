@@ -652,7 +652,7 @@ root.replaceChildren(
         'section',
         { class: 'panel' },
         h('h3', null, 'Craft art'),
-        h('p', { class: 'muted small' }, 'Every render picks a random palette and new random shapes.'),
+        h('p', { class: 'muted small' }, 'In the game a craft uses the palette of its page; here every render picks a random palette and new random shapes.'),
         h('button', { class: 'btn', type: 'button', onclick: () => paintCrafts() }, 'Re-roll'),
         craftGallery,
       ),

@@ -67,7 +67,9 @@ export function sevenSummaryScreen(r: SevenRun): void {
       });
       const final = craftTierFor(res.total);
       const hero = h('div', { class: 'craft-stage hero' });
-      hero.innerHTML = craftSvg(0);
+      // The craft is drawn in this page's palette.
+      const pagePalette = currentPalette() ?? undefined;
+      hero.innerHTML = craftSvg(0, pagePalette);
       const craftTitle = h('h2', { class: 'band' }, SEVEN.craftTiers[0].name);
       const blurb = h('p', { class: 'opus' }, CRAFT_BLURBS[0]);
       const totalEl = h('p', { class: 'total mono' }, '0');
@@ -150,7 +152,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
         at(evolveStart + (t - 1) * stepMs, () => {
           hero.classList.remove('craft-promote');
           void hero.offsetWidth;
-          hero.innerHTML = craftSvg(t);
+          hero.innerHTML = craftSvg(t, pagePalette);
           hero.classList.add('craft-promote');
           craftTitle.textContent = SEVEN.craftTiers[t].name;
           blurb.textContent = CRAFT_BLURBS[t];
