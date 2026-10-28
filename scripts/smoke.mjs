@@ -63,7 +63,7 @@ async function session(name, viewport, mobile) {
   await shot('04-hunt');
   await overflow('hunt');
   const accs = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 5; i++) {
     await page.waitForFunction(() => document.querySelector('.vf-overlay.intro')?.hasAttribute('hidden') && document.querySelector('.sheet')?.hasAttribute('hidden'), null, { timeout: 8000 });
     // Aim: zoom in a little so the machine sits inside an object more often.
     if (i % 2 === 1) await page.keyboard.press('+');

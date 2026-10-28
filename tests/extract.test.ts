@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ciede2000, hexToCielab, linearToCielab } from '../src/color/cielab';
+import { ciede2000, ciede2000Parts, hexToCielab, linearToCielab } from '../src/color/cielab';
 import { hexToLinear } from '../src/color/oklab';
 import type { Plate } from '../src/color/plate';
 import { COLORS, color } from '../src/data/colors';
@@ -39,6 +39,16 @@ describe('CIEDE2000 (Sharma, Wu & Dalal 2005 test data)', () => {
     const b = hexToCielab('#ceb301');
     expect(ciede2000(a, a)).toBe(0);
     expect(ciede2000(a, b)).toBeCloseTo(ciede2000(b, a), 9);
+  });
+
+  it('splits into lightness, chroma and hue terms that add in quadrature', () => {
+    const a = hexToCielab('#029386');
+    const p = ciede2000Parts(a, hexToCielab('#ceb301'));
+    expect(p.dE).toBeCloseTo(Math.sqrt(p.l ** 2 + p.c ** 2 + p.h ** 2 + p.cross), 9);
+    const darker = ciede2000Parts(a, { ...a, L: a.L - 5 });
+    expect(Math.abs(darker.l)).toBeCloseTo(darker.dE, 9);
+    expect(darker.c).toBeCloseTo(0, 12);
+    expect(darker.h).toBeCloseTo(0, 12);
   });
 });
 
@@ -92,27 +102,26 @@ describe('the color extracting machine', () => {
 
 describe('ranks', () => {
   it('color tiers by ΔE00', () => {
-    expect(tierFor(0.5).name).toBe('Flawless');
-    expect(tierFor(2).name).toBe('Harmonious');
-    expect(tierFor(4).name).toBe('Kindred');
-    expect(tierFor(7).name).toBe('Wavering');
-    expect(tierFor(12).name).toBe('Awry');
-    expect(tierFor(15).name).toBe('Botched');
-    expect(tierFor(40).name).toBe('Botched');
+    expect(tierFor(1).name).toBe('Flawless');
+    expect(tierFor(4).name).toBe('Harmonious');
+    expect(tierFor(10).name).toBe('Kindred');
+    expect(tierFor(20).name).toBe('Wavering');
+    expect(tierFor(35).name).toBe('Awry');
+    expect(tierFor(41).name).toBe('Botched');
+    expect(tierFor(60).name).toBe('Botched');
   });
 
   it("Krillion's exact points per rank", () => {
-    expect([0.5, 2, 4, 7, 12, 40].map(scoreFor)).toEqual([100, 85, 60, 30, 15, 10]);
+    expect([1, 4, 10, 20, 35, 50].map(scoreFor)).toEqual([100, 85, 60, 30, 15, 10]);
   });
 
   it('craft tiers climb with the running total', () => {
-    expect(craftTierFor(70).name).toBe('Gunk');
-    expect(craftTierFor(150).name).toBe('Trinket');
-    expect(craftTierFor(250).name).toBe('Curio');
-    expect(craftTierFor(380).name).toBe('Marvel');
-    expect(craftTierFor(500).name).toBe('Quintessence');
-    expect(craftTierFor(700).name).toBe('Magnum Opus');
-    expect(craftTierFor(700).next).toBeNull();
+    expect(craftTierFor(70).name).toBe('Prima Materia');
+    expect(craftTierFor(100).name).toBe('Trinket');
+    expect(craftTierFor(200).name).toBe('Curio');
+    expect(craftTierFor(300).name).toBe('Marvel');
+    expect(craftTierFor(400).name).toBe('Magnum Opus');
+    expect(craftTierFor(500).next).toBeNull();
   });
 });
 
@@ -129,17 +138,19 @@ describe('game weighting (kL 0.8, kC 1, kH 2 within 30°)', () => {
     const standard = ciede2000(teal, s);
     const game = distance(color('teal').target, s);
     expect(game).toBeCloseTo(standard / 2, 1);
-    // A hue shift that standard CIEDE2000 calls Wavering is Kindred in the game.
-    expect(tierFor(standard).name).toBe('Awry');
-    expect(tierFor(game).name).toBe('Kindred');
+    // A hue shift that standard CIEDE2000 calls Kindred is Harmonious in the game.
+    expect(tierFor(standard).name).toBe('Kindred');
+    expect(tierFor(game).name).toBe('Harmonious');
   });
 
-  it('a grey is Botched for every color except Charcoal', () => {
+  it('a grey earns Wavering, except on the two near-grey colors', () => {
+    // With Wavering up to ΔE 30 a grey scores Wavering (ANALYSIS §4.12): the best grey
+    // sits at ΔE 16.8–29.5 for 53 colors.
     for (const c of COLORS) {
-      if (c.id === 'charcoal') continue;
+      if (c.name === 'Charcoal' || c.name === 'Steel Blue') continue;
       const t = hexToCielab(c.target);
       // The best grey: same lightness, no chroma.
-      expect(tierFor(distance(c.target, { L: t.L, a: 0, b: 0 })).name, c.name).toBe('Botched');
+      expect(tierFor(distance(c.target, { L: t.L, a: 0, b: 0 })).name, c.name).toBe('Wavering');
     }
   });
 

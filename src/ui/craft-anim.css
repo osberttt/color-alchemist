@@ -10,8 +10,7 @@
 .craft-svg .spin-rev,
 .craft-svg .spin-rev-slow,
 .craft-svg .spin-slower,
-.craft-svg .breathe,
-.craft-svg .ooze {
+.craft-svg .breathe {
   transform-origin: 0 0;
 }
 .craft-svg .spin-slow {
@@ -29,6 +28,7 @@
 .craft-svg .breathe {
   animation: craft-breathe 2.8s ease-in-out infinite;
 }
+/* Prima Materia: the blobs slump and spread; drips fall. */
 .craft-svg .ooze {
   transform-origin: 0 60px;
   animation: craft-ooze 3.2s ease-in-out infinite;
@@ -36,15 +36,55 @@
 .craft-svg .drip {
   animation: craft-drip 2.4s ease-in infinite;
 }
-.craft-svg .bob {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: craft-bob 2.6s ease-in-out infinite;
-}
 .craft-svg .twinkle {
   transform-box: fill-box;
   transform-origin: center;
   animation: craft-twinkle 2.2s ease-in-out infinite;
+}
+/* Curio: each piece breathes outward and back around the craft's center; delays set by
+   its place in the ring make a bulge flow round. */
+.craft-svg .wave {
+  transform-origin: 0 0;
+  animation: craft-wave 2.8s ease-in-out infinite;
+}
+/* Trinket and Curio: the core rocks and breathes a little. */
+.craft-svg .rock,
+.craft-svg .pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.craft-svg .rock {
+  animation: craft-rock 3.4s ease-in-out infinite;
+}
+.craft-svg .pulse {
+  animation: craft-pulse 2.6s ease-in-out infinite;
+}
+/* Trinket: pieces bud out of the center (--x, --y), drift a little (--dx, --dy) and fade.
+   With reduced motion they rest where their inline transform puts them. */
+.craft-svg .bud {
+  transform-origin: 0 0;
+  animation: craft-bud 2.6s cubic-bezier(0.25, 0.7, 0.35, 1) infinite;
+}
+/* Marvel: three cloud layers drift and fade on clocks that never line up. */
+.craft-svg .gas {
+  transform-origin: 0 0;
+  animation: craft-gas 4.4s ease-in-out infinite;
+}
+.craft-svg .cloud {
+  opacity: 0;
+  transition: opacity 1.2s ease-out;
+}
+.craft-svg .cloud.on {
+  opacity: 1;
+}
+.craft-svg .gas-1 {
+  animation-duration: 5.9s;
+  animation-delay: -2s;
+  animation-direction: reverse;
+}
+.craft-svg .gas-2 {
+  animation-duration: 7.3s;
+  animation-delay: -4.5s;
 }
 @keyframes craft-spin {
   to {
@@ -74,9 +114,13 @@
     opacity: 0;
   }
 }
-@keyframes craft-bob {
+@keyframes craft-wave {
+  0%,
+  100% {
+    transform: scale(0.96) rotate(-2deg);
+  }
   50% {
-    transform: translateY(-6px) rotate(6deg);
+    transform: scale(1.06) rotate(2deg);
   }
 }
 @keyframes craft-twinkle {
@@ -88,6 +132,59 @@
   50% {
     opacity: 1;
     scale: 1.2;
+  }
+}
+@keyframes craft-rock {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+@keyframes craft-pulse {
+  0%,
+  100% {
+    transform: scale(0.93);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+@keyframes craft-bud {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  40% {
+    transform: translate(var(--x), var(--y)) scale(1);
+  }
+  80% {
+    transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))) scale(0.92);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))) scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes craft-gas {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 0.9;
+  }
+  30% {
+    transform: translate(4px, -5px) rotate(5deg) scale(1.05);
+    opacity: 0.5;
+  }
+  65% {
+    transform: translate(-5px, 3px) rotate(-4deg) scale(0.96);
+    opacity: 0.8;
   }
 }
 @media (prefers-reduced-motion: reduce) {

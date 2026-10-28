@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Palettes preview</title>
+    <!-- Dev-only preview of src/ui/palettes.ts: open /docs/previews/palettes.html with `npm run dev`. -->
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #1c1b22;
+        color: #eee;
+        font: 14px system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      p.lead {
+        margin: 0 0 14px;
+        color: #a9a9b3;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        border-radius: 12px;
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+      .card strong {
+        font-size: 16px;
+      }
+      .sw {
+        display: flex;
+        gap: 6px;
+      }
+      .sw span {
+        flex: 1;
+        height: 38px;
+        border-radius: 8px;
+        display: grid;
+        place-items: end center;
+        font: 10px ui-monospace, monospace;
+        padding-bottom: 3px;
+      }
+      .meta {
+        font: 11px ui-monospace, monospace;
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Palettes (src/ui/palettes.ts)</h1>
+    <p class="lead">Each card shows the page background, text color and the five accents. Menu pages pick one at random per visit; crafts take their hues from one too.</p>
+    <div class="grid" id="grid"></div>
+    <script type="module">
+      import { PALETTES } from '/src/ui/palettes.ts';
+
+      const ink = (hex) => {
+        const n = parseInt(hex.slice(1), 16);
+        const l = 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+        return l > 140 ? '#111' : '#fff';
+      };
+      document.getElementById('grid').append(
+        ...PALETTES.map((p) => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.background = p.bg;
+          card.style.color = p.fg;
+          card.innerHTML =
+            `<strong>${p.name}</strong><span class="meta">${p.mood} · bg ${p.bg} · text ${p.fg}</span>` +
+            `<div class="sw">${p.accents.map((a) => `<span style="background:${a};color:${ink(a)}">${a}</span>`).join('')}</div>`;
+          return card;
+        }),
+      );
+    </script>
+  </body>
+</html>

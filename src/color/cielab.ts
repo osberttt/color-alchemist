@@ -98,8 +98,27 @@ function smoothstep(a: number, b: number, x: number): number {
 
 const STANDARD: DeltaWeights = { kL: 1, kC: 1, kH: 1 };
 
+/**
+ * A CIEDE2000 difference split into what people see: ΔE² = l² + c² + h² + cross.
+ * Several small misses add up like sides of a box, not end to end.
+ */
+export interface DeltaParts {
+  dE: number;
+  /** Weighted lightness, chroma and hue terms (signed, in ΔE units). */
+  l: number;
+  c: number;
+  h: number;
+  /** The blue-region rotation term Rt·c·h; near zero outside blues. */
+  cross: number;
+}
+
 /** CIEDE2000 color difference. Standard when weights are omitted (kL = kC = kH = 1). */
 export function ciede2000(c1: Lab76, c2: Lab76, k: DeltaWeights = STANDARD): number {
+  return ciede2000Parts(c1, c2, k).dE;
+}
+
+/** CIEDE2000 with its lightness, chroma and hue terms (for the tuner's breakdown). */
+export function ciede2000Parts(c1: Lab76, c2: Lab76, k: DeltaWeights = STANDARD): DeltaParts {
   const C1 = Math.hypot(c1.a, c1.b);
   const C2 = Math.hypot(c2.a, c2.b);
   const Cbar7 = ((C1 + C2) / 2) ** 7;
@@ -152,5 +171,6 @@ export function ciede2000(c1: Lab76, c2: Lab76, k: DeltaWeights = STANDARD): num
   const l = dLp / (k.kL * Sl);
   const c = dCp / (k.kC * Sc);
   const hh = dHp / (kH * Sh);
-  return Math.sqrt(l * l + c * c + hh * hh + Rt * c * hh);
+  const cross = Rt * c * hh;
+  return { dE: Math.sqrt(l * l + c * c + hh * hh + cross), l, c, h: hh, cross };
 }

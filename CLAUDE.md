@@ -2,7 +2,7 @@
 
 A mobile-first browser arcade game for the **Digit7 Jam** (HTML arcade game tournament). Tagline: **"is your life full of colors?"**
 
-**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is 7 colors, one at a time, 60 s each, and builds **one craft**. The live camera shows the **color extracting machine** (a centered square framed in the target color) and a live "extracted" swatch. The machine extracts the **average color of everything inside it** (blending is allowed); the color is hidden until a blend animation reveals it after the snap. It's judged with **weighted CIEDE2000** (forgiving on small hue shifts, a bit strict on lightness, no light correction) and scored with **Krillion's exact points** per rank: Botched 10, Awry 15, Wavering 30, Kindred 60, Harmonious 85, Flawless 100; time out = 0. Craft ranks by running total: Gunk, Trinket, Curio, Marvel, Quintessence, Magnum Opus. No editing, no Grimoire, no rerolls, no time bonus. See `docs/GDD.md` §0 and `docs/ANALYSIS.md` §4.
+**Current design: "Seven Colors"** (very close to Krillion's structure, kept deliberately simple). A run is **5 colors** (the code still calls the mode "Seven Colors"), one at a time, 60 s each, and builds **one craft**. The live camera shows the **color extracting machine** (a centered square framed in the target color) and a live "extracted" swatch. The machine extracts the **average color of everything inside it** (blending is allowed); the color is hidden until a blend animation reveals it after the snap. It's judged with **weighted CIEDE2000** (forgiving on small hue shifts, a bit strict on lightness, no light correction) and scored with **Krillion's exact points** per rank: Botched 10, Awry 15, Wavering 30, Kindred 60, Harmonious 85, Flawless 100; time out = 0. Craft ranks by running total (max 500, one per 100 points): Prima Materia ("a starter batch", never framed as failure), Trinket, Curio, Marvel, Magnum Opus. No editing, no Grimoire, no rerolls, no time bonus. See `docs/GDD.md` §0 and `docs/ANALYSIS.md` §4.
 
 ## How to work with the user
 
@@ -43,7 +43,7 @@ src/
   color/plate.ts               plates (linear RGB), capture averaging
   scoring/extract.ts           ★ the color extracting machine: extract (mean), judge (ΔE00 → score, rank), craft rank
   scoring/score.ts, assay.ts   Classic-mode scoring (not used by Seven Colors)
-  ui/craft.ts                  generated craft art per rank (random palette each render)
+  ui/craft.ts                  generated craft art per rank (random palette each render; Marvel's attractor is drawn just after insertion)
   data/colors.ts, tuning.ts    55-color Codex; ALL tunable numbers (SEVEN = this mode)
   practice/plates.ts           painted still lifes for the no-camera practice mode
   meta/                        rng, storage (localStorage, try/catch), share text
@@ -58,9 +58,9 @@ docs/GDD.md, docs/ANALYSIS.md
 
 - One module owns the color math (`src/color`, `src/scoring`). Never compute distances in raw sRGB.
 - Seven Colors: extraction = linear-RGB mean of the machine's pixels. It is **hidden while hunting** ("?") and revealed after the snap by the blend animation (`mosaic()`, whose last step equals the extraction).
-- Distance = CIEDE2000 vs the target hex with `SEVEN.deltaWeights` (kL 0.8 stricter lightness; kC 1; kH 2 for hue shifts ≤ 30° easing to 1 by 75°; non-standard `hueLenientTo/hueStrictFrom`). Ranks: Flawless ≤ 1, Harmonious ≤ 2.5, Kindred ≤ 5, Wavering ≤ 8, Awry ≤ 14, else Botched; a test enforces that a grey is Botched for every color except Charcoal.
+- Distance = CIEDE2000 vs the target hex with `SEVEN.deltaWeights` (kL 0.8 stricter lightness; kC 1; kH 2 for hue shifts ≤ 30° easing to 1 by 75°; non-standard `hueLenientTo/hueStrictFrom`). Ranks: Flawless ≤ 2, Harmonious ≤ 5, Kindred ≤ 15, Wavering ≤ 30, Awry ≤ 40, else Botched (the user's call, ANALYSIS §4.12); a test checks that a grey is Wavering for every color except Charcoal and Steel Blue.
 - Saved tuner values carry a signature of the defaults and are dropped automatically when `tuning.ts` defaults change.
-- Points are **Krillion's exact values per rank** (100/85/60/30/15/10), 0 when time runs out. Craft = running total (max 700). Ranks, points and thresholds live in `SEVEN` (`src/data/tuning.ts`).
+- Points are **Krillion's exact values per rank** (100/85/60/30/15/10), 0 when time runs out. Craft = running total (max 500). Ranks, points and thresholds live in `SEVEN` (`src/data/tuning.ts`).
 - **No light correction** (a deliberate user decision, ANALYSIS §4.6–4.7). Plain CIEDE2000 is tested against Sharma 2005 reference pairs; keep those tests passing.
 - All numbers live in `src/data/tuning.ts` (`SEVEN` for this mode). Score scale and craft thresholds will need retuning from real playtests.
 
@@ -70,8 +70,9 @@ docs/GDD.md, docs/ANALYSIS.md
 - `npm test` (Vitest), `npm run typecheck`, `npm run build` (→ `dist/`, the jam build), `npm run preview`.
 - **Mobile test deploy:** pushing to `main` runs `.github/workflows/pages.yml` (npm ci → tests → `npm run build:pages` → GitHub Pages) at https://osberttt.github.io/color-alchemist/. `build:pages` = the normal build plus a `noindex` meta tag. Pages must be set to "Source: GitHub Actions" in the repo settings.
 - Smoke test: start `npx vite --port 5199 --strictPort`, then `$env:PLAYWRIGHT_BROWSERS_PATH='0'; node scripts/smoke.mjs http://localhost:5199/ <outDir>` (screenshots at 360×640 and 1280×720, fake camera, fails on page errors and horizontal overflow).
+- **Previews for the user** (art options, layouts) go in `docs/previews/` as a self-contained `.html`, rendered next to it as a `.png` with `$env:PLAYWRIGHT_BROWSERS_PATH='0'; node scripts/render-preview.mjs docs/previews/<name>.html`. Never in the Claude temp folder.
 - Title screen shows **"Test photos (dev only)"** in dev builds: plays with the photos in `test-photos/` (drag to aim, Next, Open any image file).
-- **Scoring tuner:** `tuner.html` (`/tuner.html` in dev; also in the GitHub Pages build, never in the jam build). It edits rank thresholds, score scale and craft thresholds, shows the worst color that still earns each rank in 6 directions, and has a live camera check. Values save to localStorage (`TUNING_OVERRIDE_KEY`) and the game reads them in dev/test builds only (`tuningOverridesAllowed()`). When the user sends a snippet from "Copy snippet", paste it into `SEVEN` in `src/data/tuning.ts`.
+- **Scoring tuner:** `tuner.html` (`/tuner.html` in dev; also in the GitHub Pages build, never in the jam build). It edits weights, rank thresholds, points and craft thresholds. Real misses are combined (darker + duller + hue turned), so it has a **mix explorer** (three offsets at once, with the lightness/saturation/hue parts from `ciede2000Parts`), three **rank maps** (every combination of two offsets), per-rank examples with one, two or three things off, and a live camera check that breaks samples down the same way. Values save to localStorage (`TUNING_OVERRIDE_KEY`) and the game reads them in dev/test builds only (`tuningOverridesAllowed()`). When the user sends a snippet from "Copy snippet", paste it into `SEVEN` in `src/data/tuning.ts`.
 
 ## Conventions
 

@@ -1,13 +1,15 @@
-// The scoring tuner (dev and test builds only). Pick a target, move the rank
-// thresholds, and see the worst color that still earns each rank, in six
-// directions, side by side with the target. Uses the game's real scoring code.
+// The scoring tuner (dev and test builds only). Pick a target and move the values.
+// A real capture is rarely off in just one way: it's a bit darker AND duller AND
+// turned in hue at once. So besides one-direction examples, the tuner has a mix
+// explorer (three offsets together, and how they add up) and rank maps that paint
+// every combination of two offsets. Everything uses the game's real scoring code.
 
 import '@fontsource-variable/inter/wght.css';
 import '@fontsource/jetbrains-mono/400.css';
 import './tuner.css';
 import { COLORS, TIER_LABEL } from '../data/colors';
 import { SEVEN, SEVEN_DEFAULTS, applyTunables, clearTunables, currentTunables, saveTunables, type SevenTunables } from '../data/tuning';
-import { ciede2000, cielabToLinear, fromLCh, hexToCielab, linearToCielab, toLCh, type LCh76, type Lab76 } from '../color/cielab';
+import { ciede2000, ciede2000Parts, cielabToLinear, fromLCh, hexToCielab, linearToCielab, toLCh, type DeltaParts, type LCh76, type Lab76 } from '../color/cielab';
 import { linearToHex } from '../color/oklab';
 import { camera, CAMERA_ERROR_TEXT } from '../camera/camera';
 import { cameraSource, meanOfRect, squareRect, viewRect } from '../camera/source';
@@ -22,19 +24,106 @@ interface Target {
   meta: string;
 }
 
-type DirId = 'lighter' | 'darker' | 'duller' | 'vivid' | 'hue+' | 'hue-';
-const DIRS: { id: DirId; label: string }[] = [
-  { id: 'lighter', label: 'lighter' },
-  { id: 'darker', label: 'darker' },
-  { id: 'duller', label: 'duller' },
-  { id: 'vivid', label: 'more vivid' },
-  { id: 'hue+', label: 'hue →' },
-  { id: 'hue-', label: 'hue ←' },
-];
-
 const CRAFT_NAMES = SEVEN.craftTiers.map((t) => t.name);
 const TIER_NAMES = SEVEN.colorTiers.map((t) => t.name);
 const fmt1 = (n: number) => (Number.isFinite(n) ? n.toFixed(n < 10 ? 2 : 1) : '∞');
+const RAD = Math.PI / 180;
+
+// --- misses: how a color can be off ---------------------------------------------------
+/** A miss as people describe it: lighter/darker (L*), more vivid/duller (chroma C*), hue turned (°). */
+interface Offset {
+  dL: number;
+  dC: number;
+  dh: number;
+}
+type Axis = keyof Offset;
+
+const ZERO: Offset = { dL: 0, dC: 0, dh: 0 };
+
+interface Shifted {
+  lab: Lab76;
+  hex: string;
+  /** False when the miss asks for lightness outside 0–100 or negative chroma. */
+  possible: boolean;
+  /** False when no screen or camera (sRGB) can produce it exactly. */
+  inGamut: boolean;
+}
+
+function shifted(base: LCh76, o: Offset): Shifted {
+  const L = base.L + o.dL;
+  const C = base.C + o.dC;
+  const lab = fromLCh({ L: Math.min(100, Math.max(0, L)), C: Math.max(0, C), h: base.h + o.dh });
+  const rgb = cielabToLinear(lab);
+  return {
+    lab,
+    hex: linearToHex(...rgb),
+    possible: L >= 0 && L <= 100 && C >= -1e-9,
+    inGamut: rgb.every((v) => v >= -0.002 && v <= 1.002),
+  };
+}
+
+/** How `lab` differs from the target, in the same terms as the mix. */
+function offsetOf(base: LCh76, lab: Lab76): Offset {
+  const s = toLCh(lab);
+  let dh = s.h - base.h;
+  if (dh > 180) dh -= 360;
+  else if (dh < -180) dh += 360;
+  return { dL: s.L - base.L, dC: s.C - base.C, dh };
+}
+
+// Approximate CIELAB hue angles of familiar names, to say which way a hue turns.
+const HUE_NAMES: [number, string][] = [
+  [0, 'pink'],
+  [40, 'red'],
+  [72, 'orange'],
+  [100, 'yellow'],
+  [136, 'green'],
+  [190, 'cyan'],
+  [240, 'sky blue'],
+  [290, 'blue'],
+  [325, 'purple'],
+];
+
+function hueName(h: number): string {
+  let best = HUE_NAMES[0][1];
+  let bestD = Infinity;
+  for (const [a, name] of HUE_NAMES) {
+    const d = Math.abs((((h - a) % 360) + 540) % 360 - 180);
+    if (d < bestD) {
+      bestD = d;
+      best = name;
+    }
+  }
+  return best;
+}
+
+/** The next named hue when turning from `h` in direction `sign`. */
+function towards(h: number, sign: number): string {
+  const here = hueName(h);
+  for (let step = 10; step <= 180; step += 5) {
+    const name = hueName(h + sign * step);
+    if (name !== here) return name;
+  }
+  return here;
+}
+
+const sgn = (v: number) => (v < 0 ? '−' : '+');
+const round = (v: number, step: number) => Math.round(v / step) * step;
+
+function words(o: Offset, base: LCh76): string {
+  const parts: string[] = [];
+  if (Math.abs(o.dL) >= 0.05) parts.push(`${o.dL > 0 ? 'lighter' : 'darker'} by ${Math.abs(o.dL).toFixed(1)}`);
+  if (Math.abs(o.dC) >= 0.05) {
+    const pct = base.C > 2 ? ` (${Math.round((Math.abs(o.dC) / base.C) * 100)}%)` : '';
+    parts.push(`${o.dC > 0 ? 'more vivid' : 'duller'} by ${Math.abs(o.dC).toFixed(1)}${pct}`);
+  }
+  if (Math.abs(o.dh) >= 0.5) parts.push(`hue ${Math.round(Math.abs(o.dh))}° toward ${towards(base.h, Math.sign(o.dh))}`);
+  return parts.length ? parts.join(', ') : 'exactly the target';
+}
+
+function short(o: Offset): string {
+  return `L${sgn(o.dL)}${Math.abs(o.dL).toFixed(1)} C${sgn(o.dC)}${Math.abs(o.dC).toFixed(1)} h${sgn(o.dh)}${Math.round(Math.abs(o.dh))}°`;
+}
 
 // --- state -------------------------------------------------------------------------
 let t: SevenTunables = currentTunables();
@@ -42,6 +131,11 @@ let index = COLORS.findIndex((c) => c.id === 'teal');
 let custom: Target | null = null;
 let place: 'edge' | 'middle' = 'edge';
 let bg: 'grey' | 'dark' | 'light' = 'grey';
+/** How many kinds of miss the per-rank examples combine. */
+let combo: 1 | 2 | 3 = 1;
+let zoom: 'close' | 'wide' = 'wide';
+/** The mix explorer's miss. Kept when the target changes, so one miss can be tried on many colors. */
+let mix: Offset = { ...ZERO };
 
 const target = (): Target => {
   if (custom) return custom;
@@ -54,55 +148,60 @@ function save(): void {
   saveTunables(t);
 }
 
-// --- color examples -----------------------------------------------------------------
-function move(base: LCh76, dir: DirId, amount: number): LCh76 {
-  switch (dir) {
-    case 'lighter':
-      return { ...base, L: base.L + amount };
-    case 'darker':
-      return { ...base, L: base.L - amount };
-    case 'duller':
-      return { ...base, C: base.C - amount };
-    case 'vivid':
-      return { ...base, C: base.C + amount };
-    case 'hue+':
-      return { ...base, h: base.h + amount };
-    default:
-      return { ...base, h: base.h - amount };
-  }
+// --- examples per rank ----------------------------------------------------------------
+/** A direction of miss: each part −1, 0 or +1 (lightness, chroma, hue). */
+interface Dir {
+  L: number;
+  C: number;
+  H: number;
 }
 
-function maxAmount(base: LCh76, dir: DirId): number {
-  if (dir === 'lighter') return 100 - base.L;
-  if (dir === 'darker') return base.L;
-  if (dir === 'duller') return base.C;
-  if (dir === 'vivid') return 160;
-  return 180;
+function dirs(n: 1 | 2 | 3): Dir[] {
+  const out: Dir[] = [];
+  for (const L of [1, -1, 0]) for (const C of [0, -1, 1]) for (const H of [0, 1, -1]) if ([L, C, H].filter(Boolean).length === n) out.push({ L, C, H });
+  return out;
+}
+
+function dirLabel(d: Dir, base: LCh76): string {
+  return [d.L > 0 ? 'lighter' : d.L < 0 ? 'darker' : '', d.C < 0 ? 'duller' : d.C > 0 ? 'vivid' : '', d.H ? `→ ${towards(base.h, d.H)}` : ''].filter(Boolean).join(' · ');
+}
+
+/** `s` CIELAB units along a direction: every active part moves by s (hue by an arc of length s). */
+function along(base: LCh76, d: Dir, s: number): Offset {
+  return { dL: d.L * s, dC: d.C * s, dh: (d.H * s) / Math.max(base.C, 5) / RAD };
+}
+
+function maxAlong(base: LCh76, d: Dir): number {
+  return Math.min(
+    d.L > 0 ? 100 - base.L : d.L < 0 ? base.L : Infinity,
+    d.C < 0 ? base.C : d.C > 0 ? 160 : Infinity,
+    d.H ? Math.PI * Math.max(base.C, 5) : Infinity,
+  );
 }
 
 interface Example {
+  offset: Offset;
   hex: string;
   dE: number;
   status: 'ok' | 'unreachable' | 'gamut';
 }
 
-/** The color `d` ΔE00 away from the target in one direction (bisection). */
-function exampleAt(targetLab: Lab76, dir: DirId, d: number): Example {
-  const base = toLCh(targetLab);
-  const max = maxAmount(base, dir);
-  const dist = (a: number) => ciede2000(targetLab, fromLCh(move(base, dir, a)), t.weights);
-  if (max <= 0 || dist(max) < d) return { hex: '#000000', dE: d, status: 'unreachable' };
+/** The color `dE` away from the target along a direction (bisection). */
+function exampleAt(tLab: Lab76, d: Dir, dE: number): Example {
+  const base = toLCh(tLab);
+  const max = maxAlong(base, d);
+  const at = (s: number) => shifted(base, along(base, d, s));
+  const dist = (s: number) => ciede2000(tLab, at(s).lab, t.weights);
+  if (max <= 0 || dist(max) < dE) return { offset: along(base, d, Math.max(0, max)), hex: '#000000', dE, status: 'unreachable' };
   let lo = 0;
   let hi = max;
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
-    if (dist(mid) < d) lo = mid;
+    if (dist(mid) < dE) lo = mid;
     else hi = mid;
   }
-  const lab = fromLCh(move(base, dir, hi));
-  const [r, g, b] = cielabToLinear(lab);
-  const inGamut = [r, g, b].every((v) => v >= -0.002 && v <= 1.002);
-  return { hex: linearToHex(r, g, b), dE: ciede2000(targetLab, lab, t.weights), status: inGamut ? 'ok' : 'gamut' };
+  const s = at(hi);
+  return { offset: along(base, d, hi), hex: s.hex, dE: dist(hi), status: s.inGamut ? 'ok' : 'gamut' };
 }
 
 function bands(): { name: string; lo: number; hi: number }[] {
@@ -169,13 +268,206 @@ const pointFields = TIER_NAMES.map((name, i) =>
   }),
 );
 const craftFields = t.craftMins.map((_, i) =>
-  numberField(`${CRAFT_NAMES[i + 1]} ≥`, 5, 5, 700, (v) => {
+  numberField(`${CRAFT_NAMES[i + 1]} ≥`, 5, 5, SEVEN.sections * 100, (v) => {
     t.craftMins[i] = v;
     for (let k = i + 1; k < t.craftMins.length; k++) if (t.craftMins[k] <= t.craftMins[k - 1]) t.craftMins[k] = t.craftMins[k - 1] + 5;
     for (let k = i - 1; k >= 0; k--) if (t.craftMins[k] >= t.craftMins[k + 1]) t.craftMins[k] = Math.max(5, t.craftMins[k + 1] - 5);
     changed();
   }),
 );
+
+function setMix(o: Partial<Offset>): void {
+  mix = { ...mix, ...o };
+  refreshMix();
+}
+
+const mixFields: Record<Axis, Field> = {
+  dL: numberField('Lightness (L*) ±', 0.5, -40, 40, (v) => setMix({ dL: v })),
+  dC: numberField('Saturation (C*) ±', 0.5, -60, 60, (v) => setMix({ dC: v })),
+  dh: numberField('Hue (°) ±', 1, -180, 180, (v) => setMix({ dh: v })),
+};
+
+// --- rank maps -------------------------------------------------------------------------
+const AXIS: Record<Axis, { name: string; step: number }> = {
+  dL: { name: 'lightness', step: 5 },
+  dC: { name: 'saturation', step: 6 },
+  dh: { name: 'hue', step: 12 },
+};
+const ZOOM = { close: 0.4, wide: 1 };
+const MAP_HALF = 7; // 15 × 15 cells
+const CELL = 18;
+
+interface MapView {
+  x: Axis;
+  y: Axis;
+  canvas: HTMLCanvasElement;
+  caption: HTMLElement;
+  top: HTMLElement;
+  bottom: HTMLElement;
+  left: HTMLElement;
+  right: HTMLElement;
+}
+
+const stepOf = (a: Axis) => AXIS[a].step * ZOOM[zoom];
+
+function makeMap(x: Axis, y: Axis): MapView {
+  const m: MapView = {
+    x,
+    y,
+    canvas: h('canvas', { 'aria-label': `Ranks for ${AXIS[x].name} × ${AXIS[y].name}` }),
+    caption: h('span', { class: 'muted small' }),
+    top: h('span'),
+    bottom: h('span'),
+    left: h('span'),
+    right: h('span'),
+  };
+  const pick = (e: PointerEvent) => {
+    const r = m.canvas.getBoundingClientRect();
+    const n = MAP_HALF * 2 + 1;
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
+    const j = Math.min(n - 1, Math.max(0, Math.floor(((e.clientY - r.top) / r.height) * n)));
+    setMix({ [x]: +((i - MAP_HALF) * stepOf(x)).toFixed(2), [y]: +((MAP_HALF - j) * stepOf(y)).toFixed(2) });
+  };
+  m.canvas.addEventListener('pointerdown', (e) => {
+    m.canvas.setPointerCapture(e.pointerId);
+    pick(e);
+  });
+  m.canvas.addEventListener('pointermove', (e) => e.buttons && pick(e));
+  return m;
+}
+
+const maps = [makeMap('dh', 'dL'), makeMap('dC', 'dL'), makeMap('dh', 'dC')];
+
+function axisEnd(a: Axis, sign: number, base: LCh76): string {
+  const v = MAP_HALF * stepOf(a);
+  const amount = `${sgn(sign)}${a === 'dh' ? `${Math.round(v)}°` : v.toFixed(0)}`;
+  if (a === 'dL') return `${sign > 0 ? 'lighter' : 'darker'} ${amount}`;
+  if (a === 'dC') return `${sign > 0 ? 'more vivid' : 'duller'} ${amount}`;
+  return `${towards(base.h, sign)} ${amount}`;
+}
+
+function drawMap(m: MapView, base: LCh76, tLab: Lab76): void {
+  const n = MAP_HALF * 2 + 1;
+  const size = n * CELL;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  if (m.canvas.width !== Math.round(size * dpr)) m.canvas.width = m.canvas.height = Math.round(size * dpr);
+  const ctx = m.canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  ctx.font = "600 10px 'JetBrains Mono', ui-monospace, monospace";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const sx = stepOf(m.x);
+  const sy = stepOf(m.y);
+  const rank: number[] = [];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const o: Offset = { ...mix, [m.x]: (i - MAP_HALF) * sx, [m.y]: (MAP_HALF - j) * sy };
+      const s = shifted(base, o);
+      const x0 = i * CELL;
+      const y0 = j * CELL;
+      if (!s.possible) {
+        rank.push(-1);
+        ctx.strokeStyle = 'rgba(0,0,0,.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x0 + 3, y0 + CELL - 3);
+        ctx.lineTo(x0 + CELL - 3, y0 + 3);
+        ctx.stroke();
+        continue;
+      }
+      const r = tierFor(ciede2000(tLab, s.lab, t.weights)).index;
+      rank.push(r);
+      ctx.fillStyle = s.hex;
+      ctx.fillRect(x0, y0, CELL, CELL);
+      const ink = s.lab.L > 62 ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.8)';
+      ctx.fillStyle = ink;
+      ctx.fillText(TIER_NAMES[r][0], x0 + CELL / 2, y0 + CELL / 2 + 0.5);
+      if (!s.inGamut) {
+        // Corner notch: no screen or camera can make this color exactly.
+        ctx.beginPath();
+        ctx.moveTo(x0 + CELL - 6, y0);
+        ctx.lineTo(x0 + CELL, y0);
+        ctx.lineTo(x0 + CELL, y0 + 6);
+        ctx.fill();
+      }
+    }
+  }
+  // Rank borders: a dark line with a light core, readable on any color.
+  const borders = new Path2D();
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const r = rank[j * n + i];
+      if (i + 1 < n && rank[j * n + i + 1] !== r) {
+        borders.moveTo((i + 1) * CELL, j * CELL);
+        borders.lineTo((i + 1) * CELL, (j + 1) * CELL);
+      }
+      if (j + 1 < n && rank[(j + 1) * n + i] !== r) {
+        borders.moveTo(i * CELL, (j + 1) * CELL);
+        borders.lineTo((i + 1) * CELL, (j + 1) * CELL);
+      }
+    }
+  }
+  ctx.lineCap = 'square';
+  ctx.strokeStyle = 'rgba(0,0,0,.85)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke(borders);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineWidth = 1;
+  ctx.stroke(borders);
+  // The mix's position in this slice.
+  const px = (mix[m.x] / sx + MAP_HALF + 0.5) * CELL;
+  const py = (MAP_HALF - mix[m.y] / sy + 0.5) * CELL;
+  if (px >= 0 && px <= size && py >= 0 && py <= size) {
+    ctx.beginPath();
+    ctx.arc(px, py, CELL * 0.55, 0, Math.PI * 2);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  const third = (['dL', 'dC', 'dh'] as const).find((a) => a !== m.x && a !== m.y)!;
+  const tv = mix[third];
+  m.caption.textContent = `${AXIS[third].name} ${Math.abs(tv) < 0.05 ? 'as the target' : `${sgn(tv)}${third === 'dh' ? `${Math.round(Math.abs(tv))}°` : Math.abs(tv).toFixed(1)}`}`;
+  m.top.textContent = `↑ ${axisEnd(m.y, 1, base)}`;
+  m.bottom.textContent = `↓ ${axisEnd(m.y, -1, base)}`;
+  m.left.textContent = `← ${axisEnd(m.x, -1, base)}`;
+  m.right.textContent = `${axisEnd(m.x, 1, base)} →`;
+}
+
+/** The rank ladder with the total, then each part on the same scale. */
+function breakdownSvg(p: DeltaParts): string {
+  const W = 420;
+  const left = 92;
+  const right = 44;
+  const rowH = 18;
+  const max = t.colorTierMax[t.colorTierMax.length - 1] * 1.4;
+  const X = (v: number) => left + (Math.min(Math.abs(v), max) / max) * (W - left - right);
+  const edges = [0, ...t.colorTierMax, max];
+  let s = '';
+  TIER_NAMES.forEach((name, i) => {
+    const a = X(edges[i]);
+    const b = X(Math.min(edges[i + 1], max));
+    if (b > a + 0.5) s += `<rect x="${a.toFixed(1)}" y="0" width="${(b - a).toFixed(1)}" height="${rowH}" class="seg${i % 2}"/><text x="${((a + b) / 2).toFixed(1)}" y="12.5" class="sl">${name[0]}</text>`;
+  });
+  s += `<text x="${left - 6}" y="12.5" class="bl">all together</text>`;
+  s += `<line x1="${X(p.dE).toFixed(1)}" x2="${X(p.dE).toFixed(1)}" y1="-3" y2="${rowH + 3}" class="mk"/>`;
+  s += `<text x="${W - right + 6}" y="12.5" class="bv">${p.dE.toFixed(2)}</text>`;
+  let y = rowH + 8;
+  for (const [name, v] of [
+    ['lightness', p.l],
+    ['saturation', p.c],
+    ['hue', p.h],
+  ] as const) {
+    s += `<text x="${left - 6}" y="${y + 12}" class="bl">${name}</text><rect x="${left}" y="${y + 4}" width="${(X(v) - left).toFixed(1)}" height="${rowH - 8}" class="bar"/><text x="${W - right + 6}" y="${y + 12}" class="bv">${Math.abs(v).toFixed(2)}</text>`;
+    y += rowH;
+  }
+  return `<svg viewBox="0 -4 ${W} ${y + 6}" width="100%">${s}</svg>`;
+}
 
 // --- static layout ----------------------------------------------------------------------
 const root = document.getElementById('tuner')!;
@@ -207,13 +499,70 @@ const stepTarget = (d: number) => () => {
 const curveBox = h('div', { class: 'curve' });
 const lastTierNote = h('p', { class: 'muted small' });
 const examplesBody = h('div');
-const toggles = h('div', { class: 'row' });
+const exampleToggles = h('div', { class: 'row' });
+
+const mixPanel = h('section', { class: 'panel' });
+const mixPair = h('span', { class: 'pair big' });
+const mixVerdict = h('div');
+const mixWords = h('p', { class: 'small' });
+const mixBreak = h('div', { class: 'breakdown' });
+const mixFormula = h('p', { class: 'mono muted small' });
+const mapToggles = h('div', { class: 'row' });
 
 const craftGallery = h('div', { class: 'craft-gallery' });
 const cameraBox = h('div', { class: 'cam-box' });
 const camSquare = h('span', { class: 'cam-square' });
 const camReadout = h('div', { class: 'cam-readout' });
 const camLog = h('ol', { class: 'cam-log' });
+
+function randomMiss(): void {
+  const r = (lo: number, hi: number, step: number) => round(lo + Math.random() * (hi - lo), step);
+  setMix({ dL: r(-8, 8, 0.5), dC: r(-10, 6, 0.5), dh: r(-15, 15, 1) });
+}
+
+mixPanel.append(
+  h('h3', null, 'Mix: off in several ways at once'),
+  h('p', { class: 'muted small' }, 'A real capture is usually a bit darker, duller and turned in hue at the same time. Set a miss here, or click a map cell, an example or a camera log entry.'),
+  h(
+    'div',
+    { class: 'mix-grid' },
+    h(
+      'div',
+      null,
+      ...(['dL', 'dC', 'dh'] as const).map((a) => mixFields[a].el),
+      h(
+        'div',
+        { class: 'row' },
+        h('button', { class: 'btn', type: 'button', onclick: () => setMix(ZERO) }, 'Back to the target'),
+        h('button', { class: 'btn', type: 'button', onclick: randomMiss }, 'Random miss'),
+        h('button', { class: 'btn', type: 'button', onclick: useCameraSample }, 'Use camera sample'),
+      ),
+    ),
+    h('div', { class: 'mix-out' }, h('div', { class: 'mix-verdict' }, mixPair, mixVerdict), mixWords, mixBreak, mixFormula),
+  ),
+  h('h3', null, 'Rank maps'),
+  h(
+    'p',
+    { class: 'muted small' },
+    'Every cell is a real color: two kinds of miss combined, the third held at the mix’s value. Letters are ranks (F H K W A B), lines are rank borders, the ring is the mix. A notched corner = no screen can show it exactly. Click or drag to move the mix.',
+  ),
+  mapToggles,
+  h(
+    'div',
+    { class: 'maps' },
+    ...maps.map((m) =>
+      h(
+        'figure',
+        { class: 'map' },
+        h('figcaption', null, h('strong', null, `${AXIS[m.x].name} × ${AXIS[m.y].name}`), ' ', m.caption),
+        h('div', { class: 'ax' }, m.top),
+        m.canvas,
+        h('div', { class: 'ax' }, m.bottom),
+        h('div', { class: 'ax lr' }, m.left, m.right),
+      ),
+    ),
+  ),
+);
 
 root.replaceChildren(
   h(
@@ -263,19 +612,24 @@ root.replaceChildren(
         h('h3', null, 'Points per rank (Krillion: 100 / 85 / 60 / 30 / 15 / 10)'),
         ...pointFields.map((f) => f.el),
         h('p', { class: 'muted small' }, `Time runs out: ${SEVEN.emptyPoints} points (Krillion's unanswered prompt).`),
-        h('h3', null, 'Craft ranks (running total of 7 colors, max 700)'),
+        h('h3', null, `Craft ranks (running total of ${SEVEN.sections} colors, max ${SEVEN.sections * 100})`),
         ...craftFields.map((f) => f.el),
       ),
     ),
     h(
       'div',
       null,
+      mixPanel,
       h(
         'section',
         { class: 'panel' },
         h('h3', null, 'Examples per rank'),
-        h('p', { class: 'muted small' }, 'Left half: the target. Right half: a color at that distance. ⚠ = no screen or camera can produce it exactly. Hatched = impossible in that direction.'),
-        toggles,
+        h(
+          'p',
+          { class: 'muted small' },
+          'Left half: the target. Right half: a color at that distance. Combined misses move every part by the same amount. ⚠ = no screen or camera can produce it exactly. Hatched = impossible in that direction. Click one to load it into the mix.',
+        ),
+        exampleToggles,
         examplesBody,
       ),
       h(
@@ -326,11 +680,12 @@ function changed(): void {
 function refresh(): void {
   const tg = target();
   const tLab = hexToCielab(tg.hex);
+  const base = toLCh(tLab);
   document.body.dataset.bg = bg;
   targetSw.style.background = tg.hex;
   targetName.textContent = tg.name;
   targetMeta.textContent = `${tg.hex} · ${tg.meta}`;
-  targetLabText.textContent = `CIELAB  L ${tLab.L.toFixed(1)} · a ${tLab.a.toFixed(1)} · b ${tLab.b.toFixed(1)}`;
+  targetLabText.textContent = `L* ${base.L.toFixed(1)} · C* ${base.C.toFixed(1)} · h ${base.h.toFixed(0)}° (${hueName(base.h)})`;
   if (!custom) select.value = String(index);
   picker.value = tg.hex;
 
@@ -355,7 +710,7 @@ function refresh(): void {
   lastTierNote.textContent = `${TIER_NAMES[TIER_NAMES.length - 1]}: anything beyond ΔE ${fmt1(t.colorTierMax[t.colorTierMax.length - 1])} · ${t.tierPoints[TIER_NAMES.length - 1]} points.`;
   pointFields.forEach((f, i) => {
     f.setValue(t.tierPoints[i]);
-    f.hint.textContent = `× 7 colors = ${t.tierPoints[i] * SEVEN.sections}`;
+    f.hint.textContent = `× ${SEVEN.sections} colors = ${t.tierPoints[i] * SEVEN.sections}`;
   });
   craftFields.forEach((f, i) => {
     const v = t.craftMins[i];
@@ -373,21 +728,27 @@ function refresh(): void {
   });
   curveBox.innerHTML = curveSvg();
 
-  toggles.replaceChildren(
-    ...(['edge', 'middle'] as const).map((p) => h('button', { class: `btn ${place === p ? 'on' : ''}`, type: 'button', onclick: () => ((place = p), refresh()) }, p === 'edge' ? 'Worst that still counts' : 'Middle of the rank')),
-    ...(['grey', 'dark', 'light'] as const).map((k) => h('button', { class: `btn ${bg === k ? 'on' : ''}`, type: 'button', onclick: () => ((bg = k), refresh()) }, `${k} background`)),
+  const toggle = (on: boolean, label: string, onclick: () => void) => h('button', { class: `btn ${on ? 'on' : ''}`, type: 'button', onclick }, label);
+  exampleToggles.replaceChildren(
+    ...([1, 2, 3] as const).map((n) => toggle(combo === n, ['One thing off', 'Two things off', 'All three off'][n - 1], () => ((combo = n), refresh()))),
+    ...(['edge', 'middle'] as const).map((p) => toggle(place === p, p === 'edge' ? 'Worst that still counts' : 'Middle of the rank', () => ((place = p), refresh()))),
+    ...(['grey', 'dark', 'light'] as const).map((k) => toggle(bg === k, `${k} background`, () => ((bg = k), refresh()))),
   );
 
+  const dirList = dirs(combo);
+  examplesBody.style.setProperty('--cols', String(combo === 3 ? 8 : 6));
+  examplesBody.style.setProperty('--cols-m', String(combo === 3 ? 4 : 3));
   examplesBody.replaceChildren(
     ...bands().map((b) => {
       const d = sampleDistance(b);
-      const chips = DIRS.map((dir) => {
-        const ex = exampleAt(tLab, dir.id, d);
+      const chips = dirList.map((dir) => {
+        const ex = exampleAt(tLab, dir, d);
+        const off = ex.status === 'unreachable';
         return h(
           'figure',
-          { class: `chip ${ex.status}` },
-          h('span', { class: 'pair' }, h('i', { style: { background: tg.hex } }), h('i', { style: { background: ex.status === 'unreachable' ? 'transparent' : ex.hex } })),
-          h('figcaption', null, dir.label, h('br'), ex.status === 'unreachable' ? 'not possible' : `ΔE ${ex.dE.toFixed(2)}${ex.status === 'gamut' ? ' ⚠' : ''}`),
+          { class: `chip ${ex.status}`, title: off ? '' : words(ex.offset, base), onclick: () => !off && loadMix(ex.offset) },
+          h('span', { class: 'pair' }, h('i', { style: { background: tg.hex } }), h('i', { style: { background: off ? 'transparent' : ex.hex } })),
+          h('figcaption', null, dirLabel(dir, base), h('br'), off ? 'not possible' : `ΔE ${ex.dE.toFixed(2)}${ex.status === 'gamut' ? ' ⚠' : ''}`, off ? null : h('span', { class: 'off' }, short(ex.offset))),
         );
       });
       return h(
@@ -398,7 +759,47 @@ function refresh(): void {
       );
     }),
   );
+  refreshMix();
   updateCamera();
+}
+
+function loadMix(o: Offset): void {
+  setMix({ dL: +o.dL.toFixed(2), dC: +o.dC.toFixed(2), dh: +o.dh.toFixed(1) });
+  mixPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/** The mix readout and the rank maps (cheap: redrawn on every slider move or map drag). */
+function refreshMix(): void {
+  const tg = target();
+  const tLab = hexToCielab(tg.hex);
+  const base = toLCh(tLab);
+  (['dL', 'dC', 'dh'] as const).forEach((a) => mixFields[a].setValue(mix[a]));
+  mixFields.dL.hint.textContent = Math.abs(mix.dL) < 0.05 ? 'same lightness' : `${mix.dL > 0 ? 'lighter' : 'darker'} by ${Math.abs(mix.dL).toFixed(1)} L*`;
+  mixFields.dC.hint.textContent =
+    Math.abs(mix.dC) < 0.05 ? 'same saturation' : `${mix.dC > 0 ? 'more vivid' : 'duller'} by ${Math.abs(mix.dC).toFixed(1)} C*${base.C > 2 ? ` (${Math.round((Math.abs(mix.dC) / base.C) * 100)}% of the target's)` : ''}`;
+  mixFields.dh.hint.textContent = Math.abs(mix.dh) < 0.5 ? 'same hue' : `turned ${Math.round(Math.abs(mix.dh))}° toward ${towards(base.h, Math.sign(mix.dh))}`;
+
+  const s = shifted(base, mix);
+  const p = ciede2000Parts(tLab, s.lab, t.weights);
+  const tier = tierFor(p.dE);
+  mixPair.replaceChildren(h('i', { style: { background: tg.hex } }), h('i', { style: { background: s.possible ? s.hex : 'transparent' } }));
+  mixVerdict.replaceChildren(
+    h('strong', null, s.possible ? tier.name : 'Not possible'),
+    h('p', { class: 'mono' }, `ΔE ${p.dE.toFixed(2)} · ${tier.points} points`),
+    h('p', { class: 'mono muted small' }, `${s.hex}${s.inGamut ? '' : ' ⚠ outside sRGB'}`),
+  );
+  mixWords.textContent = words(mix, base);
+  mixBreak.innerHTML = breakdownSvg(p);
+  const sq = (v: number) => `${Math.abs(v).toFixed(2)}²`;
+  const sum = Math.abs(p.l) + Math.abs(p.c) + Math.abs(p.h);
+  mixFormula.textContent =
+    `ΔE = √(${sq(p.l)} + ${sq(p.c)} + ${sq(p.h)}${Math.abs(p.cross) >= 0.005 ? ` ${sgn(p.cross)} ${Math.abs(p.cross).toFixed(2)} blue term` : ''}) = ${p.dE.toFixed(2)}` +
+    (sum > p.dE + 0.05 ? `. The parts add up to ${sum.toFixed(2)}, but together they count as ${p.dE.toFixed(2)}.` : '');
+
+  mapToggles.replaceChildren(
+    ...(['close', 'wide'] as const).map((z) => h('button', { class: `btn ${zoom === z ? 'on' : ''}`, type: 'button', onclick: () => ((zoom = z), refreshMix()) }, z === 'close' ? 'Close-up' : 'Wide')),
+  );
+  maps.forEach((m) => drawMap(m, base, tLab));
 }
 
 /** Score vs ΔE with the rank boundaries. */
@@ -419,7 +820,7 @@ function curveSvg(): string {
 // --- live camera check ------------------------------------------------------------------
 let camOn = false;
 let camTimer = 0;
-let lastSample: { hex: string; dE: number } | null = null;
+let lastSample: { hex: string; dE: number; lab: Lab76 } | null = null;
 
 async function toggleCamera(): Promise<void> {
   if (camOn) {
@@ -456,25 +857,42 @@ function updateCamera(): void {
   const m = meanOfRect(src, squareRect(src, viewRect(1, 0.5, 0.5), SEVEN.squareFraction));
   if (!m) return;
   const tg = target();
+  const tLab = hexToCielab(tg.hex);
   const lab = linearToCielab(m[0], m[1], m[2]);
-  const dE = ciede2000(hexToCielab(tg.hex), lab, t.weights);
+  const p = ciede2000Parts(tLab, lab, t.weights);
   const hex = linearToHex(m[0], m[1], m[2]);
-  lastSample = { hex, dE };
+  lastSample = { hex, dE: p.dE, lab };
   camReadout.replaceChildren(
     h('span', { class: 'pair big' }, h('i', { style: { background: tg.hex } }), h('i', { style: { background: hex } })),
-    h('div', null, h('strong', null, tierFor(dE).name), h('p', { class: 'mono' }, `ΔE ${dE.toFixed(2)} · score ${scoreFor(dE)}`), h('p', { class: 'mono muted small' }, hex)),
+    h(
+      'div',
+      null,
+      h('strong', null, tierFor(p.dE).name),
+      h('p', { class: 'mono' }, `ΔE ${p.dE.toFixed(2)} · score ${scoreFor(p.dE)}`),
+      h('p', { class: 'small' }, words(offsetOf(toLCh(tLab), lab), toLCh(tLab))),
+      h('p', { class: 'mono muted small' }, `${hex} · lightness ${Math.abs(p.l).toFixed(1)} · saturation ${Math.abs(p.c).toFixed(1)} · hue ${Math.abs(p.h).toFixed(1)}`),
+    ),
   );
+}
+
+function useCameraSample(): void {
+  if (!lastSample) {
+    alert('Start the camera (Live camera check, below) first.');
+    return;
+  }
+  loadMix(offsetOf(toLCh(hexToCielab(target().hex)), lastSample.lab));
 }
 
 function logSample(): void {
   if (!lastSample) return;
   const tg = target();
+  const off = offsetOf(toLCh(hexToCielab(tg.hex)), lastSample.lab);
   camLog.prepend(
     h(
       'li',
-      null,
+      { title: 'Load this miss into the mix', onclick: () => loadMix(off) },
       h('span', { class: 'pair' }, h('i', { style: { background: tg.hex } }), h('i', { style: { background: lastSample.hex } })),
-      h('span', { class: 'mono small' }, `${tg.name}: ΔE ${lastSample.dE.toFixed(2)} → ${tierFor(lastSample.dE).name} (${scoreFor(lastSample.dE)})`),
+      h('span', { class: 'mono small' }, `${tg.name}: ΔE ${lastSample.dE.toFixed(2)} → ${tierFor(lastSample.dE).name} (${scoreFor(lastSample.dE)}) · ${short(off)}`),
     ),
   );
 }

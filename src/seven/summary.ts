@@ -1,6 +1,6 @@
 // The finished craft: "is your life full of colors?" answered. The craft evolves
 // through every rank it passed, lands on its final form, and the run is shared
-// as a 7-square row.
+// as a row of squares, one per color.
 
 import { currentPalette, onKeys, show } from '../app';
 import { centerOf, fx, shake } from '../ui/fx';
@@ -20,7 +20,7 @@ export function sevenShareText(r: SevenRun, total: number, craft: string): strin
   for (const s of r.sections) counts.set(s.tier, (counts.get(s.tier) ?? 0) + 1);
   const order = [...SEVEN.colorTiers.map((t) => t.name), 'Empty'];
   const lines = [
-    `Color Alchemist · Seven Colors${r.mode === 'camera' ? '' : ' (practice)'}`,
+    `Color Alchemist${r.mode === 'camera' ? '' : ' (practice)'}`,
     `is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
     r.sections.map((s) => emojiFor(s.hex)).join(''),
     order
@@ -163,9 +163,9 @@ export function sevenSummaryScreen(r: SevenRun): void {
         screen.classList.add('flooded');
         craftTitle.classList.add('final');
         sfx.fanfare();
-        if (final.index >= 4) sfx.choir();
+        if (final.index >= SEVEN.craftTiers.length - 1) sfx.choir();
         const pal = currentPalette();
-        fx.confetti([...res.found, ...(pal?.accents ?? [])], 50 + final.index * 30);
+        fx.confetti([...res.found, ...(pal?.accents ?? [])], 50 + final.index * 45);
         const b = centerOf(craftTitle);
         fx.burst(b.x, b.y, pal?.accents ?? res.found, { count: 20 + final.index * 8, speed: 380, shapes: ['star', 'circle', 'square'] });
         if (final.index >= 4) shake(screen, final.index === 5 ? 'hard' : 'soft');

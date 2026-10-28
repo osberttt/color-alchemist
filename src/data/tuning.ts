@@ -89,8 +89,8 @@ export const TUNING = {
 
 // "Seven Colors" mode: one color per section, the color extracting machine (ANALYSIS §4.1–4.6).
 export const SEVEN = {
-  sections: 7,
-  /** Seconds per color. Test 30–40 s too: 7 × 60 s is twice Krillion's run length. */
+  sections: 5,
+  /** Seconds per color. */
   seconds: 60,
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
@@ -98,7 +98,7 @@ export const SEVEN = {
   viewShortSide: 360,
   zoomMin: 1,
   zoomMax: 4,
-  tiers: ['lead', 'lead', 'lead', 'silver', 'silver', 'silver', 'gold'] as const,
+  tiers: ['lead', 'lead', 'silver', 'silver', 'gold'] as const,
   maxDarkPerRun: 2,
   /**
    * CIEDE2000's parametric weights (higher = more forgiving, lower = stricter).
@@ -113,13 +113,13 @@ export const SEVEN = {
    * Schooler 30, Too Clever 15, Plankton 10.
    */
   colorTiers: [
-    { name: 'Flawless', maxDE: 1, points: 100 },
-    { name: 'Harmonious', maxDE: 2.5, points: 85 },
-    { name: 'Kindred', maxDE: 5, points: 60 },
-    // Tight enough that a grey is Botched for every color except Charcoal: the best grey
-    // sits at ΔE ≥ 14.1 (median 24.9) under these weights (ANALYSIS §4.8).
-    { name: 'Wavering', maxDE: 8, points: 30 },
-    { name: 'Awry', maxDE: 14, points: 15 },
+    // Wide middle ranks: the extracted color is hidden while hunting and real captures
+    // are off in several ways at once (ANALYSIS §4.11–4.12). A grey now scores Wavering.
+    { name: 'Flawless', maxDE: 2, points: 100 },
+    { name: 'Harmonious', maxDE: 5, points: 85 },
+    { name: 'Kindred', maxDE: 15, points: 60 },
+    { name: 'Wavering', maxDE: 30, points: 30 },
+    { name: 'Awry', maxDE: 40, points: 15 },
     { name: 'Botched', maxDE: Infinity, points: 10 },
   ],
   /** Krillion: an unanswered prompt scores 0. Here: time runs out, nothing is extracted. */
@@ -127,16 +127,16 @@ export const SEVEN = {
   /** Result screen: steps in the target → extracted ramp, per color rank. */
   rampSteps: { Flawless: 1, Harmonious: 2, Kindred: 3, Wavering: 4, Awry: 5, Botched: 6 } as Record<string, number>,
   /**
-   * The craft, ranked by the running total of points (max 700, like Krillion's 7 × 100).
-   * Krillion doesn't publish its depth-zone thresholds; these are ours.
+   * The craft, ranked by the running total of points (max 500: 5 colors × 100).
+   * Krillion doesn't publish its depth-zone thresholds; these are ours: an even 100 per
+   * rank. Averages per color: Trinket 20, Curio 40, Marvel 60 (Kindred), Magnum Opus 80.
    */
   craftTiers: [
-    { name: 'Gunk', min: 0 },
-    { name: 'Trinket', min: 150 },
-    { name: 'Curio', min: 250 },
-    { name: 'Marvel', min: 380 },
-    { name: 'Quintessence', min: 500 },
-    { name: 'Magnum Opus', min: 620 },
+    { name: 'Prima Materia', min: 0 },
+    { name: 'Trinket', min: 100 },
+    { name: 'Curio', min: 200 },
+    { name: 'Marvel', min: 300 },
+    { name: 'Magnum Opus', min: 400 },
   ],
   /** The result waits for the player's tap; taps earlier than this are ignored (double-tap guard). */
   resultGuardMs: 900,
@@ -157,7 +157,7 @@ export interface SevenTunables {
   colorTierMax: number[];
   /** Points for Flawless … Botched (same order as colorTiers). */
   tierPoints: number[];
-  /** min total for Trinket, Curio, Marvel, Quintessence, Magnum Opus (Gunk starts at 0). */
+  /** min total for Trinket, Curio, Marvel, Quintessence, Magnum Opus (Prima Materia starts at 0). */
   craftMins: number[];
 }
 

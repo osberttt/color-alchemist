@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body { margin: 0; background: #f4efe1; font: 600 14px system-ui, sans-serif; color: #1a1a1a; }
+  .sheet { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 12px; padding: 16px; }
+  figure { margin: 0; display: grid; justify-items: center; gap: 4px; text-align: center; }
+  canvas { width: 220px; height: 220px; }
+  figcaption small { display: block; font-weight: 400; color: #555; font-size: 11px; max-width: 220px; }
+  h2 { margin: 14px 16px 0; font: 700 18px Georgia, serif; }
+</style>
+</head>
+<body>
+<h2>12 families of mathematical craft art (each colored with one of the game's palettes)</h2>
+<div class="sheet" id="families"></div>
+<h2>A suggested progression: Prima Materia → Magnum Opus</h2>
+<div class="sheet" id="tiers"></div>
+<script>
+const PAL = [
+  ['#ff8fab', '#ffc46b', '#9be7c4', '#8ecae6', '#cdb4db'],
+  ['#ff2bd6', '#00f0ff', '#f9f871', '#7cff4f', '#ff6b1a'],
+  ['#ff48b0', '#0078bf', '#ffe800', '#00a95c', '#ff6c2f'],
+  ['#e63946', '#1d3557', '#f1c40f', '#2a9d8f', '#f77f00'],
+  ['#9575cd', '#f48fb1', '#80deea', '#fff176', '#aed581'],
+  ['#ff7a00', '#ffd000', '#8ac926', '#00c49a', '#ff3d7f'],
+  ['#c8553d', '#f28f3b', '#e9b44c', '#588b8b', '#2d3047'],
+  ['#f72585', '#4cc9f0', '#ffd60a', '#06d6a0', '#ff9e00'],
+  ['#ff6b6b', '#1a9e97', '#1a535c', '#ff9f1c', '#c44dff'],
+  ['#5ab9f2', '#7ee0d1', '#ffa8c5', '#ffd77a', '#a8a4ff'],
+  ['#e85d04', '#faa307', '#d62828', '#8ab17d', '#ffba08'],
+  ['#ff00a0', '#ff8a00', '#ffe600', '#00e1ff', '#b26cff'],
+];
+const S = 440; // backing pixels per canvas
+function hex2rgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function ramp(pal, t) {
+  t = ((t % 1) + 1) % 1;
+  const f = t * pal.length, i = Math.floor(f), k = f - i;
+  const a = hex2rgb(pal[i % pal.length]), b = hex2rgb(pal[(i + 1) % pal.length]);
+  return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v) * k)).join(',')})`;
+}
+function cell(parent, title, note) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = S; cv.height = S;
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = `${title}<small>${note}</small>`;
+  fig.append(cv, cap);
+  parent.append(fig);
+  const ctx = cv.getContext('2d');
+  ctx.translate(S / 2, S / 2);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  return ctx;
+}
+// Draw a parametric curve as many short segments, colored along the parameter.
+function curve(ctx, pal, f, t0, t1, steps, width = 2, scale = S * 0.42, alpha = 1) {
+  let prev = f(t0);
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = width;
+  for (let i = 1; i <= steps; i++) {
+    const t = t0 + ((t1 - t0) * i) / steps;
+    const p = f(t);
+    ctx.strokeStyle = ramp(pal, i / steps);
+    ctx.beginPath();
+    ctx.moveTo(prev[0] * scale, prev[1] * scale);
+    ctx.lineTo(p[0] * scale, p[1] * scale);
+    ctx.stroke();
+    prev = p;
+  }
+  ctx.globalAlpha = 1;
+}
+const rose = (k) => (t) => [Math.cos(k * t) * Math.cos(t), Math.cos(k * t) * Math.sin(t)];
+function maurer(ctx, pal, n, d, width = 1.4, scale = S * 0.44) {
+  const pts = [];
+  for (let k = 0; k <= 360; k++) {
+    const th = (k * d * Math.PI) / 180;
+    const r = Math.sin(n * th);
+    pts.push([r * Math.cos(th), r * Math.sin(th)]);
+  }
+  ctx.lineWidth = width;
+  for (let i = 1; i < pts.length; i++) {
+    ctx.strokeStyle = ramp(pal, i / pts.length);
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(pts[i - 1][0] * scale, pts[i - 1][1] * scale); ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  curve(ctx, pal.slice(2), rose(n).bind ? (t) => { const r = Math.sin(n * t); return [r * Math.cos(t), r * Math.sin(t)]; } : null, 0, Math.PI * 2, 600, 3, scale);
+}
+const hypo = (R, r, d) => (t) => [((R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t)) / (R - r + d), ((R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)) / (R - r + d)];
+const harmonograph = (p) => (t) => [
+  (Math.sin(p.f1 * t + p.p1) * Math.exp(-p.d * t) + Math.sin(p.f2 * t + p.p2) * Math.exp(-p.d * t)) / 2,
+  (Math.sin(p.f3 * t + p.p3) * Math.exp(-p.d * t) + Math.sin(p.f4 * t + p.p4) * Math.exp(-p.d * t)) / 2,
+];
+function superformula(m, n1, n2, n3, a = 1, b = 1) {
+  return (phi) => {
+    const r = Math.pow(Math.pow(Math.abs(Math.cos((m * phi) / 4) / a), n2) + Math.pow(Math.abs(Math.sin((m * phi) / 4) / b), n3), -1 / n1);
+    return [r * Math.cos(phi), r * Math.sin(phi)];
+  };
+}
+function superLayers(ctx, pal, m, layers) {
+  for (let i = layers - 1; i >= 0; i--) {
+    const s = (i + 1) / layers;
+    const f = superformula(m, 0.3 + i * 0.25, 1.7, 1.7);
+    ctx.beginPath();
+    let max = 0;
+    const pts = [];
+    for (let k = 0; k <= 720; k++) { const p = f((k / 720) * Math.PI * 2); pts.push(p); max = Math.max(max, Math.hypot(p[0], p[1])); }
+    pts.forEach((p, k) => { const x = (p[0] / max) * s * S * 0.44, y = (p[1] / max) * s * S * 0.44; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath();
+    ctx.fillStyle = pal[i % pal.length];
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function phyllotaxis(ctx, pal, n, size = 5) {
+  const c = (S * 0.44) / Math.sqrt(n);
+  for (let i = 0; i < n; i++) {
+    const a = i * 137.508 * (Math.PI / 180), r = c * Math.sqrt(i);
+    ctx.fillStyle = ramp(pal, i / n * 3);
+    ctx.beginPath(); ctx.arc(r * Math.cos(a), r * Math.sin(a), size * (0.4 + 0.6 * Math.sqrt(i / n)), 0, Math.PI * 2); ctx.fill();
+  }
+}
+function chladni(ctx, pal, n, m) {
+  const img = ctx.getImageData(0, 0, S, S); // backing pixels (no transform)
+  const d = img.data;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const u = (x / S) * 2 - 1, v = (y / S) * 2 - 1;
+    if (u * u + v * v > 0.95) continue;
+    const val = Math.cos(n * Math.PI * u) * Math.cos(m * Math.PI * v) - Math.cos(m * Math.PI * u) * Math.cos(n * Math.PI * v);
+    if (Math.abs(val) < 0.07) {
+      const [r, g, b] = hex2rgb(pal[Math.floor((Math.atan2(v, u) / Math.PI + 1) * 2.5) % pal.length]);
+      const j = (y * S + x) * 4; d[j] = r; d[j + 1] = g; d[j + 2] = b; d[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function clifford(ctx, pal, a, b, c, dd, n = 140000) {
+  let x = 0.1, y = 0.1;
+  ctx.globalAlpha = 0.35;
+  for (let i = 0; i < n; i++) {
+    const nx = Math.sin(a * y) + c * Math.cos(a * x), ny = Math.sin(b * x) + dd * Math.cos(b * y);
+    x = nx; y = ny;
+    if (i < 20) continue;
+    ctx.fillStyle = ramp(pal, (Math.atan2(y, x) / Math.PI + 1) / 2);
+    ctx.fillRect(x * S * 0.2, y * S * 0.2, 1.6, 1.6);
+  }
+  ctx.globalAlpha = 1;
+}
+function timesTable(ctx, pal, N, m) {
+  const R = S * 0.44;
+  ctx.lineWidth = 1;
+  for (let k = 0; k < N; k++) {
+    const a1 = (k / N) * Math.PI * 2, a2 = (((k * m) % N) / N) * Math.PI * 2;
+    ctx.strokeStyle = ramp(pal, k / N); ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(R * Math.cos(a1), R * Math.sin(a1)); ctx.lineTo(R * Math.cos(a2), R * Math.sin(a2)); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function koch(ctx, pal, level) {
+  let pts = [0, 1, 2].map((i) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 3; return [Math.cos(a), Math.sin(a)]; });
+  pts.push(pts[0]);
+  for (let l = 0; l < level; l++) {
+    const next = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+      const dx = (bx - ax) / 3, dy = (by - ay) / 3;
+      const p1 = [ax + dx, ay + dy], p2 = [ax + 2 * dx, ay + 2 * dy];
+      const peak = [p1[0] + dx * 0.5 + dy * Math.sqrt(3) / 2, p1[1] + dy * 0.5 - dx * Math.sqrt(3) / 2];
+      next.push(pts[i], p1, peak, p2);
+    }
+    next.push(pts[pts.length - 1]);
+    pts = next;
+  }
+  for (let ring = 3; ring >= 1; ring--) {
+    const s = S * 0.44 * (ring / 3);
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0] * s, p[1] * s) : ctx.moveTo(p[0] * s, p[1] * s)));
+    ctx.closePath();
+    ctx.fillStyle = pal[ring % pal.length];
+    ctx.fill();
+  }
+}
+function goldenSpiral(ctx, pal) {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const g = (t) => { const r = Math.pow(phi, (2 * t) / Math.PI) / 9; return [r * Math.cos(t), r * Math.sin(t)]; };
+  for (let k = 0; k < 8; k++) {
+    ctx.save(); ctx.rotate((k * Math.PI) / 4);
+    curve(ctx, pal.slice(k % 3), g, -8, 4.5, 500, k % 2 ? 1.5 : 3);
+    ctx.restore();
+  }
+}
+
+const fam = document.getElementById('families');
+let i = 0;
+curve(cell(fam, 'Lissajous figure', 'x = sin(at + δ), y = sin(bt). Simple ratios = simple loops.'), PAL[i++], (t) => [Math.sin(3 * t + Math.PI / 2), Math.sin(4 * t)], 0, Math.PI * 2, 900, 4);
+curve(cell(fam, 'Rose curve (rhodonea)', 'r = cos(kθ). k = 5/4 here; integer k = clean petals.'), PAL[i++], rose(5 / 4), 0, Math.PI * 8, 1600, 3);
+curve(cell(fam, 'Spirograph (hypotrochoid)', 'A circle rolling inside a circle.'), PAL[i++], hypo(8, 3, 5), 0, Math.PI * 6, 2400, 1.8);
+maurer(cell(fam, 'Maurer rose', 'Chords across a rose curve at d° steps (n = 6, d = 71).'), PAL[i++], 6, 71);
+curve(cell(fam, 'Harmonograph', 'Damped pendulums drawing on paper.'), PAL[i++], (t) => [Math.sin(2 * t + 0.2) * Math.exp(-0.009 * t) * 0.6 + Math.sin(3.01 * t) * Math.exp(-0.011 * t) * 0.4, Math.sin(3 * t + 1.3) * Math.exp(-0.01 * t) * 0.6 + Math.sin(2.005 * t + 0.4) * Math.exp(-0.008 * t) * 0.4], 0, 260, 14000, 0.9);
+superLayers(cell(fam, 'Superformula (Gielis)', 'One formula for stars, flowers, shells, polygons.'), PAL[i++], 7, 5);
+phyllotaxis(cell(fam, 'Phyllotaxis (Vogel)', 'Seeds at the golden angle 137.5°, like a sunflower.'), PAL[i++], 900, 7);
+chladni(cell(fam, 'Chladni figure', 'Sand on a vibrating plate: nodal lines of standing waves.'), PAL[i++], 5, 2);
+clifford(cell(fam, 'Clifford attractor', 'A strange attractor: 140k iterated points.'), PAL[i++], -1.4, 1.6, 1.0, 0.7);
+timesTable(cell(fam, 'Modular times table', 'Connect k → 2k mod N on a circle: a cardioid.'), PAL[i++], 220, 2);
+koch(cell(fam, 'Koch snowflake', 'A fractal: every edge grows a smaller peak.'), PAL[i++], 4);
+goldenSpiral(cell(fam, 'Golden spiral', 'r = φ^(2θ/π), six arms.'), PAL[i++]);
+
+const tiers = document.getElementById('tiers');
+const P = (k) => PAL[(k * 5 + 3) % PAL.length];
+curve(cell(tiers, 'Prima Materia','a starter batch: one Lissajous loop (1 : 2)'), P(0), (t) => [Math.sin(t + 0.3), Math.sin(2 * t)], 0, Math.PI * 2, 500, 6);
+curve(cell(tiers, 'Trinket', 'a rose with 3 petals (k = 3)'), P(1), rose(3), 0, Math.PI, 700, 5);
+curve(cell(tiers, 'Curio', 'a spirograph'), P(2), hypo(8, 3, 5), 0, Math.PI * 6, 2400, 2.2);
+maurer(cell(tiers, 'Marvel', 'a Maurer rose'), P(3), 4, 97);
+{
+  const ctx = cell(tiers, 'Quintessence', 'superformula bloom + golden-angle seeds');
+  superLayers(ctx, P(4), 8, 4);
+  ctx.save(); ctx.scale(0.45, 0.45); phyllotaxis(ctx, P(4).slice().reverse(), 500, 7); ctx.restore();
+}
+{
+  const ctx = cell(tiers, 'Magnum Opus', 'spirograph halo + Maurer rose + sunflower core');
+  ctx.save(); ctx.globalAlpha = 0.9; curve(ctx, P(5), hypo(12, 5, 7), 0, Math.PI * 10, 4000, 1.2, S * 0.46); ctx.restore();
+  ctx.save(); ctx.scale(0.62, 0.62); maurer(ctx, P(5).slice(1), 7, 29, 1.1); ctx.restore();
+  ctx.save(); ctx.scale(0.26, 0.26); phyllotaxis(ctx, P(5), 420, 9); ctx.restore();
+}
+</script>
+</body>
+</html>

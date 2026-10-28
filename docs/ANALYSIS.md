@@ -257,6 +257,158 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.15 Prima Materia returns; a rank every 100 points (2026-10-28)
+
+**The change (the user's call).**
+- **Five craft ranks again:** Prima Materia 0, Trinket 100, Curio 200, Marvel 300, Magnum Opus 400 (max 500).
+- **Prima Materia** has its original muddy blobs and drips, "a starter batch".
+- **Trinket** is more saturated (OKLab chroma 0.09 → 0.125).
+
+- **Market:** "100 points per rank" is instantly understood and easy to share ("I got 320, a Marvel"). A humble first rank gives every run a visible climb.
+- **Game design:**
+  - The ladder reads dull → colored → shiny → glowing → radiant, so every rank-up is visible.
+  - With the §4.12 limits a typical color scores Kindred (60), so an average run (~300) lands on Marvel. Magnum Opus needs an average of 80, about Harmonious on most colors.
+  - **The grey-wall exploit (5 × Wavering = 150) now only reaches Trinket.**
+  - In the smoke test, random aiming in practice mode scored 65–90, which is Prima Materia, as it should.
+- **Digit7 Jam:** no new assets. Retention benefits from a clear next goal: the result sheet already shows "N more for <next rank>".
+
+### 4.14 Trinket takes Curio's art; a new Curio bridges to Marvel (2026-10-28)
+
+**The change.**
+- **Trinket** now uses the budding polygons, the old Curio art.
+- **The new Curio is ripples:** rings of slightly irregular polygons spread from a glinting core, alternate rings turning opposite ways. Each facet has a diagonal sheen and a light edge, with a few sparkles.
+- **Colors per rank:** 3 (Trinket), 4 (Curio, hues fanned 150°), 5 (Marvel), 8 (Magnum Opus).
+- **Revised the same day (user):** the ripples only moved outward, and the facets floated apart. Curio is now an **artifact**, smaller (radius ~65 vs. 92): a polygonal plate inlaid with two rings of irregular, sheened polygons, crowned with rays, so everything is connected. The motion flows: a bulge travels round each ring (each piece breathes a little after its neighbor) while plate, outer ring and inner ring turn slowly in alternating directions.
+
+- **Market:** a smooth visual ladder makes each rank-up feel earned and readable in a screenshot. Simple shapes become shiny shapes, then light (gas), then a perfect figure (rose).
+- **Game design:** the jump from solid polygons to a glowing attractor was too big. Curio now borrows motion (ripples) and shine from Marvel while keeping Trinket's polygon language.
+- **Jam:** the art is pure SVG and CSS, about 50 small paths, so it's cheap on phones. With reduced motion, the rings rest as concentric circles.
+
+### 4.13 More varied menu palettes (2026-10-28)
+
+**The change.**
+- 13 of 21 palettes had near-white backgrounds. Seven now use saturated backgrounds: Candy Shop pink, Terracotta Sun rust, Matcha Latte green, Citrus Pop yellow, Dusty Rose mauve, and Ocean Blue (formerly Ocean Pastel).
+- Four new palettes: Tomato Soup (red), Mint Julep (teal), Grape Soda (purple) and Cobalt Night (navy).
+- 25 palettes in total: 7 light, 10 colored, 8 dark. All pass the WCAG 4.5:1 test for body text and button labels.
+
+- **Market:** bold, saturated pages read as "full of colors" at a glance in screenshots and store-style thumbnails. Pale cream pages look like every other web game.
+- **Game design:** every page visit now feels different, which supports the tagline. The hunt screen stays neutral grey, so judging color is unaffected.
+- **Jam:** helps art & polish. No assets, and nothing to download.
+
+### 4.12 Even wider ranks: 2 / 5 / 15 / 30 / 40 (2026-10-28)
+
+**The change (the user's call).** Flawless ≤ 2, Harmonious ≤ 5, Kindred ≤ 15, Wavering ≤ 30, Awry ≤ 40, Botched beyond.
+
+**Measured:** the best grey (ΔE 16.8–29.5) now scores **Wavering, 30 points**, on 53 of 55 colors. On Steel Blue it's Kindred (60), and on Charcoal Harmonious (85). Botched now needs a clearly opposite color (teal vs. orange is about ΔE 48).
+
+- **Market:** generous scoring suits casual players and first-session judges. Krillion's Plankton is common, though; here the bottom two ranks will be rare.
+- **Game design:**
+  - **Risk: "point the camera at any grey wall" earns 30 × 5 = 150 points, which is Curio.** If playtests show players doing that, pull Wavering back to ≤ 16, which makes greys Awry. Another option is to raise the Curio threshold above 150.
+  - **Upside:** Flawless ≤ 2 makes the top rank reachable with care, not luck.
+  - **Craft thresholds** (150 / 275 / 400) will be easier to reach. Retune after playtests.
+- **Digit7 Jam:** retention and fun benefit from frequent good results. Originality and skill expression suffer if the color hunt stops mattering, so watch the grey case.
+
+### 4.11 Five colors, four crafts, wide ranks (2026-10-28)
+
+**The change (the user's calls).**
+- **Rank limits:** Flawless ≤ 1, Harmonious ≤ 3, Kindred ≤ 10, Wavering ≤ 15, Awry ≤ 30, Botched beyond.
+- **5 colors per run** instead of 7. The operations are Calcination, Dissolution, Conjunction, Distillation and Coagulation; the tiers are Lead, Lead, Silver, Silver, Gold. Max total is 500.
+- **4 craft ranks:** Trinket (0), Curio (150), Marvel (275), Magnum Opus (400). Prima Materia and Quintessence are gone.
+- **Craft art:**
+  - Trinket is unchanged.
+  - Curio's polygons bud out of the core quickly, drift a little and fade, always overlapping the core.
+  - Marvel is the Clifford attractor (formerly Quintessence), faster and shinier: the densest filaments burn toward white, with a stronger halo and more sparkles.
+  - Magnum Opus uses curated, always-full Maurer roses (even n, so 2n petals all round), drawn bigger and brighter.
+  - Colors climb from 2 to 3 to 5 to 8 per rank.
+
+**What the new limits mean (measured).**
+- The best grey is now **Awry (15 points) for 53 of 55 colors**, Wavering for Steel Blue and Harmonious for Charcoal. Under §4.8 a grey was Botched (10). The gap is only 5 points, so "any grey" stays a poor answer, but Botched now means a clearly wrong color.
+- Kindred ≤ 10 covers the typical combined phone miss from §4.10 (ΔE 5.5), so a careful read now earns 60, not 30.
+
+**Market**
+- **Krillion** has 7 rounds. A 5-color run is shorter (about 5 minutes with reading time), which suits a jam judge's first session and a coffee-break daily.
+- Four craft ranks are easier to remember and share than six, and each one looks clearly different.
+
+**Game design**
+- **Wider middle ranks** fit the hidden color (§4.7): players get rewarded for a good read instead of punished for camera drift. Flawless stays at ≤ 1, so the "once in a krillion" moment is still rare.
+- **Craft thresholds** sit at average Wavering / Kindred / Harmonious per color. With the wider ranks, scores will rise, so check them in playtests: if most runs reach Marvel, raise them.
+- Fewer, bigger art steps make each promotion feel like an event.
+
+**Digit7 Jam**
+- **Art & polish:** the attractor and the roses are the strongest visuals for screenshots and the demo video.
+- **Technical performance:** Marvel's attractor is drawn just after it appears, one layer per task (no long tasks measured on desktop), and fades in. Magnum Opus is ~1 ms.
+- Saved tuner values from older defaults are dropped automatically, because their signature no longer matches.
+
+### 4.10 Retuning for the hidden color: the tuner shows combined misses (2026-10-28)
+
+**The change.**
+- Since §4.7 the extracted color is hidden until after the snap, so players can't fine-tune against a live swatch. Their misses are bigger, and the tuning needs to be redone.
+- A real capture is rarely off in one way only. It's usually a bit darker **and** duller **and** turned in hue. The old tuner showed one direction at a time, so its examples looked more generous than real play.
+- The tuner now has:
+  - a **mix explorer**: lightness, saturation and hue offsets set together, with the rank, the points and how the three parts add up;
+  - three **rank maps**: real colors for every combination of two offsets, with rank letters and rank borders;
+  - **"Two things off" / "All three off"** in the per-rank examples;
+  - a breakdown of **live camera samples**, which can be loaded into the mix.
+
+**What it shows (current values: kL 0.8, kC 1, kH 2; Kindred ≤ 5, Wavering ≤ 8, Awry ≤ 14).**
+- Parts add in quadrature: three parts of 4.90 + 2.04 + 1.57 count as ΔE 5.53, not 8.5. Combined misses are *less* harsh than adding them up, but they still add.
+- Teal shot 4 L* darker, 14% duller and 8° toward blue (a typical indoor phone capture) is **Wavering, 30 points**. Lightness alone is 4.90 of it, because kL 0.8 is strict.
+- At the Kindred edge (ΔE 5), "all three off" means only about L ±3.8, C ±3.8, hue ±6°. With the color hidden, few players will be that close on purpose.
+
+**Market**
+- Krillion's sweet spot: most answers are mid-tier, top tiers are rare but reachable. If typical captures are Wavering/Awry, the game reads as "you're always wrong", which hurts sharing and day-2 return.
+
+**Game design**
+- Hiding the color moved skill from "adjust until the number is right" to "read the scene and commit". The scale should reward a good read, so the middle ranks need to be wider than when players could watch the swatch.
+- **Candidates to try in the tuner (not applied):**
+  - kL 0.8 → 1, so lightness is no stricter than standard. The miss above becomes ΔE 4.69, Kindred.
+  - Kindred ≤ 5 → 6 and Wavering ≤ 8 → 10.
+  - Keep Awry ≤ 14, so a grey stays Botched. A grey's distance comes from chroma and hue, so changing kL doesn't affect it.
+- **Suggested, not added:** a "combination" knob, a Minkowski exponent instead of the fixed square root. Higher is gentler on misses spread over several parts, lower is harsher. Also an expected-score simulation from a typical camera error model. Both wait for the user.
+
+**Digit7 Jam**
+- **Retention and fun** are judged, and both depend on players feeling their good reads pay off. Tune with the live camera on real phones before the deadline.
+- The tuner stays out of the jam build. No new runtime code in the game except the parts function in `cielab.ts` (`ciede2000` returns exactly what it did, and the Sharma tests still pass).
+
+### 4.9 "Prima Materia" instead of Gunk; mathematical crafts (options) (2026-10-28)
+
+**The change.**
+- **The lowest craft rank is no longer a failure.** "Gunk" ("a bubbling failure") is now **Prima Materia**, "a starter batch". In alchemy, the prima materia is the raw first matter that every Great Work starts from, so it pairs with Magnum Opus at the top.
+- **Proposed, not built yet: crafts drawn from mathematical curves** instead of hand-placed shapes. Each rank uses a richer formula. Candidates, previewed with the game's palettes:
+
+| Family | Formula | Fit |
+|---|---|---|
+| Lissajous | x = sin(at + δ), y = sin(bt) | Simple ratios give simple loops: a good first rank. |
+| Rose (rhodonea) | r = cos(kθ) | k sets the petal count; integer k gives clean flowers. |
+| Spirograph (hypotrochoid) | a circle rolling inside a circle | Instantly familiar and loved. Parameters give endless variety. |
+| Maurer rose | chords across a rose at d° steps | Dense and lacy. Looks "advanced". |
+| Superformula (Gielis) | one formula for stars, flowers, shells | Filled, bold shapes that read well when small. |
+| Phyllotaxis (Vogel) | seeds at the golden angle, 137.5° | A sunflower head. Good as a glowing core. |
+| Harmonograph | damped pendulums | Beautiful but hard to keep pretty with random parameters. |
+| Chladni figure | nodal lines of a vibrating plate | Striking, but needs a field evaluated per pixel. |
+| Clifford attractor | iterated map, ~100k points | Gorgeous, but canvas-only and unpredictable with random parameters. |
+| Modular times table | connect k → 2k mod N | A cardioid. Similar in feel to the Maurer rose. |
+| Koch snowflake | fractal edges | Static. Reads as a snowflake more than a craft. |
+| Golden spiral | r = φ^(2θ/π) | Elegant but thin when small. Best as an accent. |
+
+**Recommended progression** (one more layer per rank, so a better run visibly holds more mathematics):
+Prima Materia = one Lissajous loop → Trinket = a 3-petal rose → Curio = a spirograph → Marvel = a Maurer rose → Quintessence = a superformula bloom around golden-angle seeds → Magnum Opus = a spirograph halo, a Maurer rose and a sunflower core.
+Each render picks random parameters within its rank's range (petal counts, ratios, d°) plus a random palette, so no two crafts are alike. The curves can **draw themselves in** (SVG stroke animation) when the craft is revealed or promoted.
+
+**Market**
+- "Generative math art" is a proven aesthetic: spirograph toys, Maurer roses and phyllotaxis posts do well on social media, and they screenshot well. That suits the share-and-show loop of a daily color game.
+- Removing "failure" from the bottom rank follows the cozy-game trend: low results are framed as a beginning, not a loss. Krillion does the same with its humorous lowest depth.
+
+**Game design**
+- **Complexity tracks skill.** Abstract shapes said "better" through count and symmetry. Curves say it through *structure*, which reads faster: one line → a flower → a lace mandala.
+- **Reward without punishment:** a bad run still produces a pretty object, a single clean curve. That keeps players who score low coming back, and it matches "is your life full of colors?".
+- **Suggested, not added:** paint the final craft with the 7 colors the player actually extracted instead of a random palette. The craft would become a personal record of the run. That's a feature, so it waits for the user's call.
+
+**Digit7 Jam**
+- **Art & polish / originality:** procedural math art gives polished, unique visuals with no asset files and no credits to declare.
+- **Performance:** keep to SVG paths and circles (a spirograph is ~2,000 points; a Maurer rose 361 chords; phyllotaxis ~400 dots). These are cheap on phones and animate with CSS. Skip the attractor and the Chladni figure: they need canvas and many points, and random parameters can make them ugly.
+- **Risk:** low, because the change is confined to `src/ui/craft.ts`. Reduced motion shows the finished curves without the draw-in.
+
 ### 4.8 Hue weight 2, tighter Wavering/Awry so greys are Botched (2026-10-28)
 
 **The change.**

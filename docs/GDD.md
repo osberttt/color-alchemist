@@ -21,8 +21,8 @@ Status: **jam build in progress** (Digit7 Jam, deadline 31 Oct 2026, 23:59:59 UT
 The sections after this one describe the original pair-based design ("Classic"). Where they conflict, **this section wins**. The reasons for each change are in `ANALYSIS.md` §4.1–4.6.
 
 **Loop (Krillion-like, deliberately simple)**
-1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation*. The run makes **one craft**.
-2. Each section deals **one** named color. Tier ladder: Lead, Lead, Lead, Silver, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
+1. A run is **5 sections**, named after five operations of the Great Work: *Calcination, Dissolution, Conjunction, Distillation, Coagulation*. The run makes **one craft**. (The mode keeps its code name "Seven Colors".)
+2. Each section deals **one** named color. Tier ladder: Lead, Lead, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
 4. **Hunt (60 s)**: the live camera in full color. The **color extracting machine** (a centered square, 30 % of the short side) is framed in the target color. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**. Time runs out → the machine **runs dry: 0 points** (Krillion's unanswered prompt).
    - **Blend reveal:** after extracting, the frame freezes and the machine's contents blend into a mosaic of shrinking resolution down to one cell, the exact extracted color. Only then is the color revealed.
@@ -32,7 +32,7 @@ The sections after this one describe the original pair-based design ("Classic").
    - the score, the rank stamp and the exact ΔE00
    - the **craft panel**: the drop falls into the craft, which grows or transforms to its new rank, plus a progress bar to the next rank
    It waits for the player's tap; the next clock starts when the next color appears.
-7. After 7 colors, the **craft reveal**: the craft evolves rank by rank to its final form. You also get the total, the 7 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **7-square emoji row**. "Craft again" restarts in one tap.
+7. After 5 colors, the **craft reveal**: the craft evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Craft again" restarts in one tap.
 
 **Scoring (precise, no mercy)**
 - **Extraction** = the mean of every pixel in the machine, in linear RGB (4 camera frames averaged) → CIELAB (D65).
@@ -45,17 +45,22 @@ The sections after this one describe the original pair-based design ("Classic").
 
   | Rank | ΔE | Points |
   |---|---|---|
-  | Flawless | ≤ 1 | 100 |
-  | Harmonious | ≤ 2.5 | 85 |
-  | Kindred | ≤ 5 | 60 |
-  | Wavering | ≤ 8 | 30 |
-  | Awry | ≤ 14 | 15 |
-  | Botched | > 14 (any grey, except for Charcoal) | 10 |
+  | Flawless | ≤ 2 | 100 |
+  | Harmonious | ≤ 5 | 85 |
+  | Kindred | ≤ 15 | 60 |
+  | Wavering | ≤ 30 (a grey, for 53 of 55 colors) | 30 |
+  | Awry | ≤ 40 | 15 |
+  | Botched | > 40 | 10 |
   | Empty (time ran out) | — | 0 |
 
   No time bonus, no tier multiplier.
-- **Craft rank** by the running total (max 700): Gunk < 150 ≤ Trinket < 250 ≤ Curio < 380 ≤ Marvel < 500 ≤ Quintessence < 620 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).
-- **Craft art** (`src/ui/craft.ts`): generated abstract shapes per rank. Gunk is murky slumped blobs, Trinket loose simple shapes, Curio a faceted core with satellites, Marvel a 6-fold bloom, Quintessence an 8-fold glowing mandala, and Magnum Opus a 12-fold multi-layer mandala with rays. Recolored from a random palette every render.
+- **Craft rank** by the running total (max 500), one rank per 100 points: Prima Materia ("a starter batch") < 100 ≤ Trinket < 200 ≤ Curio < 300 ≤ Marvel < 400 ≤ Magnum Opus. Retune after real playtests with the tuner (`tuner.html`).
+- **Craft art** (`src/ui/craft.ts`), recolored from a random palette every render; more colors and brighter rank by rank (muddy, then 3, 4, 5, 8 colors):
+  - **Prima Materia:** dull, round-ish blobs slumped together, with drips.
+  - **Trinket:** polygons (5–8 sides) budding out of a rocking core, drifting a little and fading; every piece always touches the core.
+  - **Curio:** an artifact: a polygonal plate inlaid with two rings of slightly irregular, sheened polygons and crowned with rays. Everything is connected. A bulge flows round each ring while the rings turn slowly against each other.
+  - **Marvel:** a Clifford attractor in three layers that drift like shining gas.
+  - **Magnum Opus:** two counter-rotating Maurer roses in the full spectrum; the outer one always fills the circle.
 
 **Modes**
 - **Begin the hunt**: the camera.

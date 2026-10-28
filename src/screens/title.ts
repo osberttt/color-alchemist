@@ -95,9 +95,9 @@ export function howTo(onDone?: () => void): void {
       h(
         'ol',
         { class: 'steps' },
-        step('I', 'Seven colors', 'A run is seven colors, one at a time, one minute each. The color extracting machine in the middle of the camera is framed in the color you need.'),
+        step('I', 'Five colors', 'A run is five colors, one at a time, one minute each. The color extracting machine in the middle of the camera is framed in the color you need.'),
         step('II', 'Feed the machine', 'It extracts the average of everything inside it. Find the color, zoom, walk closer, shade the light with your hand. No orange? Blend red and yellow in the machine.'),
-        step('III', 'Extract', 'Only then does the machine blend what it caught into one color. Botched 10 points … Flawless 100. Run out of time and the machine runs dry: 0. Every color feeds your craft: from Gunk to Magnum Opus.'),
+        step('III', 'Extract', 'Only then does the machine blend what it caught into one color. Botched 10 points … Flawless 100. Run out of time and the machine runs dry: 0. Every color feeds your craft: from Prima Materia to Magnum Opus.'),
       ),
       h('p', { class: 'muted small' }, 'Trust your eyes: compare the frame with what is inside it, then extract.'),
       h('button', { class: 'btn primary', type: 'button', onclick: close }, 'Understood'),
