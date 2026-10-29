@@ -107,25 +107,17 @@ export const SEVEN = {
   tiers: ['lead', 'lead', 'silver', 'silver', 'gold'] as const,
   maxDarkPerRun: 2,
   /**
-   * CIEDE2000's parametric weights (higher = more forgiving, lower = stricter).
-   * Small hue shifts (≤ 30°) are 2× more lenient than standard. The leniency fades out
-   * by 75°, so a different hue is still wrong. Lightness is a little stricter: lighter/
-   * darker differences count 1.25×. Chroma is standard (ANALYSIS §4.7–4.8).
-   */
-  deltaWeights: { kL: 0.8, kC: 1, kH: 2, hueLenientTo: 30, hueStrictFrom: 75 },
-  /**
-   * Per-color rank by weighted CIEDE2000 distance (≤ maxDE), best first, with
-   * Krillion's exact points: One in a Krillion 100, Deep Cut 85, Rare 60,
-   * Schooler 30, Too Clever 15, Plankton 10.
+   * Per-color rank by plain OKLab distance ×100 (≤ maxDE), best first, with Krillion's
+   * exact points: One in a Krillion 100, Deep Cut 85, Rare 60, Schooler 30, Too Clever 15,
+   * Plankton 10. The limits are the typical OKLab size of the old CIEDE2000 ranks, so the
+   * overall difficulty is unchanged but now even across colors (ANALYSIS §4.21).
    */
   colorTiers: [
-    // Wide middle ranks: the extracted color is hidden while hunting and real captures
-    // are off in several ways at once (ANALYSIS §4.11–4.12). A grey now scores Wavering.
     { name: 'Flawless', maxDE: 2, points: 100 },
-    { name: 'Harmonious', maxDE: 5, points: 85 },
-    { name: 'Kindred', maxDE: 15, points: 60 },
-    { name: 'Wavering', maxDE: 30, points: 30 },
-    { name: 'Awry', maxDE: 40, points: 15 },
+    { name: 'Harmonious', maxDE: 6, points: 85 },
+    { name: 'Kindred', maxDE: 12, points: 60 },
+    { name: 'Wavering', maxDE: 20, points: 30 },
+    { name: 'Awry', maxDE: 27, points: 15 },
     { name: 'Botched', maxDE: Infinity, points: 10 },
   ],
   /** Points when nothing could be extracted (the timed-out capture failed). When time runs out the machine normally extracts on its own. */
@@ -156,19 +148,16 @@ export const SEVEN = {
 export const TUNING_OVERRIDE_KEY = 'color-alchemist:tuning-override';
 
 export interface SevenTunables {
-  /** CIEDE2000 weights: kL (lightness), kC (chroma), kH (hue) + the hue-leniency window in degrees. */
-  weights: { kL: number; kC: number; kH: number; hueLenientTo: number; hueStrictFrom: number };
   /** maxDE for Flawless, Harmonious, Kindred, Wavering, Awry (Botched is the rest). */
   colorTierMax: number[];
   /** Points for Flawless … Botched (same order as colorTiers). */
   tierPoints: number[];
-  /** min total for Trinket, Curio, Marvel, Quintessence, Magnum Opus (Prima Materia starts at 0). */
+  /** min total for Stimulant, Antidote, Panacea, Elixir of Life (Gunk starts at 0). */
   craftMins: number[];
 }
 
 export function currentTunables(): SevenTunables {
   return {
-    weights: { ...SEVEN.deltaWeights },
     colorTierMax: SEVEN.colorTiers.slice(0, -1).map((t) => t.maxDE),
     tierPoints: SEVEN.colorTiers.map((t) => t.points),
     craftMins: SEVEN.craftTiers.slice(1).map((t) => t.min),
@@ -184,11 +173,6 @@ export function validTunables(t: unknown): t is SevenTunables {
   const v = t as SevenTunables;
   return (
     !!v &&
-    !!v.weights &&
-    [v.weights.kL, v.weights.kC, v.weights.kH].every((k) => typeof k === 'number' && k > 0) &&
-    typeof v.weights.hueLenientTo === 'number' &&
-    typeof v.weights.hueStrictFrom === 'number' &&
-    v.weights.hueStrictFrom >= v.weights.hueLenientTo &&
     ascending(v.colorTierMax, SEVEN.colorTiers.length - 1) &&
     Array.isArray(v.tierPoints) &&
     v.tierPoints.length === SEVEN.colorTiers.length &&
@@ -200,11 +184,9 @@ export function validTunables(t: unknown): t is SevenTunables {
 export function applyTunables(t: SevenTunables): void {
   if (!validTunables(t)) return;
   const s = SEVEN as unknown as {
-    deltaWeights: SevenTunables['weights'];
     colorTiers: { name: string; maxDE: number; points: number }[];
     craftTiers: { name: string; min: number }[];
   };
-  s.deltaWeights = { ...t.weights };
   s.colorTiers = s.colorTiers.map((tier, i) => ({ name: tier.name, maxDE: i < t.colorTierMax.length ? t.colorTierMax[i] : Infinity, points: t.tierPoints[i] }));
   s.craftTiers = s.craftTiers.map((tier, i) => ({ name: tier.name, min: i === 0 ? 0 : t.craftMins[i - 1] }));
 }

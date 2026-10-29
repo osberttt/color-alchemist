@@ -1,10 +1,10 @@
 // The color extracting machine (ANALYSIS §4.6–4.7): what the camera captured inside
 // the machine, averaged in linear light, IS the color. No correction.
 // Blending is allowed: red and yellow objects side by side extract as orange.
-// Judged by CIEDE2000 (hue weighted leniently), scored with Krillion's points.
+// Judged by plain OKLab distance, scored with Krillion's points.
 
-import { linearToHex } from '../color/oklab';
-import { ciede2000, hexToCielab, linearToCielab, type Lab76 } from '../color/cielab';
+import { chroma, deltaEOK, linearToHex } from '../color/oklab';
+import { cielabToOklab, hexToCielab, linearToCielab, type Lab76 } from '../color/cielab';
 import type { Plate } from '../color/plate';
 import type { ColorDef } from '../data/colors';
 import { SEVEN } from '../data/tuning';
@@ -83,9 +83,36 @@ export function mosaic(plate: Plate, n: number, rect = machineRect(plate)): Uint
   return out;
 }
 
-/** The game's distance: CIEDE2000 with the tuned weights. */
+/**
+ * How far apart two colors look, split into what people see. ΔE² = l² + c² + h², where
+ * l is the lightness difference, c the chroma (saturation) difference and h the hue
+ * difference, all in OKLab units ×100.
+ */
+export interface DistanceParts {
+  dE: number;
+  /** Signed: + lighter / more vivid than the target. */
+  l: number;
+  c: number;
+  /** Unsigned: hue has no "more". */
+  h: number;
+}
+
+/**
+ * The game's distance, deliberately simple (ANALYSIS §4.21): the straight-line distance in
+ * OKLab, ×100. OKLab is built so that this plain distance tracks how different colors look,
+ * so no weights or special cases are needed.
+ */
+export function distanceParts(target: Lab76, sample: Lab76): DistanceParts {
+  const p = cielabToOklab(target);
+  const q = cielabToOklab(sample);
+  const dE = deltaEOK(p, q) * 100;
+  const l = (q.L - p.L) * 100;
+  const c = (chroma(q) - chroma(p)) * 100;
+  return { dE, l, c, h: Math.sqrt(Math.max(0, dE * dE - l * l - c * c)) };
+}
+
 export function distance(targetHex: string, lab: Lab76): number {
-  return ciede2000(hexToCielab(targetHex), lab, SEVEN.deltaWeights);
+  return distanceParts(hexToCielab(targetHex), lab).dE;
 }
 
 export function tierFor(dE: number): { name: string; index: number; points: number } {

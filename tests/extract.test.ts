@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ciede2000, ciede2000Parts, hexToCielab, linearToCielab, toLCh } from '../src/color/cielab';
 import { applyEdits, NO_EDITS } from '../src/color/plate';
-import { hexToLinear } from '../src/color/oklab';
+import { deltaEOK, hexToLinear, hexToOklab, oklabToLinear } from '../src/color/oklab';
 import type { Plate } from '../src/color/plate';
 import { COLORS, color } from '../src/data/colors';
-import { craftTierFor, distance, extract, judge, machineRect, mosaic, scoreFor, tierFor } from '../src/scoring/extract';
+import { SEVEN } from '../src/data/tuning';
+import { craftTierFor, distance, distanceParts, extract, judge, machineRect, mosaic, scoreFor, tierFor } from '../src/scoring/extract';
 
 describe('CIELAB', () => {
   it('white is L 100, a = b = 0', () => {
@@ -126,18 +127,18 @@ describe("the machine's adjustment bars", () => {
 });
 
 describe('ranks', () => {
-  it('color tiers by ΔE00', () => {
+  it('color tiers by OKLab distance ×100', () => {
     expect(tierFor(1).name).toBe('Flawless');
     expect(tierFor(4).name).toBe('Harmonious');
     expect(tierFor(10).name).toBe('Kindred');
-    expect(tierFor(20).name).toBe('Wavering');
-    expect(tierFor(35).name).toBe('Awry');
-    expect(tierFor(41).name).toBe('Botched');
+    expect(tierFor(15).name).toBe('Wavering');
+    expect(tierFor(25).name).toBe('Awry');
+    expect(tierFor(28).name).toBe('Botched');
     expect(tierFor(60).name).toBe('Botched');
   });
 
   it("Krillion's exact points per rank", () => {
-    expect([1, 4, 10, 20, 35, 50].map(scoreFor)).toEqual([100, 85, 60, 30, 15, 10]);
+    expect([1, 4, 10, 15, 25, 40].map(scoreFor)).toEqual([100, 85, 60, 30, 15, 10]);
   });
 
   it('craft tiers climb with the running total', () => {
@@ -150,43 +151,54 @@ describe('ranks', () => {
   });
 });
 
-describe('game weighting (kL 0.8, kC 1, kH 2 within 30°)', () => {
-  const teal = hexToCielab(color('teal').target);
-  const rot = (deg: number) => {
-    const C = Math.hypot(teal.a, teal.b);
-    const h0 = Math.atan2(teal.b, teal.a) + (deg * Math.PI) / 180;
-    return { L: teal.L, a: C * Math.cos(h0), b: C * Math.sin(h0) };
+describe("the game's distance: plain OKLab ×100", () => {
+  // An OKLab color as CIELAB (the extraction's format), via linear light.
+  const fromOk = (ok: { L: number; a: number; b: number }) => {
+    const [r, g, b] = oklabToLinear(ok);
+    return linearToCielab(r, g, b);
   };
 
-  it('is more forgiving of small hue shifts than standard CIEDE2000', () => {
-    const s = rot(20);
-    const standard = ciede2000(teal, s);
-    const game = distance(color('teal').target, s);
-    expect(game).toBeCloseTo(standard / 2, 1);
-    // A hue shift that standard CIEDE2000 calls Kindred is Harmonious in the game.
-    expect(tierFor(standard).name).toBe('Kindred');
-    expect(tierFor(game).name).toBe('Harmonious');
+  it('is the straight-line OKLab distance, ×100', () => {
+    const a = '#029386';
+    const b = '#ceb301';
+    expect(distance(a, hexToCielab(b))).toBeCloseTo(deltaEOK(hexToOklab(a), hexToOklab(b)) * 100, 6);
+    expect(distance(a, hexToCielab(a))).toBeCloseTo(0, 9);
   });
 
-  it('a grey earns Wavering, except on the two near-grey colors', () => {
-    // With Wavering up to ΔE 30 a grey scores Wavering (ANALYSIS §4.12): the best grey
-    // sits at ΔE 16.8–29.5 for 53 colors.
+  it('treats every color alike: the same OKLab step is the same distance', () => {
     for (const c of COLORS) {
-      if (c.name === 'Charcoal' || c.name === 'Steel Blue') continue;
-      const t = hexToCielab(c.target);
-      // The best grey: same lightness, no chroma.
-      expect(tierFor(distance(c.target, { L: t.L, a: 0, b: 0 })).name, c.name).toBe('Wavering');
+      const ok = hexToOklab(c.target);
+      expect(distance(c.target, fromOk({ ...ok, L: ok.L - 0.05 })), c.name).toBeCloseTo(5, 4);
+      expect(distance(c.target, fromOk({ ...ok, a: ok.a + 0.03, b: ok.b - 0.04 })), c.name).toBeCloseTo(5, 4);
     }
   });
 
-  it('does not forgive a clearly different hue (teal vs. orange)', () => {
-    const opposite = rot(160);
-    expect(distance(color('teal').target, opposite)).toBeCloseTo(ciede2000(teal, opposite), 6);
-    expect(['Awry', 'Botched']).toContain(tierFor(distance(color('teal').target, opposite)).name);
+  it('splits into lightness, chroma and hue that add in quadrature', () => {
+    const t = hexToCielab(color('teal').target);
+    const p = distanceParts(t, hexToCielab('#ceb301'));
+    expect(p.dE).toBeCloseTo(Math.hypot(p.l, p.c, p.h), 9);
+    const ok = hexToOklab(color('teal').target);
+    const darker = distanceParts(t, fromOk({ ...ok, L: ok.L - 0.04 }));
+    expect(darker.l).toBeCloseTo(-4, 6);
+    expect(darker.c).toBeCloseTo(0, 6);
+    expect(darker.h).toBeCloseTo(0, 3);
   });
 
-  it('is a little stricter on lighter/darker', () => {
-    const darker = { ...teal, L: teal.L - 4 };
-    expect(distance(color('teal').target, darker)).toBeGreaterThan(ciede2000(teal, darker));
+  it('does not forgive a clearly different hue (teal vs. orange)', () => {
+    const ok = hexToOklab(color('teal').target);
+    const C = Math.hypot(ok.a, ok.b);
+    const h = Math.atan2(ok.b, ok.a) + Math.PI * (160 / 180);
+    expect(['Awry', 'Botched']).toContain(tierFor(distance(color('teal').target, fromOk({ L: ok.L, a: C * Math.cos(h), b: C * Math.sin(h) }))).name);
+  });
+
+  it('a grey is as far as the target is saturated', () => {
+    // The best grey (same lightness, no chroma) sits exactly the target's OKLab chroma away:
+    // close to soft colors, far from vivid ones (ANALYSIS §4.21).
+    for (const c of COLORS) {
+      const ok = hexToOklab(c.target);
+      const d = distance(c.target, fromOk({ L: ok.L, a: 0, b: 0 }));
+      expect(d, c.name).toBeCloseTo(Math.hypot(ok.a, ok.b) * 100, 4);
+      if (Math.hypot(ok.a, ok.b) * 100 > SEVEN.colorTiers[2].maxDE) expect(scoreFor(d), c.name).toBeLessThanOrEqual(30);
+    }
   });
 });

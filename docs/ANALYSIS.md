@@ -257,6 +257,59 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.22 Harmonious ≤ 6; a color-wheel tuner (2026-10-29)
+
+**The change (the user's call).**
+- Harmonious now reaches distance **6**, up from 4.5. The ranks are 2 / 6 / 12 / 20 / 27.
+- The tuner is now just a target and a color wheel.
+  - Around the wheel is hue. The center is grey, and the edge is the most vivid color a screen can show at that hue.
+  - A slider sets the lightness, starting at the target's.
+  - Clicking or dragging shows the rank, points and distance, plus how the color is off (lighter or darker, more vivid or duller, hue turned).
+  - The last 12 picks are kept and can be clicked again.
+- The tuner no longer edits values: it shows, and lets you play, exactly `tuning.ts`, and it clears any old saved overrides. The rank sliders, rank maps, mix explorer, per-rank examples, camera check and potion gallery are gone.
+
+**Market**
+- 85 points becomes a bit easier to earn, so more runs feel "nearly there." That's good for a casual audience and for a first impression.
+
+**Game design**
+- **The 85-point band doubles in width** (1.5 → 4 OKLab units), and Kindred's band shrinks (7.5 → 6). Small visible misses now earn 85 instead of 60, so a careful player is rewarded more, while Flawless stays at ≤ 2.
+- **Something to look for on the wheel.** The opposite hue, at the same lightness and saturation, sits 2 × the target's saturation away. Soft colors don't pull far from it:
+  - it earns Wavering (30) on 12 colors, such as Chocolate, Beige, Baby Blue, Navy and Mauve;
+  - it earns Kindred (60) on Steel Blue.
+  - On the vivid colors it's Botched (28 colors) or Awry (13).
+  If a wrong hue earning 30 feels too generous, the simplest levers are tightening Wavering (e.g. ≤ 15) or adding a hue rule. The second is less simple.
+- **The tuner tests what the player actually does:** pick a color and see what it gets. That beats reading abstract ΔE numbers.
+
+**Digit7 Jam**
+- The tuner is dev and test builds only, never in the jam ZIP. It now has much less code (about 300 lines instead of 900).
+- Saved overrides are dropped (the defaults signature changed, and the tuner clears them), so test builds play exactly what ships.
+
+### 4.21 A very simple distance: plain OKLab (2026-10-28)
+
+**The change (the user's call).**
+- The judge is now the **straight-line distance in OKLab, ×100**: √(ΔL² + Δa² + Δb²). It replaces weighted CIEDE2000 and has no weights, hue window or special cases.
+- The rank limits were calibrated so that overall difficulty is unchanged. For every color and direction we measured the OKLab size of the old rank edges and took the typical value. Edges 2 / 5 / 15 / 30 / 40 measured 1.8 / 4.4 / 12.3 / 20.8 / 26.7, which gives the new limits **2 / 4.5 / 12 / 20 / 27**.
+- The tuner lost its weight sliders. Its breakdown is now simply lightness, saturation and hue, which add in quadrature.
+
+**Why.** Measured in OKLab, the old judge gave vivid blues, purples and pinks about **twice the room** of muted colors (Kindred: Royal Blue 16.5 vs Chocolate 8.2), with lopsided directions (Royal Blue's hue: 27.5 one way, 7.7 the other). CIEDE2000 was built for small differences, and its corrections grow out of proportion at game-sized differences. OKLab was designed so that plain distance tracks appearance, and the CSS color standard uses it the same way.
+
+**Market**
+- "Closer is better, the same for every color" is easy to trust and explain. No color feels rigged.
+
+**Game design**
+- **Fair across the palette:** the same visible miss costs the same on Baby Blue as on Royal Blue.
+- **Honest about grey:** the best grey sits exactly the target's saturation away. It earns **Kindred on the 21 softest colors** (Beige, Steel Blue, Baby Blue, Mauve, Navy…), Wavering on 31 and Awry on 2. That is what people see, since soft colors really are close to grey, but it makes a grey wall a decent answer for those colors.
+- **If grey proves too easy in playtests:**
+  - tighten Kindred (e.g. ≤ 9, a grey would then be Kindred on 10 colors);
+  - or add a small saturation floor;
+  - or deal fewer soft colors.
+- **Simpler tuning:** one number per rank and nothing else.
+
+**Digit7 Jam**
+- Less code on the scoring path, and it's cheaper too: no trig per comparison.
+- Technical notes for the README can describe the judge in one line.
+- Saved tuner values from the old format are discarded automatically, because the defaults signature changed.
+
 ### 4.20 Celebrations for Flawless and the Elixir; stronger side bars (2026-10-28)
 
 **The change (the user's call).**

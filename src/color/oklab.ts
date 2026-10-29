@@ -126,7 +126,7 @@ export function accuracy(d: number): number {
   return 100 * Math.exp(-x * x);
 }
 
-/** Plain euclidean OKLab distance (used for emoji and UI, not scoring). */
+/** Plain euclidean OKLab distance: the game's scoring distance (×100, scoring/extract.ts), emoji and UI. */
 export function deltaEOK(p: Lab, q: Lab): number {
   return Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b);
 }

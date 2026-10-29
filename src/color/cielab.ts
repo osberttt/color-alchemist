@@ -2,7 +2,7 @@
 // CIEDE2000 is the CIE's standard for "how different do two colors look".
 // Reference: Sharma, Wu & Dalal (2005), "The CIEDE2000 Color-Difference Formula".
 
-import { hexToLinear } from './oklab';
+import { hexToLinear, linearToOklab, type Lab } from './oklab';
 
 export interface Lab76 {
   L: number;
@@ -50,6 +50,12 @@ export function cielabToLinear(lab: Lab76): [number, number, number] {
     -0.969266 * x + 1.8760108 * y + 0.041556 * z,
     0.0556434 * x - 0.2040259 * y + 1.0572252 * z,
   ];
+}
+
+/** CIELAB → OKLab (through linear sRGB; colors outside sRGB stay valid, just extrapolated). */
+export function cielabToOklab(lab: Lab76): Lab {
+  const [r, g, b] = cielabToLinear(lab);
+  return linearToOklab(r, g, b);
 }
 
 /** Polar CIELAB: lightness, chroma, hue in degrees. */

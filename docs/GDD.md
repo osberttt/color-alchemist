@@ -35,23 +35,21 @@ The sections after this one describe the original pair-based design ("Classic").
    It waits for the player's tap; the next clock starts when the next color appears.
 7. After 5 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Brew again" restarts in one tap.
 
-**Scoring (precise, no mercy)**
-- **Extraction** = the mean of every pixel in the machine, in linear RGB (4 camera frames averaged) → CIELAB (D65).
-- **Distance** = **CIEDE2000** (ΔE00) between the target's hex and the extraction, with the game's weights:
-  - **kL 0.8:** lighter/darker a little stricter.
-  - **kC 1.**
-  - **kH 2 for hue shifts up to 30°**, easing back to standard by 75°: near hues are forgiven, wrong hues aren't.
-  - The plain formula is verified against Sharma et al. 2005 reference pairs.
+**Scoring (simple and even)**
+- **Extraction** = the mean of every pixel in the square (after the side bars' nudge), in linear RGB (4 camera frames averaged).
+- **Distance** = the **straight-line distance in OKLab**, ×100: √(ΔL² + Δa² + Δb²). No weights or special cases; OKLab is built so this plain distance tracks how different colors look, so every color is judged the same way. About 2 is just noticeable. (Until §4.21 this was a weighted CIEDE2000, which was about twice as forgiving on vivid blues and pinks as on muted colors.)
 - **Per-color rank and points (Krillion's exact values):**
 
-  | Rank | ΔE | Points |
+  | Rank | ΔE (OKLab ×100) | Points |
   |---|---|---|
   | Flawless | ≤ 2 | 100 |
-  | Harmonious | ≤ 5 | 85 |
-  | Kindred | ≤ 15 | 60 |
-  | Wavering | ≤ 30 (a grey, for 53 of 55 colors) | 30 |
-  | Awry | ≤ 40 | 15 |
-  | Botched | > 40 | 10 |
+  | Harmonious | ≤ 6 | 85 |
+  | Kindred | ≤ 12 | 60 |
+  | Wavering | ≤ 20 | 30 |
+  | Awry | ≤ 27 | 15 |
+  | Botched | > 27 | 10 |
+
+  A grey sits exactly the target's saturation away: Kindred on the 21 softest colors (Beige, Baby Blue, Steel Blue…), Wavering on most vivid ones.
   | Empty (the timed-out capture failed) | — | 0 |
 
   No time bonus, no tier multiplier.
