@@ -1,7 +1,8 @@
 // The Seven Colors viewfinder: the source in full color, with digital zoom,
-// panning (image sources) and live brightness/saturation applied exactly like
-// the scorer applies them (EV in linear light, saturation as OKLab chroma).
+// panning (image sources) and the player's tincture applied exactly like the
+// scorer applies it (exposure and warmth as linear gains, saturation as OKLab chroma).
 
+import { editGains, type Edits } from '../color/plate';
 import type { FrameSource, Rect } from './source';
 
 const VERT = `
@@ -22,7 +23,7 @@ precision mediump float;
 uniform sampler2D u_tex;
 uniform vec4 u_view;
 uniform float u_mirror;
-uniform float u_k;
+uniform vec3 u_gain;
 uniform float u_sat;
 varying vec2 v_uv;
 
@@ -60,7 +61,7 @@ void main() {
     gl_FragColor = vec4(0.06, 0.06, 0.07, 1.0);
     return;
   }
-  vec3 lin = min(toLin(texture2D(u_tex, s).rgb) * u_k, vec3(1.0));
+  vec3 lin = min(toLin(texture2D(u_tex, s).rgb) * u_gain, vec3(1.0));
   if (abs(u_sat) > 0.001) {
     vec3 lab = oklab(lin);
     lab.yz *= 1.0 + u_sat;
@@ -105,7 +106,7 @@ export class Viewfinder {
       const loc = gl.getAttribLocation(prog, 'a_pos');
       gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const n of ['u_tex', 'u_view', 'u_mirror', 'u_k', 'u_sat']) this.u[n] = gl.getUniformLocation(prog, n);
+      for (const n of ['u_tex', 'u_view', 'u_mirror', 'u_gain', 'u_sat']) this.u[n] = gl.getUniformLocation(prog, n);
       this.tex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -121,7 +122,7 @@ export class Viewfinder {
     }
   }
 
-  render(src: FrameSource, view: Rect, ev: number, sat: number): boolean {
+  render(src: FrameSource, view: Rect, edits: Edits): boolean {
     const gl = this.gl;
     if (!gl || !src.ready()) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -143,8 +144,8 @@ export class Viewfinder {
     }
     gl.uniform4f(this.u.u_view, view.x, view.y, view.w, view.h);
     gl.uniform1f(this.u.u_mirror, src.mirrored ? 1 : 0);
-    gl.uniform1f(this.u.u_k, Math.pow(2, ev));
-    gl.uniform1f(this.u.u_sat, sat);
+    gl.uniform3fv(this.u.u_gain, editGains(edits));
+    gl.uniform1f(this.u.u_sat, edits.sat);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     return true;
   }

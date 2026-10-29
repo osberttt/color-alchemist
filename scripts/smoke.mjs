@@ -30,6 +30,24 @@ async function session(name, viewport, mobile) {
   });
   page.on('pageerror', (e) => problems.push(`[${name}] pageerror: ${e.message}`));
   const shot = (label) => page.screenshot({ path: join(out, `${name}-${label}.png`) });
+  // The tincture step before the first color: drag Sunlight into the machine, tap Cobalt, start.
+  const tincture = async (label) => {
+    await page.waitForSelector('.tc-start:not([hidden])', { timeout: 10000 });
+    await page.waitForTimeout(600);
+    const from = await page.locator('.ing.ing-sunlight').boundingBox();
+    const to = await page.locator('.seven-vp').boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await page.locator('.ing.ing-cobalt').click();
+    await page.waitForTimeout(500);
+    const meters = await page.locator('.tc-axis').allInnerTexts();
+    if (meters.join(' ') !== 'Light +1 Color 0 Warmth −1 Tint 0')problems.push(`[${name}] tincture meters: ${meters.join(' ')}`);
+    await shot(label);
+    await overflow('tincture');
+    await page.locator('.tc-start').click();
+  };
   const overflow = async (label) => {
     const o = await page.evaluate(() => {
       const vw = document.documentElement.clientWidth;
@@ -96,6 +114,7 @@ async function session(name, viewport, mobile) {
 
   // Test photos (dev only)
   await page.getByRole('button', { name: /Test photos/ }).click();
+  await tincture('08a-photo-tincture');
   await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 8000 });
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 8000 });
   await page.waitForTimeout(800);
@@ -113,12 +132,13 @@ async function session(name, viewport, mobile) {
   await page.getByRole('button', { name: 'Begin the hunt' }).click();
   const open = page.getByRole('button', { name: 'Open the eye' });
   // Screens arrive after a paint-wipe transition: wait for the prompt or the hunt.
-  await page.locator('.vf-overlay.intro:not([hidden]), button:has-text("Open the eye")').first().waitFor({ timeout: 10000 });
+  await page.locator('.tc-start:not([hidden]), button:has-text("Open the eye")').first().waitFor({ timeout: 10000 });
   if (await open.isVisible().catch(() => false)) {
     await page.waitForTimeout(500);
     await shot('10a-camera-prompt');
     await open.click();
   }
+  await tincture('10b-camera-tincture');
   await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 10000 });
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 10000 });
   await page.waitForTimeout(1200);

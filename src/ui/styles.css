@@ -2350,19 +2350,6 @@ body[data-theme='palette'] .btn.primary {
 .machine .shade {
   fill: rgba(10, 10, 12, 0.28);
 }
-/* The bars' nudge, shown on the machine itself (set as --adj by the hunt screen). */
-.seven-vp .machine .frame-o,
-.seven-vp .machine .frame-i,
-.seven-vp .machine .pipe-o,
-.seven-vp .machine .pipe-i,
-.seven-vp .machine .bracket,
-.seven-vp .machine .joint,
-.seven-vp .ret-label,
-.seven-vp .adj-track {
-  filter: var(--adj, none);
-  transition: filter 0.12s linear;
-}
-
 /* The whole view is the machine: frame, pipes and joints in the target color. */
 .machine {
   position: absolute;
@@ -2408,76 +2395,6 @@ body[data-theme='palette'] .btn.primary {
   stroke-width: 2.5;
 }
 
-/* The two adjustment bars, mounted on the machine's side pipes. 44 px wide to touch;
-   the visible track is 24 px. */
-.adj {
-  position: absolute;
-  z-index: 2;
-  width: 44px;
-  touch-action: none;
-  cursor: ns-resize;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.adj-track {
-  position: absolute;
-  left: 10px;
-  top: 0;
-  bottom: 0;
-  width: 24px;
-  border-radius: 12px;
-  box-shadow:
-    0 0 0 2.5px rgba(10, 10, 12, 0.88),
-    0 0 0 4.5px var(--ing, var(--bone));
-}
-.adj:focus-visible .adj-track {
-  box-shadow:
-    0 0 0 2.5px rgba(10, 10, 12, 0.88),
-    0 0 0 4.5px var(--ing, var(--bone)),
-    0 0 0 8px rgba(237, 234, 227, 0.55);
-}
-.adj-zero {
-  position: absolute;
-  left: -5px;
-  right: -5px;
-  top: calc(50% - 1px);
-  height: 2px;
-  border-radius: 1px;
-  background: rgba(10, 10, 12, 0.75);
-}
-.adj-thumb {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 36px;
-  height: 14px;
-  transform: translate(-50%, -50%);
-  border-radius: 7px;
-  background: var(--bone);
-  box-shadow:
-    0 0 0 2.5px rgba(10, 10, 12, 0.9),
-    0 2px 6px rgba(0, 0, 0, 0.45);
-  transition: top 0.08s ease-out;
-}
-.adj-icon,
-.adj-value {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  color: var(--bone);
-  text-shadow: 0 1px 3px #000;
-  pointer-events: none;
-}
-.adj-icon {
-  bottom: calc(100% + 8px);
-  font-size: 15px;
-  line-height: 1;
-}
-.adj-value {
-  top: calc(100% + 8px);
-  font-size: 10px;
-}
 .reticle .ret-in {
   transition: background 0.25s;
 }
@@ -2704,6 +2621,255 @@ body[data-theme='palette'] .btn.primary {
 }
 .band.final {
   animation: slam 0.6s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+/* ---------- The tincture (calibration before the first color) ---------- */
+
+.tincture {
+  display: grid;
+  gap: 6px;
+}
+.tc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.tc-head h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.tc-how {
+  margin: 0;
+  font-size: 13px;
+  color: var(--smoke);
+  line-height: 1.35;
+}
+.tc-shelf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+.tc-pair {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+}
+.tc-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+}
+.ing {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 5px 0 3px;
+  border-radius: 12px;
+  border: 1px solid var(--ash);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bone);
+  font: inherit;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ing:active {
+  cursor: grabbing;
+  background: rgba(255, 255, 255, 0.1);
+}
+.ing-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ing-jar {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(10, 10, 12, 0.8);
+}
+.ing-jar.ing-sunlight {
+  background: radial-gradient(circle at 40% 35%, #fffbe0, #ffd34d 55%, #f09a1a);
+  box-shadow:
+    0 0 10px rgba(255, 211, 77, 0.6),
+    0 0 0 2px rgba(10, 10, 12, 0.8);
+}
+.ing-jar.ing-darkness {
+  background: radial-gradient(circle at 40% 35%, #4a4d70, #1c1d33 60%, #08080f);
+  box-shadow:
+    0 0 0 1px rgba(237, 234, 227, 0.35),
+    0 0 0 3px rgba(10, 10, 12, 0.8);
+}
+.ing-jar.ing-pigment {
+  background: conic-gradient(#ff4d6d, #ffb000, #4cd964, #2fa8ff, #b05cff, #ff4d6d);
+}
+.ing-jar.ing-ash {
+  background: radial-gradient(circle at 40% 35%, #dadada, #9a9a9a 60%, #6a6a6a);
+}
+.ing-jar.ing-cinnamon {
+  background: radial-gradient(circle at 40% 35%, #e9ab72, #b5652b 60%, #763914);
+}
+.ing-jar.ing-cobalt {
+  background: radial-gradient(circle at 40% 35%, #8bb0ff, #2f5fd0 60%, #18306f);
+}
+.ing-jar.ing-moss {
+  background: radial-gradient(circle at 40% 35%, #a6d47a, #5f9a3c 60%, #2f5a1c);
+}
+.ing-jar.ing-rose {
+  background: radial-gradient(circle at 40% 35%, #ffb3d6, #d94f8f 60%, #8a1f55);
+}
+/* The ingredient being dragged (or pouring itself in). */
+.ing-ghost {
+  position: fixed;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.tc-meter {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ash);
+  overflow: hidden;
+}
+.tc-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition:
+    left 0.15s ease-out,
+    width 0.15s ease-out;
+}
+.tc-ev .tc-fill[data-side='plus'] {
+  background: #ffd34d;
+}
+.tc-ev .tc-fill[data-side='minus'] {
+  background: #6a6fa8;
+}
+.tc-sat .tc-fill[data-side='plus'] {
+  background: linear-gradient(90deg, #ff4d6d, #ffb000, #4cd964, #2fa8ff);
+}
+.tc-sat .tc-fill[data-side='minus'] {
+  background: #9a9a9a;
+}
+.tc-warm .tc-fill[data-side='plus'] {
+  background: #c8763a;
+}
+.tc-warm .tc-fill[data-side='minus'] {
+  background: #4a7be8;
+}
+.tc-tint .tc-fill[data-side='plus'] {
+  background: #5f9a3c;
+}
+.tc-tint .tc-fill[data-side='minus'] {
+  background: #d94f8f;
+}
+.tc-zero {
+  position: absolute;
+  left: calc(50% - 1px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--bone);
+  opacity: 0.7;
+}
+.tc-axis {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--smoke);
+}
+/* A dose going in: liquid running through the pipes, then a wavy pool in the square. */
+.tc-flow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+.tc-flow path {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 14 21;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
+}
+.tc-pool {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.tc-pool svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tc-wave {
+  animation: tc-slosh 0.36s linear infinite;
+}
+.tc-wave.a {
+  opacity: 0.55;
+}
+.tc-wave.b {
+  opacity: 0.42;
+  animation-duration: 0.52s;
+  animation-direction: reverse;
+}
+@keyframes tc-slosh {
+  to {
+    transform: translateX(50px);
+  }
+}
+/* While an ingredient is dragged, the machine shows it's ready to take it. */
+.viewport.tc-target {
+  box-shadow:
+    0 0 0 2px var(--bone),
+    0 0 18px rgba(237, 234, 227, 0.35);
+}
+.tc-start {
+  min-height: 56px;
+  padding: 0 18px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+/* Desktop: the side column has room, so each pair gets a row and full names. */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .tincture {
+    gap: 10px;
+  }
+  .tc-shelf {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .ing {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    justify-items: start;
+    gap: 8px;
+    min-height: 48px;
+    padding: 6px 10px;
+  }
+  .ing-name {
+    font-size: 13px;
+  }
+  .tc-start {
+    min-width: 220px;
+    font-size: 16px;
+  }
 }
 
 /* The potion's moving parts live in potion-anim.css (shared with the tuner). */

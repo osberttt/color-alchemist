@@ -257,6 +257,73 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.24 Tincture: full white balance, no limits, a pouring animation (2026-10-29)
+
+**The change (the user's call).**
+- **A fourth pair: Moss / Rose (tint).** Green goes up or down against red and blue, with brightness kept the same.
+  - With Cinnamon/Cobalt (warm/cool), this is the camera's own white balance: per-channel multipliers in linear light, the same as a camera's Temperature and Tint. Together the two pairs can cancel any color cast.
+- **No limits on doses.** A dose of Light or Warmth/Tint is a fixed step in stops. Pigment/Ash compounds (chroma ×1.07 per dose), so Ash approaches grey but never inverts colors. The meters fill softly (half full at 6 doses) and never run out.
+- **Pouring animation:** every dose runs as liquid of the ingredient's color through the four pipes into the square, rises there as a wavy pool, sloshes and drains, in about 0.65 s (sped up 2.5× after the first try). It's decoration only, and it's skipped with reduced motion.
+
+**Market**
+- "Temperature and Tint" is the pair every photo app uses, so players who edit photos will recognize it. Players who don't just see "too green? add Rose".
+- The pour makes each tap feel like adding something to a brew, which matches the alchemy fantasy (and helps art & polish).
+
+**Game design**
+- **Full calibration:** brightness, saturation and both white-balance axes cover what's steady per device and room. What it still can't fix is per-scene auto-exposure (§4.23).
+- **No limits means trust.** A wild tincture mainly hurts its maker: it applies to all 5 colors, which are unknown in advance and spread around the wheel, so no single setting helps every color. The risk is confusion, not cheating. "Pour out" is the escape hatch.
+- **The shelf grows to 8 ingredients** in a 2 × 2 grid of pairs on phones. That's about 70 px more height than before at 360×640; the camera view still fits.
+
+**Digit7 Jam**
+- No new assets: everything is SVG/CSS with Web Animations, cheap on mobile.
+- The math is still shared by the shader and the capture (`editGains`). Tests cover tint keeping luminance, the direction of each tint, and Ash never passing grey.
+- Checked at 360×640 and 1280×720 with no overflow and no errors.
+
+### 4.23 The tincture: calibrate the machine before the run (2026-10-29)
+
+**The change (the user's design).**
+- The side bars are gone from the 30-second hunt.
+- Before the first color, the player mixes a **tincture**: a base for the machine that makes the world inside it look like the world around them. This calibrates for their room's light and their camera's white balance.
+- There are six ingredients. Each is dragged into the machine (or tapped, and it pours itself in), one dose at a time. Opposite ingredients cancel.
+  - **Sunlight / Darkness** set brightness.
+  - **Pigment / Ash** set saturation.
+  - **Cinnamon / Cobalt** make it warmer or cooler.
+- Each pair allows up to 6 doses either way. A meter shows the doses for each pair, and "Pour out" resets everything.
+- The step has no clock. "Start extracting" begins the run, and the tincture then applies to the viewfinder and to every capture.
+- Practice mode skips it, because its painted scenes are already exact.
+
+**Names (the user asked).**
+- **"Tincture"** over "reagent." In alchemy a tincture is a base extract, and in heraldry the word means a color, which fits a color game. "Reagent" sounds like a chemistry lab.
+- The verb is **"mix"**, because the run's potion is already "brewed."
+- **"The world inside the machine"** over "the screen," because the machine is the fiction and players compare it with their surroundings.
+
+**One deliberate deviation: Cinnamon/Cobalt is warm/cool, not a hue rotation.**
+- The purpose is white balance, and a white-balance error is a warm or cool cast: a white wall looks blue or orange.
+- A hue rotation can't fix that, because a grey stays grey under a rotation, and it would also turn a red apple orange.
+- So warmth works like a camera's white balance: red goes up and blue goes down, in linear light, with brightness kept the same. The ingredient names already suggest warm and cool.
+- If a true hue shift is wanted anyway, it's a small change in `editGains`/`editPixel` and the shader.
+
+**Market**
+- A calibration step is familiar (photo apps, display setup) but rare in casual games. Making it an alchemy ritual with drag-and-drop ingredients turns a chore into the first toy the player touches.
+- It addresses the biggest risk of a camera color game: "the game says my blue shirt isn't blue." Players own the calibration, so results feel fairer.
+
+**Game design**
+- **Fairness:** the tincture is mixed before any target is known and applies to all 5 colors. It can correct the light, but it can't be tuned to a particular color, so it isn't a cheat.
+  - A test checks that the strongest warmth leaves a grey only softly tinted. It stays under Kindred's limit, so a grey can't be turned into a color.
+- **A cleaner hunt:** the 30 s are about finding and framing only, with less on screen and fewer controls on mobile.
+- **Pacing cost:** there's one more step before the first color, every run. Mitigations, as suggestions only (not built):
+  1. Remember the last tincture on this device and start from it. That's a big win for replays and an easy add.
+  2. Show the step only on the first run of a session.
+- **Help on screen:** tips cycle on taller screens: show something white (paper) and it should look white; compare your hand; "Too dim? Sunlight. Washed out? Pigment. Too blue? Cinnamon."
+- **Range:** up to ±0.9 stops of light, ±42 % saturation, and ±0.36 stops warmth. That's enough for a dim room or an indoor cast, and too small to repaint the world.
+
+**Digit7 Jam**
+- **Retention and product fit:** the ritual gives the game a distinct opening, and remembering the tincture (suggestion 1) would make replays quick.
+- **Originality:** calibrating the camera as alchemy is a mechanic we haven't seen in other games.
+- **Technical:** the same math runs in the shader and the capture (per-channel gains, then OKLab chroma), so what you see is what's scored. There are no new assets or network requests.
+  - Without WebGL, the preview is approximate (CSS filters, and warmth isn't shown), but the capture is exact.
+- **Tested** at 360×640 and 1280×720: the smoke test drags an ingredient into the machine, taps another, and checks the meters. There's no overflow and there are no errors.
+
 ### 4.22 Harmonious ≤ 6; a color-wheel tuner (2026-10-29)
 
 **The change (the user's call).**

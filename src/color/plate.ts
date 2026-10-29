@@ -17,9 +17,29 @@ export interface Edits {
   ev: number;
   /** Chroma multiplier minus one, applied in OKLCh. */
   sat: number;
+  /** Warmth in stops: red ×2^warm, blue ×2^−warm, then rescaled to keep luminance (white balance). */
+  warm?: number;
+  /** Tint in stops: green ×2^tint against red and blue, then rescaled to keep luminance. */
+  tint?: number;
 }
 
 export const NO_EDITS: Edits = { ev: 0, sat: 0 };
+
+/**
+ * Per-channel linear gains for exposure and white balance (warmth, tint), the way a camera
+ * applies white balance: one multiplier per channel (the viewfinder uses the same).
+ */
+export function editGains(edits: Edits): [number, number, number] {
+  const k = Math.pow(2, edits.ev);
+  const w = edits.warm ?? 0;
+  const t = edits.tint ?? 0;
+  if (!w && !t) return [k, k, k];
+  const r = Math.pow(2, w);
+  const g = Math.pow(2, t);
+  const b = Math.pow(2, -w);
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return [(r / y) * k, (g / y) * k, (b / y) * k];
+}
 
 /** Normalized crop rectangle, 0..1 in plate space. */
 export interface Crop {
@@ -286,7 +306,7 @@ export function dropLab(labs: DropLabs, d: number): Lab {
 let LINEAR_TO_SRGB8: Uint8ClampedArray | null = null;
 
 export function renderPlate(plate: Plate, edits: Edits, out: Uint8ClampedArray): void {
-  const k = Math.pow(2, edits.ev);
+  const k = editGains(edits);
   const s = 1 + edits.sat;
   if (!LINEAR_TO_SRGB8) {
     LINEAR_TO_SRGB8 = new Uint8ClampedArray(4096);
@@ -305,13 +325,14 @@ export function renderPlate(plate: Plate, edits: Edits, out: Uint8ClampedArray):
 }
 
 /**
- * One pixel with edits applied: exposure ×k in linear light (clipping at white, like a
- * sensor), then chroma ×s in OKLab. The viewfinder's GLSL does the same; keep them together.
+ * One pixel with edits applied: exposure and warmth as per-channel gains k in linear light
+ * (clipping at white, like a sensor), then chroma ×s in OKLab. The viewfinder's GLSL does
+ * the same; keep them together.
  */
-function editPixel(lin: Float32Array, i: number, k: number, s: number, out: [number, number, number]): void {
-  let r = Math.min(1, lin[i] * k);
-  let g = Math.min(1, lin[i + 1] * k);
-  let b = Math.min(1, lin[i + 2] * k);
+function editPixel(lin: Float32Array, i: number, k: [number, number, number], s: number, out: [number, number, number]): void {
+  let r = Math.min(1, lin[i] * k[0]);
+  let g = Math.min(1, lin[i + 1] * k[1]);
+  let b = Math.min(1, lin[i + 2] * k[2]);
   if (s !== 1) {
     // Scale chroma in OKLab: via cbrt-LMS, cheap enough at plate size.
     const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
@@ -337,11 +358,11 @@ function editPixel(lin: Float32Array, i: number, k: number, s: number, out: [num
 
 /**
  * The plate as the player saw it through the viewfinder, edits applied to every pixel
- * (Seven Colors: the machine's brightness and saturation bars). Extraction averages this.
+ * (Seven Colors: the player's tincture). Extraction averages this.
  */
 export function applyEdits(plate: Plate, edits: Edits): Plate {
-  if (!edits.ev && !edits.sat) return plate;
-  const k = Math.pow(2, edits.ev);
+  if (!edits.ev && !edits.sat && !edits.warm && !edits.tint) return plate;
+  const k = editGains(edits);
   const s = 1 + edits.sat;
   const lin = new Float32Array(plate.lin.length);
   const px: [number, number, number] = [0, 0, 0];

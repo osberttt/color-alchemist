@@ -93,11 +93,15 @@ export const SEVEN = {
   /** Seconds per color. */
   seconds: 30,
   /**
-   * The machine's side bars nudge what the camera sees (ANALYSIS §4.17, widened in §4.20):
-   * brightness ±evMax stops in linear light (0.75 ≈ −41 % … +68 % light), saturation
-   * ±satMax of OKLab chroma. Hue can't change, and a grey stays grey.
+   * The tincture (ANALYSIS §4.23–4.24): before the first color the player calibrates the
+   * machine by dropping ingredients into it, as many doses as they like (no limits).
+   * Sunlight/Darkness: ±evPerDose stops in linear light. Pigment/Ash: OKLab chroma
+   * ×(1 + satPerDose) per dose, compounding (so Ash approaches grey but never inverts).
+   * Cinnamon/Cobalt: warmer/cooler, red up and blue down by warmPerDose stops. Moss/Rose:
+   * greener/more magenta, green up against red and blue by tintPerDose stops. Warmth and
+   * tint keep brightness. It then applies, fixed, to every color of the run.
    */
-  adjust: { evMax: 0.75, satMax: 0.4 },
+  tincture: { evPerDose: 0.15, satPerDose: 0.07, warmPerDose: 0.06, tintPerDose: 0.05 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */

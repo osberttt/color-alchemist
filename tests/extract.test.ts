@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ciede2000, ciede2000Parts, hexToCielab, linearToCielab, toLCh } from '../src/color/cielab';
 import { applyEdits, NO_EDITS } from '../src/color/plate';
-import { deltaEOK, hexToLinear, hexToOklab, oklabToLinear } from '../src/color/oklab';
+import { deltaEOK, hexToLinear, hexToOklab, linearToOklab, oklabToLinear } from '../src/color/oklab';
 import type { Plate } from '../src/color/plate';
 import { COLORS, color } from '../src/data/colors';
 import { SEVEN } from '../src/data/tuning';
@@ -102,7 +102,7 @@ describe('the color extracting machine', () => {
   });
 });
 
-describe("the machine's adjustment bars", () => {
+describe("the player's tincture (the machine's calibration)", () => {
   const orange = plate(4, 4, () => [0.6, 0.2, 0.04]);
 
   it('no adjustment changes nothing', () => {
@@ -123,6 +123,41 @@ describe("the machine's adjustment bars", () => {
     const after = toLCh(extract(applyEdits(orange, { ev: 0, sat: 0.25 })).lab);
     expect(after.C).toBeGreaterThan(before.C * 1.1);
     expect(Math.abs(after.h - before.h)).toBeLessThan(3);
+  });
+
+  it('cinnamon warms a grey (red up, blue down) without changing its brightness; cobalt cools it', () => {
+    const grey = plate(1, 1, () => [0.2, 0.2, 0.2]);
+    const lum = (p: Plate) => 0.2126 * p.lin[0] + 0.7152 * p.lin[1] + 0.0722 * p.lin[2];
+    const warm = applyEdits(grey, { ev: 0, sat: 0, warm: 0.3 });
+    expect(warm.lin[0]).toBeGreaterThan(warm.lin[1]);
+    expect(warm.lin[1]).toBeGreaterThan(warm.lin[2]);
+    expect(lum(warm)).toBeCloseTo(lum(grey), 6);
+    const cool = applyEdits(grey, { ev: 0, sat: 0, warm: -0.3 });
+    expect(cool.lin[2]).toBeGreaterThan(cool.lin[0]);
+    expect(lum(cool)).toBeCloseTo(lum(grey), 6);
+  });
+
+  it('moss greens a grey and rose turns it magenta, without changing its brightness', () => {
+    const grey = plate(1, 1, () => [0.2, 0.2, 0.2]);
+    const lum = (p: Plate) => 0.2126 * p.lin[0] + 0.7152 * p.lin[1] + 0.0722 * p.lin[2];
+    const moss = applyEdits(grey, { ev: 0, sat: 0, tint: 0.2 });
+    expect(moss.lin[1]).toBeGreaterThan(moss.lin[0]);
+    expect(moss.lin[0]).toBeCloseTo(moss.lin[2], 9);
+    expect(linearToOklab(moss.lin[0], moss.lin[1], moss.lin[2]).a).toBeLessThan(-0.01); // green side
+    expect(lum(moss)).toBeCloseTo(lum(grey), 6);
+    const rose = applyEdits(grey, { ev: 0, sat: 0, tint: -0.2 });
+    expect(linearToOklab(rose.lin[0], rose.lin[1], rose.lin[2]).a).toBeGreaterThan(0.01); // magenta side
+    expect(lum(rose)).toBeCloseTo(lum(grey), 6);
+  });
+
+  it('no limits, but Ash never pushes a color past grey', () => {
+    // Saturation compounds per dose, so even 100 doses of Ash leave a dull orange, not its opposite.
+    const sat = Math.pow(1 + SEVEN.tincture.satPerDose, -100) - 1; // as the mixer computes it
+    expect(sat).toBeGreaterThan(-1);
+    const out = applyEdits(plate(1, 1, () => [0.6, 0.2, 0.04]), { ev: 0, sat });
+    const ok = linearToOklab(out.lin[0], out.lin[1], out.lin[2]);
+    expect(Math.hypot(ok.a, ok.b)).toBeLessThan(0.01);
+    expect(ok.a).toBeGreaterThanOrEqual(0);
   });
 });
 

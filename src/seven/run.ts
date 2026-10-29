@@ -7,7 +7,7 @@ import { SEVEN } from '../data/tuning';
 import { mulberry32, pickWeighted, randomSeed, type Rng } from '../meta/rng';
 import { getSettings } from '../meta/storage';
 import { craftTierFor, extract, judge, type Extraction } from '../scoring/extract';
-import type { Plate } from '../color/plate';
+import { NO_EDITS, type Edits, type Plate } from '../color/plate';
 
 export type SevenMode = 'camera' | 'practice' | 'photo';
 
@@ -42,6 +42,8 @@ export interface SevenRun {
   used: Set<string>;
   tutorial: boolean;
   current: ColorDef | null;
+  /** The player's tincture: mixed before the first color, applied to every capture. */
+  tincture: Edits;
 }
 
 export let seven: SevenRun | null = null;
@@ -57,6 +59,7 @@ export function newSeven(mode: SevenMode): SevenRun {
     used: new Set(),
     tutorial: mode === 'camera' && !getSettings().tutorialDone,
     current: null,
+    tincture: { ...NO_EDITS, warm: 0, tint: 0 },
   };
   return seven;
 }

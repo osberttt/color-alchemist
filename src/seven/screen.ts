@@ -1,9 +1,9 @@
 // Seven Colors: one screen for the whole run. Each section: intro → hunt (live
 // camera, the color extracting machine framed in the target color, zoom, on the
 // clock) → snap → extraction → result sheet (precise judgement + the craft grows).
-// The whole camera view is the machine: a frame with pipes to two side bars that
-// nudge brightness and saturation a little (what you see is what's extracted), and
-// into the square. No other correction.
+// The whole camera view is the machine: a frame with pipes into the square. Before the
+// first color the player mixes a tincture (tincture.ts) that calibrates the machine for
+// their light; it applies to every capture (what you see is what's extracted).
 
 import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
@@ -24,6 +24,7 @@ import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
 import { dealSection, finishSection, OPERATIONS, runTotal, type Section, type SevenRun } from './run';
+import { tinctureMixer } from './tincture';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
@@ -33,9 +34,15 @@ const TIPS = [
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
   'Tilt shiny things to kill the glare.',
-  'Nudge the side bars: a little brighter, a little more vivid.',
+  'Your tincture tints everything the machine sees.',
   'Trust your eyes: compare the frame with what is inside it.',
   'When time runs out, the machine extracts whatever it holds. Keep it aimed.',
+];
+
+const TINCTURE_TIPS = [
+  'Show the machine something white, like paper. It should look white inside.',
+  'Compare something you know well, like your hand, with how it looks inside.',
+  'Too dim? Sunlight. Washed out? Pigment. Too blue? Cinnamon. Too green? Rose.',
 ];
 
 interface PhotoDeck {
@@ -66,7 +73,7 @@ export function sevenScreen(r: SevenRun): void {
     let zoom: number = SEVEN.zoomMin;
     let cx = 0.5;
     let cy = 0.5;
-    let phase: 'intro' | 'hunt' | 'capturing' | 'result' | 'done' = 'intro';
+    let phase: 'tincture' | 'intro' | 'hunt' | 'capturing' | 'result' | 'done' = 'intro';
     let remaining: number = SEVEN.seconds;
     let lastT = performance.now();
     let lastTick = Math.ceil(remaining);
@@ -75,9 +82,6 @@ export function sevenScreen(r: SevenRun): void {
     let raf = 0;
     let resultAt = 0;
     let tipIndex = Math.floor(Math.random() * TIPS.length);
-    // The machine's side bars, in exposure stops and chroma fraction (SEVEN.adjust).
-    let ev = 0;
-    let sat = 0;
     const timers: number[] = [];
     const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, reducedMotion() ? Math.min(ms, 120) : ms));
 
@@ -111,17 +115,13 @@ export function sevenScreen(r: SevenRun): void {
     const machine = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     machine.classList.add('machine');
     machine.setAttribute('aria-hidden', 'true');
-    const signed = (n: number) => (n > 0 ? `+${n}%` : n < 0 ? `−${-n}%` : '0');
-    const brightBar = adjBar('Brightness', '☀', (v) => signed(Math.round((Math.pow(2, v * SEVEN.adjust.evMax) - 1) * 100)), (v) => {
-      ev = v * SEVEN.adjust.evMax;
-      paintAdjust();
-    });
-    const satBar = adjBar('Saturation', '◐', (v) => signed(Math.round(v * SEVEN.adjust.satMax * 100)), (v) => {
-      sat = v * SEVEN.adjust.satMax;
-      paintAdjust();
-    });
-    const bars = [brightBar, satBar];
-    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, machine, nameplate, brightBar.el, satBar.el, warn, intro);
+    const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, machine, nameplate, warn, intro);
+    const mixer = tinctureMixer(r.tincture, () => viewport, (color) => pourTincture(color));
+    // The machine's pipe ends (frame → square), kept by drawMachine for the tincture's flow.
+    let pipeEnds: [number, number, number, number][] = [];
+    let machineSize = { W: 1, H: 1 };
+    mixer.el.hidden = true;
+    const startBtn = h('button', { class: 'btn primary tc-start', type: 'button', hidden: true, onclick: () => finishTincture() }, 'Start extracting ▶');
     const stageWrap = h('div', { class: 'stage-wrap' }, viewport);
     const vf = new Viewfinder(vfCanvas);
     if (!vf.ok) viewport.classList.add('no-gl');
@@ -136,6 +136,9 @@ export function sevenScreen(r: SevenRun): void {
     zoomInput.addEventListener('input', () => setZoom(Number(zoomInput.value)));
     const zoomRow = h('label', { class: 'slider zoom' }, h('span', { class: 's-label' }, '⌕ Zoom'), zoomInput, zoomOut);
     const tipEl = h('p', { class: 'tip' }, TIPS[tipIndex]);
+    const huntHelp =
+      r.mode === 'camera' ? 'Hold things up to the camera. Space: extract · +/−: zoom · Esc: quit' : 'Drag to aim · Space: extract · +/−: zoom · arrows: aim · Esc: quit';
+    const deskHelp = h('p', { class: 'desk-only muted small' }, huntHelp);
 
     const shutter = h('button', { class: 'shutter', type: 'button', 'aria-label': 'Extract (Space)', onclick: () => void snap() }, h('span'));
     const flipBtn = h(
@@ -182,21 +185,16 @@ export function sevenScreen(r: SevenRun): void {
         h(
           'div',
           { class: 'hunt-side' },
+          mixer.el,
           target,
           zoomRow,
-          h(
-            'p',
-            { class: 'desk-only muted small' },
-            r.mode === 'camera'
-              ? 'Hold things up to the camera. Space: extract · +/−: zoom · W/S: brightness · E/D: saturation · Esc: quit'
-              : 'Drag to aim · Space: extract · +/−: zoom · W/S: brightness · E/D: saturation · arrows: aim · Esc: quit',
-          ),
+          deskHelp,
         ),
         h(
           'div',
           { class: 'hunt-main' },
           stageWrap,
-          h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, h('div', { class: 'side right' }, flipBtn)),
+          h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, startBtn, h('div', { class: 'side right' }, flipBtn)),
           tipEl,
         ),
       ),
@@ -225,9 +223,9 @@ export function sevenScreen(r: SevenRun): void {
     }
 
     /**
-     * The whole view as one machine: a frame round the camera in the target color, pipes
-     * from the frame through the two bars into the square, and up and down from the
-     * square to the frame (the extracted blob leaves by the top pipe).
+     * The whole view as one machine: a frame round the camera in the target color, and
+     * pipes from all four sides of the frame into the square (the extracted blob leaves
+     * by the top pipe).
      */
     function drawMachine(W: number, H: number, S: number): void {
       const mx = W / 2;
@@ -235,14 +233,13 @@ export function sevenScreen(r: SevenRun): void {
       const xL = mx - S / 2;
       const xR = mx + S / 2;
       const m = 5; // frame inset
-      const barH = Math.round(Math.min(H * 0.56, Math.max(S * 1.6, 120)));
-      const xb = [xL / 2, W - xL / 2];
-      bars.forEach((b, i) => {
-        b.el.style.left = `${Math.round(xb[i] - 22)}px`;
-        b.el.style.top = `${Math.round(my - barH / 2)}px`;
-        b.el.style.height = `${barH}px`;
-      });
-      const tw = 12; // half the bar's track width
+      machineSize = { W, H };
+      pipeEnds = [
+        [m, my, xL, my],
+        [W - m, my, xR, my],
+        [mx, m, mx, my - S / 2],
+        [mx, H - m, mx, my + S / 2],
+      ];
       const pipe = (x1: number, y1: number, x2: number, y2: number) => {
         const d = `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`;
         return `<path class="pipe-o" d="${d}"/><path class="pipe-i" d="${d}"/>`;
@@ -266,99 +263,14 @@ export function sevenScreen(r: SevenRun): void {
         `<path class="shade" fill-rule="evenodd" d="M0,0H${W}V${H}H0Z${hole}"/>` +
         `<rect class="frame-o" x="${m}" y="${m}" width="${W - 2 * m}" height="${H - 2 * m}" rx="14"/>` +
         `<rect class="frame-i" x="${m}" y="${m}" width="${W - 2 * m}" height="${H - 2 * m}" rx="14"/>` +
-        pipe(m, my, xb[0] - tw, my) +
-        pipe(xb[0] + tw, my, xL, my) +
-        pipe(xR, my, xb[1] - tw, my) +
-        pipe(xb[1] + tw, my, W - m, my) +
+        pipe(m, my, xL, my) +
+        pipe(xR, my, W - m, my) +
         pipe(mx, m, mx, my - S / 2) +
         pipe(mx, my + S / 2, mx, H - m) +
         `<path class="bracket" d="${brackets}"/>` +
         joints.map(([x, y]) => `<circle class="joint" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5"/>`).join('');
     }
 
-    /**
-     * The bars' nudge shows on the whole machine, not just the camera: frame, pipes,
-     * joints, nameplate and bar tracks brighten/darken and gain/lose saturation with it,
-     * so the change is easy to see. The square's frame and the target swatch keep the
-     * true target color: comparing inside vs. frame must stay honest. The camera view
-     * itself shows the exact nudge (WebGL), never the final color.
-     */
-    function paintAdjust(): void {
-      viewport.style.setProperty('--adj', ev || sat ? `brightness(${Math.pow(2, ev).toFixed(3)}) saturate(${(1 + sat).toFixed(3)})` : 'none');
-    }
-
-    interface AdjBar {
-      el: HTMLElement;
-      track: HTMLElement;
-      /** −1 … 1 across the bar's (small) range. */
-      value: number;
-      set(v: number, notify?: boolean): void;
-    }
-
-    /** A vertical adjustment bar on the machine: drag, tap, wheel, arrow keys; double-tap resets. */
-    function adjBar(label: string, icon: string, show: (v: number) => string, onChange: (v: number) => void): AdjBar {
-      const thumb = h('span', { class: 'adj-thumb' });
-      const out = h('span', { class: 'adj-value mono' }, '0');
-      const track = h('span', { class: 'adj-track' }, h('span', { class: 'adj-zero' }), thumb);
-      const el = h(
-        'div',
-        { class: 'adj', role: 'slider', tabindex: '0', 'aria-label': label, 'aria-valuemin': '-100', 'aria-valuemax': '100', 'aria-valuenow': '0' },
-        h('span', { class: 'adj-icon', 'aria-hidden': 'true' }, icon),
-        track,
-        out,
-      );
-      const bar: AdjBar = {
-        el,
-        track,
-        value: 0,
-        set(v: number, notify = true) {
-          bar.value = Math.round(Math.min(1, Math.max(-1, v)) * 50) / 50;
-          thumb.style.top = `${(1 - (bar.value + 1) / 2) * 100}%`;
-          out.textContent = show(bar.value);
-          el.setAttribute('aria-valuenow', String(Math.round(bar.value * 100)));
-          el.setAttribute('aria-valuetext', out.textContent);
-          if (notify) onChange(bar.value);
-        },
-      };
-      const fromY = (y: number) => {
-        const r = track.getBoundingClientRect();
-        return 1 - 2 * ((y - r.top) / Math.max(1, r.height));
-      };
-      // The bars sit on the viewport: keep their touches away from its pan and pinch.
-      el.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        if (phase === 'intro') return beginHunt();
-        if (phase !== 'hunt') return;
-        el.setPointerCapture(e.pointerId);
-        bar.set(fromY(e.clientY));
-      });
-      el.addEventListener('pointermove', (e) => {
-        if (phase === 'hunt' && el.hasPointerCapture(e.pointerId)) bar.set(fromY(e.clientY));
-      });
-      el.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        if (phase === 'hunt') bar.set(0);
-      });
-      el.addEventListener(
-        'wheel',
-        (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (phase === 'hunt') bar.set(bar.value + (e.deltaY < 0 ? 0.1 : -0.1));
-        },
-        { passive: false },
-      );
-      el.addEventListener('keydown', (e) => {
-        const step = { ArrowUp: 0.1, ArrowRight: 0.1, ArrowDown: -0.1, ArrowLeft: -0.1 }[e.key];
-        if (step === undefined && e.key !== 'Home') return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (phase === 'hunt') bar.set(step === undefined ? 0 : bar.value + step);
-      });
-      // Draw the resting state; the screen isn't built yet, so don't notify.
-      bar.set(0, false);
-      return bar;
-    }
     const ro = new ResizeObserver(layout);
     ro.observe(stageWrap);
 
@@ -389,12 +301,6 @@ export function sevenScreen(r: SevenRun): void {
       targetSw.style.background = def.target;
       // The whole machine (frame, pipes, bars, square) is drawn in the target color.
       viewport.style.setProperty('--ing', def.target);
-      // The bars show which way they push, in the target's own color (exaggerated: the
-      // real nudge is small).
-      const t = hexToOklab(def.target);
-      const tone = (dL: number, k: number) => oklabToHex({ L: Math.min(0.97, Math.max(0.08, t.L + dL)), a: t.a * k, b: t.b * k });
-      brightBar.track.style.background = `linear-gradient(to top, ${tone(-0.28, 1)}, ${def.target}, ${tone(0.22, 1)})`;
-      satBar.track.style.background = `linear-gradient(to top, ${tone(0, 0)}, ${def.target}, ${tone(0, 1.6)})`;
       nameEl.textContent = def.name;
       metaEl.textContent = `${ELEMENT_GLYPH[def.element]} ${def.element} · ${TIER_LABEL[def.tier]}`;
     }
@@ -406,11 +312,11 @@ export function sevenScreen(r: SevenRun): void {
       });
     }
 
-    async function prepareSource(def: ColorDef): Promise<void> {
+    async function prepareSource(def?: ColorDef): Promise<void> {
       if (r.mode === 'camera') {
         if (!src || src.el !== camera.video) setSource(cameraSource());
         void camera.video.play().catch(() => undefined);
-      } else if (r.mode === 'practice') {
+      } else if (r.mode === 'practice' && def) {
         const rng = mulberry32((r.seed ^ ((r.index + 1) * 2654435761)) >>> 0);
         setSource(canvasSource(paintPracticeCanvas(rng, def).canvas));
       } else if (!src) {
@@ -428,6 +334,78 @@ export function sevenScreen(r: SevenRun): void {
       setSource(canvasSource(await imageToCanvas(url)));
     }
 
+    // --- the tincture (before the first color) ------------------------------------------
+    /** No clock: the player mixes until the world inside the machine matches their own. */
+    async function startTincture(): Promise<void> {
+      phase = 'tincture';
+      mixer.el.hidden = false;
+      startBtn.hidden = false;
+      target.hidden = zoomRow.hidden = true;
+      shutter.hidden = true;
+      deskHelp.textContent = 'Drag (or click) ingredients into the machine · Enter: start extracting · Esc: quit';
+      tipEl.textContent = TINCTURE_TIPS[0];
+      // A neutral machine: a colored frame would bias the eye while calibrating.
+      viewport.style.setProperty('--ing', '#c8c8c8');
+      stageEl.textContent = 'Tincture';
+      timerEl.textContent = '';
+      paintSpectrum();
+      await prepareSource();
+    }
+
+    /**
+     * A dose going in: liquid of the ingredient's color runs through all four pipes into
+     * the square, rises there as a wavy pool, sloshes and drains away (about 0.65 s), leaving the view
+     * clear for comparing again. Purely decorative: the tincture itself is already applied.
+     */
+    function pourTincture(color: string): void {
+      if (reducedMotion()) return;
+      const NS = 'http://www.w3.org/2000/svg';
+      const flow = document.createElementNS(NS, 'svg');
+      flow.classList.add('tc-flow');
+      flow.setAttribute('viewBox', `0 0 ${machineSize.W} ${machineSize.H}`);
+      flow.setAttribute('aria-hidden', 'true');
+      for (const [x1, y1, x2, y2] of pipeEnds) {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`);
+        path.style.stroke = color;
+        flow.append(path);
+        // Blobs of liquid travelling along the pipe toward the square.
+        path.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: -140 }], { duration: 280, easing: 'linear' });
+      }
+      viewport.append(flow);
+      flow.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 300 }).onfinish = () => flow.remove();
+
+      // The pool in the square: two wave layers drifting sideways while the level rises and falls.
+      const wave = (y: number) => `M-100,${y} q12.5,-7 25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 L200,120 L-100,120 Z`;
+      const pool = h('div', { class: 'tc-pool', 'aria-hidden': 'true' });
+      pool.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="tc-wave a" d="${wave(8)}" fill="${color}"/><path class="tc-wave b" d="${wave(12)}" fill="${color}"/></svg>`;
+      reticle.append(pool);
+      const level = pool.firstElementChild as SVGElement;
+      level.animate(
+        [
+          { transform: 'translateY(100%)' },
+          { transform: 'translateY(30%)', offset: 0.35 },
+          { transform: 'translateY(40%)', offset: 0.55 },
+          { transform: 'translateY(100%)' },
+        ],
+        { duration: 600, delay: 60, easing: 'ease-in-out', fill: 'both' },
+      ).onfinish = () => pool.remove();
+    }
+
+    function finishTincture(): void {
+      if (phase !== 'tincture') return;
+      phase = 'capturing'; // in transit to the first intro
+      sfx.pour();
+      fx.splash(centerOf(reticle).x, centerOf(reticle).y, '#c8c8c8', 20);
+      mixer.el.hidden = true;
+      startBtn.hidden = true;
+      target.hidden = zoomRow.hidden = false;
+      shutter.hidden = false;
+      deskHelp.textContent = huntHelp;
+      tipEl.textContent = TIPS[tipIndex];
+      void startSection();
+    }
+
     // --- section flow ---------------------------------------------------------------
     async function startSection(): Promise<void> {
       const def = dealSection(r);
@@ -440,7 +418,6 @@ export function sevenScreen(r: SevenRun): void {
       timerEl.classList.remove('urgent');
       reticle.querySelector('.ret-gather')?.remove();
       reticle.querySelector('.ret-blob')?.remove();
-      bars.forEach((b) => b.set(0));
       yoursSw.style.background = '';
       yoursSw.classList.add('mystery');
       yoursSw.textContent = '?';
@@ -480,6 +457,7 @@ export function sevenScreen(r: SevenRun): void {
 
     /** `timedOut`: the clock ran out, so the machine extracts on its own, from wherever the player left it. */
     async function snap(timedOut = false): Promise<void> {
+      if (phase === 'tincture') return finishTincture();
       if (phase === 'intro') return beginHunt();
       if (phase === 'result') return advance();
       if (phase !== 'hunt' || !src) return;
@@ -496,8 +474,8 @@ export function sevenScreen(r: SevenRun): void {
       shake(viewport, 'soft');
       const shot = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
       viewport.classList.remove('flash');
-      // The machine extracts what the player saw: the bars' nudges applied to every pixel.
-      const plate = shot && applyEdits(shot, { ev, sat });
+      // The machine extracts what the player saw: the tincture applied to every pixel.
+      const plate = shot && applyEdits(shot, r.tincture);
       if (!plate) {
         phase = 'hunt';
         if (timedOut) return runDry();
@@ -510,7 +488,7 @@ export function sevenScreen(r: SevenRun): void {
       blendReveal(plate, sec, before);
     }
 
-    /** Time's up: the machine extracts what's in it right now (aim, zoom and bars as left). */
+    /** Time's up: the machine extracts what's in it right now (aim and zoom as left). */
     function timeUp(): void {
       if (phase !== 'hunt') return;
       timerEl.textContent = '0:00';
@@ -839,8 +817,9 @@ export function sevenScreen(r: SevenRun): void {
       const mirror = src.mirrored ? ' scaleX(-1)' : '';
       const el = src.el as HTMLElement;
       el.style.transform = `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)${mirror}`;
-      // Without WebGL the bars' preview is approximate (CSS filters work in sRGB); the
-      // capture itself is exact.
+      // Without WebGL the tincture's preview is approximate (CSS filters work in sRGB, and
+      // warmth isn't shown); the capture itself is exact.
+      const { ev, sat } = r.tincture;
       el.style.filter = ev || sat ? `brightness(${Math.pow(2, ev).toFixed(3)}) saturate(${(1 + sat).toFixed(3)})` : '';
     };
 
@@ -849,9 +828,9 @@ export function sevenScreen(r: SevenRun): void {
       const dt = (now - lastT) / 1000;
       lastT = now;
       // After the snap the view freezes (the last frame stays) while the machine blends.
-      const live = phase === 'hunt' || phase === 'intro';
+      const live = phase === 'hunt' || phase === 'intro' || phase === 'tincture';
       if (src && live) {
-        if (vf.ok) vf.render(src, view(), ev, sat);
+        if (vf.ok) vf.render(src, view(), r.tincture);
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
       }
@@ -880,7 +859,8 @@ export function sevenScreen(r: SevenRun): void {
 
     const tipTimer = window.setInterval(() => {
       tipIndex = (tipIndex + 1) % TIPS.length;
-      tipEl.textContent = TIPS[tipIndex];
+      const list = phase === 'tincture' ? TINCTURE_TIPS : TIPS;
+      tipEl.textContent = list[tipIndex % list.length];
     }, 6000);
 
     const onVis = () => {
@@ -894,7 +874,7 @@ export function sevenScreen(r: SevenRun): void {
     let pinchStart: { d: number; zoom: number } | null = null;
     viewport.addEventListener('pointerdown', (e) => {
       if (phase === 'intro') return beginHunt();
-      if (phase !== 'hunt') return;
+      if (phase !== 'hunt' && phase !== 'tincture') return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewport.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {
@@ -942,10 +922,7 @@ export function sevenScreen(r: SevenRun): void {
       }
       if (k === 'Escape') return void quitSeven();
       if ((e.target as HTMLElement)?.tagName === 'INPUT' && k.startsWith('Arrow')) return;
-      const nudge = { w: [brightBar, 0.1], s: [brightBar, -0.1], e: [satBar, 0.1], d: [satBar, -0.1] }[k.toLowerCase()] as [AdjBar, number] | undefined;
-      if (nudge) {
-        if (phase === 'hunt') nudge[0].set(nudge[0].value + nudge[1]);
-      } else if (k === '+' || k === '=') setZoom(zoom * 1.1);
+      if (k === '+' || k === '=') setZoom(zoom * 1.1);
       else if (k === '-' || k === '_') setZoom(zoom / 1.1);
       else if ((k === 'n' || k === 'N') && r.mode === 'photo') void nextPhoto();
       else if (src?.pannable && k.startsWith('Arrow')) {
@@ -960,7 +937,8 @@ export function sevenScreen(r: SevenRun): void {
       e.preventDefault();
     });
 
-    void startSection();
+    // The painted practice scenes are exact already: nothing to calibrate.
+    void (r.mode === 'practice' ? startSection() : startTincture());
 
     return () => {
       cancelAnimationFrame(raf);
