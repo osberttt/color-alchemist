@@ -149,7 +149,7 @@ export const SEVEN = {
 // same device right away. Only dev and test (GitHub Pages) builds read them; the jam
 // build (`npm run build`, mode "production") always uses the values above.
 
-export const TUNING_OVERRIDE_KEY = 'color-alchemist:tuning-override';
+export const TUNING_OVERRIDE_KEY = 'colorchemy:tuning-override';
 
 export interface SevenTunables {
   /** maxDE for Flawless, Harmonious, Kindred, Wavering, Awry (Botched is the rest). */

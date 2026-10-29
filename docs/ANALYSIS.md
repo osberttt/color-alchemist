@@ -1,4 +1,4 @@
-# Color Alchemist: Market, Design and Tech Analysis
+# Colorchemy: Market, Design and Tech Analysis
 
 2026-10-26 · pre-production · companion to [`GDD.md`](./GDD.md)
 

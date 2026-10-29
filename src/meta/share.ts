@@ -33,7 +33,7 @@ export function emojiFor(hex: string): string {
 
 export function shareText(mode: 'camera' | 'practice', brews: BrewRecord[], res: RunResult): string {
   const lines = [
-    `Color Alchemist · ${mode === 'camera' ? 'Real-world hunt' : 'Practice plates'}`,
+    `Colorchemy · ${mode === 'camera' ? 'Real-world hunt' : 'Practice plates'}`,
     `is your life full of colors?  ${res.band.name}  ${fmt(res.total)}`,
     ...brews.map((b) => `${emojiFor(b.a.hex)}${emojiFor(b.b.hex)} ${b.a.fool ? "Fool's Gold" : b.a.grade} · ${b.b.fool ? "Fool's Gold" : b.b.grade}`),
   ];

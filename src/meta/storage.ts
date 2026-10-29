@@ -1,7 +1,7 @@
 // Local persistence: settings, Grimoire, offline leaderboard, stats.
 // Every access is wrapped: private windows and blocked storage must not break the game.
 
-const PREFIX = 'color-alchemist:v1:';
+const PREFIX = 'colorchemy:v1:';
 
 function read<T>(key: string, fallback: T): T {
   try {

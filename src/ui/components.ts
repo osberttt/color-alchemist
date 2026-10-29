@@ -58,7 +58,7 @@ export function stamp(grade: Grade | string, extra = ''): HTMLElement {
   return h('span', { class: `stamp grade-${String(grade).toLowerCase().replace(/[^a-z]/g, '')} ${extra}`.trim() }, String(grade));
 }
 
-/** COLOR ALCHEMIST: the O's are flasks of color, every letter bounces in with its own accent. */
+/** COLOR / CHEMY: the O's are flasks of color, every letter bounces in with its own accent. */
 export function logo(colors: string[]): HTMLElement {
   let n = 0;
   const letter = (ch: string) => h('span', { class: 'll', style: { '--i': String(n++), '--c': `var(--p${(n % 5) + 1}, currentColor)` } }, ch);
@@ -69,9 +69,9 @@ export function logo(colors: string[]): HTMLElement {
   };
   return h(
     'h1',
-    { class: 'logo', 'aria-label': 'Color Alchemist' },
+    { class: 'logo', 'aria-label': 'Colorchemy' },
     h('span', { class: 'logo-top', 'aria-hidden': 'true' }, letter('C'), flask(colors[0]), letter('L'), flask(colors[1]), letter('R')),
-    h('span', { class: 'logo-bottom', 'aria-hidden': 'true' }, ...'ALCHEMIST'.split('').map(letter)),
+    h('span', { class: 'logo-bottom', 'aria-hidden': 'true' }, ...'CHEMY'.split('').map(letter)),
   );
 }
 

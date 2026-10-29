@@ -20,7 +20,7 @@ export function sevenShareText(r: SevenRun, total: number, craft: string): strin
   for (const s of r.sections) counts.set(s.tier, (counts.get(s.tier) ?? 0) + 1);
   const order = [...SEVEN.colorTiers.map((t) => t.name), 'Empty'];
   const lines = [
-    `Color Alchemist${r.mode === 'camera' ? '' : ' (practice)'}`,
+    `Colorchemy${r.mode === 'camera' ? '' : ' (practice)'}`,
     `is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
     r.sections.map((s) => emojiFor(s.hex)).join(''),
     order

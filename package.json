@@ -1,8 +1,8 @@
 {
-  "name": "color-alchemist",
+  "name": "colorchemy",
   "private": true,
   "version": "0.1.0",
-  "description": "Color Alchemist: a real-world color hunt arcade game. is your life full of colors?",
+  "description": "Colorchemy: a real-world color hunt arcade game. is your life full of colors?",
   "type": "module",
   "scripts": {
     "dev": "vite",

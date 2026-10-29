@@ -100,7 +100,7 @@ export function hue(lab: Lab): number {
 }
 
 /**
- * ΔE_CA, the "Color Alchemist distance" (GDD §8.4).
+ * ΔE_CA, the "Colorchemy distance" (GDD §8.4).
  * Lightness counts half, a slightly duller sample is forgiven, a greyish one is not,
  * hue counts fully.
  * ΔH² is computed as Δa² + Δb² − ΔC², which equals (2·√(C₁C₂)·sin(Δh/2))².

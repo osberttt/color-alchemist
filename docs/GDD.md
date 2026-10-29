@@ -1,10 +1,10 @@
-# Color Alchemist — Game Design Document
+# Colorchemy — Game Design Document
 
 > **is your life full of colors?**
 
 | | |
 |---|---|
-| Working title | Color Alchemist |
+| Working title | Colorchemy |
 | Version | 0.1 (pre-production), 2026-10-26 |
 | Genre | Real-world color hunt / photo score-attack, arcade |
 | Platform | Mobile web first (portrait), desktop web second |
@@ -234,7 +234,7 @@ All math lives in one module (see CLAUDE.md). The live Lens, the Brew preview, t
   - its **non-uniformity** (√(σ²L + σ²a + σ²b) in OKLab) is > 0.04. Edges between two colors blend into fake in-between colors (red next to blue looks purple), and this rule stops that, along with heavy texture.
 - "1 drop of each color is enough" is the player's rule of thumb, matching the original concept.
 
-### 8.4 Distance: ΔE_CA ("Color Alchemist distance")
+### 8.4 Distance: ΔE_CA ("Colorchemy distance")
 
 Computed in **OKLCh** (polar OKLab). For target T = (L₁, C₁, h₁) and sample S = (L₂, C₂, h₂):
 
@@ -554,7 +554,7 @@ The run produces one final potion named after the band, for example **"Vivid Pan
 13. **Share text** (Wordle-style, spoiler-free). The squares are the nearest of the 9 colored-square emoji to **the color you found**:
 
 ```
-Color Alchemist · Daily Rite #12
+Colorchemy · Daily Rite #12
 is your life full of colors?  VIVID  3 842
 🟦🟨 Essence · Elixir
 🟩🟥 Elixir · Tincture
@@ -632,7 +632,7 @@ The hunt, brew and assay use the dark "night lab" theme, so the camera pops and 
 
 ### 16.4 Logo and key art
 
-- **COLOR ALCHEMIST**, where both **O**s in "COLOR" are round-bottom flasks. On the title screen they're **filled with the last two colors you found** (a living logo). For a first-time player they're empty glass.
+- **COLOR / CHEMY** (two lines), where both **O**s in "COLOR" are round-bottom flasks. On the title screen they're **filled with the last two colors you found** (a living logo). For a first-time player they're empty glass.
 - The tagline sits under it: *is your life full of colors?* The question mark's dot is a single drop that cycles through the daily colors.
 
 ### 16.5 Motion and juice
@@ -653,7 +653,7 @@ The hunt, brew and assay use the dark "night lab" theme, so the camera pops and 
 │ ☾                     ⚙  ?   │
 │                              │
 │      C(●)L(●)R               │  ← flask "O"s hold your last 2 colors
-│      ALCHEMIST               │
+│      CHEMY                   │
 │   is your life full of       │
 │        colors?               │
 │                              │
@@ -789,7 +789,7 @@ The hunt, brew and assay use the dark "night lab" theme, so the camera pops and 
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ C(●)L(●)R ALCHEMIST    Daily Rite #12          ⏱ 0:42      │
+│ C(●)L(●)R CHEMY        Daily Rite #12          ⏱ 0:42      │
 ├──────────────┬─────────────────────────────────────────────┤
 │ INGREDIENTS  │                                             │
 │ (vial) TEAL  │         webcam preview 16:9 (grayscale,     │
