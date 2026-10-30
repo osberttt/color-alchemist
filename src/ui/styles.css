@@ -2966,6 +2966,21 @@ body[data-theme='palette'] .btn.primary {
 .rx-delta {
   text-align: left;
 }
+/* The potion's progress after a reaction: the result sheet's panel, a little smaller. */
+.rx-out .rx-craft {
+  /* Its own palette's text (the reaction screen's light text would vanish on light palettes). */
+  color: var(--text);
+  margin-top: 4px;
+  padding: 10px 12px;
+  gap: 12px;
+}
+.rx-out .rx-craft .craft-stage {
+  width: 84px;
+  height: 84px;
+}
+.rx-out .rx-craft .craft-name {
+  font-size: 20px;
+}
 .rx-delta p {
   margin: 0;
 }

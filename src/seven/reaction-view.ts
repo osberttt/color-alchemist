@@ -13,7 +13,8 @@ import { centerOf, fx, shake } from '../ui/fx';
 import { ingredientShelf } from './ingredients';
 import { dosesToEdits, INGREDIENTS, reactionName, reactionWhy, type Reaction } from './reaction';
 import { reactionGuide } from './reaction-guide';
-import { OPERATIONS, reactSections, type SevenRun } from './run';
+import { progressPanel } from './progress-panel';
+import { OPERATIONS, reactSections, runTotal, type SevenRun } from './run';
 
 export interface ReactionView {
   /** Resolves when the player continues. */
@@ -115,7 +116,6 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
     h('div', { class: 'rx-inner' }, h('p', { class: 'eyebrow' }, 'Reaction!'), h('h2', { class: 'rx-name' }, reactionName(rx)), brief, mix),
   );
   host.append(el);
-  sfx.whoosh();
   requestAnimationFrame(() => {
     const c = centerOf(chain);
     fx.burst(c.x, c.y, rx.window.map((i) => r.sections[i].hex), { count: 18, speed: 200, size: 6, gravity: 0 });
@@ -147,6 +147,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
     shelf.lock();
     const before = secs.map((s) => ({ tier: s.tier, score: s.score, dE: s.dE }));
     const touched = Object.values(shelf.doses).some((d) => d !== 0);
+    const totalBefore = runTotal(r);
     if (touched) reactSections(r, rx.indices, dosesToEdits(shelf.doses), rx.kind);
     halves.forEach((half, i) => (half.style.background = secs[i].hex));
     onChange();
@@ -167,18 +168,21 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
         h('span', { class: `rx-points mono ${s.score > before[i].score ? 'up' : s.score < before[i].score ? 'down' : ''}` }, signed(s.score - before[i].score)),
       ),
     );
-    out.replaceChildren(...rows, many ? h('p', { class: 'rx-sum mono' }, `in all ${signed(gain)}`) : '');
+    // The potion's progress again: its bar moves from the total before the reaction to the new one.
+    const progress = progressPanel(totalBefore);
+    out.replaceChildren(...rows, many ? h('p', { class: 'rx-sum mono' }, `in all ${signed(gain)}`) : '', progress.el);
     // The outcome takes the place of the clock and the shelf (they no longer matter, and phones are short).
+    // With three extracts the rows name each color, so the swatches make room for the potion too.
     how.hidden = time.hidden = shelf.el.hidden = true;
+    stack.hidden = many;
     out.hidden = false;
     doneBtn.textContent = 'Continue ▶';
     doneBtn.onclick = () => close();
     sfx.stamp();
     const c = centerOf(out);
-    if (gain > 0) {
-      fx.burst(c.x, c.y, secs.flatMap((s) => [s.def.target, s.hex]), { count: 20 + Math.round(gain / 2), speed: 260, shapes: ['star', 'circle'] });
-      sfx.sparkle();
-    } else if (gain < 0) shake(el, 'soft');
+    if (gain > 0) fx.burst(c.x, c.y, secs.flatMap((s) => [s.def.target, s.hex]), { count: 20 + Math.round(gain / 2), speed: 260, shapes: ['star', 'circle'] });
+    else if (gain < 0) shake(el, 'soft');
+    window.setTimeout(() => phase === 'judged' && progress.moveTo(runTotal(r)), reducedMotion() ? 0 : 700);
     doneBtn.focus();
   }
 
@@ -187,7 +191,6 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
     if (phase !== 'judged' || performance.now() - judgedAt < 600) return;
     phase = 'gone';
     stop();
-    sfx.whoosh();
     if (reducedMotion()) {
       el.remove();
       resolve();

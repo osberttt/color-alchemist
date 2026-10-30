@@ -55,7 +55,6 @@ export function show(render: (screen: HTMLElement) => Cleanup | void, theme: The
     swap();
     return;
   }
-  sfx.whoosh();
   // Rings: two accents of the page we're going to, then its background (or the neutral lab).
   const pal = palette ?? current;
   const rings = pal ? [pal.accents[2], primaryAccent(pal), palette ? palette.bg : '#0f0f12'] : ['#1a1a1f'];

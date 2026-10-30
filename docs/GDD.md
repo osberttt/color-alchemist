@@ -59,7 +59,7 @@ The sections after this one describe the original pair-based design ("Classic").
      - **Moss / Rose:** greener or more magenta by 0.55 stops.
 
      That's about 4 (OKLab ×100) per dose on every axis: coarse on purpose. The extract changes color live, but its score stays hidden. There are no meters and no undo: think fast and commit (opposite ingredients still cancel, when they're on offer). "Done" ends early.
-   - **Judging:** when the clock runs out (or the player taps Done), the extracts are judged again. They can get better or worse, and the running total and potion update. The summary notes each reacted color ("Sublimation, was Awry").
+   - **Judging:** when the clock runs out (or the player taps Done), the extracts are judged again. They can get better or worse, and the running total and potion update: the potion panel appears under the outcome and its bar moves from the old total to the new one, up or down, changing potion in place if needed (ANALYSIS §4.34). The summary notes each reacted color ("Sublimation, was Awry").
 7. After 7 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 7 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **7-square emoji row**. "Brew again" restarts in one tap.
 
 **Scoring (simple and even)**

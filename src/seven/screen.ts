@@ -452,7 +452,6 @@ export function sevenScreen(r: SevenRun): void {
       cv.getContext('2d')!.putImageData(new ImageData(mosaic(plate, n), n, n), 0, 0);
       const blob = h('span', { class: 'ret-blob', style: { background: sec.hex, opacity: '0' } });
       reticle.append(cv, blob);
-      sfx.pour();
       const gather = { duration: 760, easing: 'cubic-bezier(.55,0,.35,1)', fill: 'forwards' as FillMode };
       cv.animate(
         [
@@ -533,21 +532,18 @@ export function sevenScreen(r: SevenRun): void {
       sheet.classList.remove('down');
       sheet.scrollTop = 0;
       sheetInner.scrollTop = 0;
-      sfx.whoosh();
 
       // 1. The score counts up and the rank stamp slams.
       later(450, () => countUp(scoreEl, sec.score, 700));
       later(1150, () => {
+        // The quality stamp lands with its (tame, low) thunk; the celebrations stay silent (ANALYSIS §4.33).
         stampEl.hidden = false;
         sfx.stamp();
         const c = centerOf(stampEl);
         fx.burst(c.x, c.y, [sec.def.target, sec.hex], { count: 5 + power * 9, speed: 160 + power * 50, shapes: ['circle', 'star', 'square'] });
         if (power >= 4) shake(sheet, power === 5 ? 'hard' : 'soft');
-        if (power === 5) {
-          // Flawless: a celebration in the color itself and the sheet's palette.
-          sfx.choir();
-          fx.celebrate([sec.def.target, sec.hex, '#ffffff', ...paletteFor('result').accents]);
-        } else if (power >= 3) sfx.sparkle();
+        // Flawless: a celebration in the color itself and the sheet's palette.
+        if (power === 5) fx.celebrate([sec.def.target, sec.hex, '#ffffff', ...paletteFor('result').accents]);
         const seg = segments[sec.index];
         seg.classList.remove('seg-pop');
         void seg.offsetWidth;
@@ -566,6 +562,9 @@ export function sevenScreen(r: SevenRun): void {
         dropInto(dropFrom, craftStage, sec.hex, () => {
           const now = craftTierFor(sec.total);
           const promoted = now.index !== prevCraft.index || r.index === 0;
+          // The one sound of the potion: when the drop is in (the flight is silent).
+          if (promoted) sfx.fanfare();
+          else sfx.pop(3);
           const c = centerOf(craftStage);
           fx.burst(c.x, c.y, [sec.hex], { count: 16, speed: 200, size: 6 });
           floatText(c.x, c.y - 30, `+${sec.score}`, sec.hex);
@@ -583,15 +582,11 @@ export function sevenScreen(r: SevenRun): void {
             craftBlurb.textContent = POTION_BLURBS[now.index];
             if (promoted) {
               craftName.classList.add('promoted');
-              sfx.fanfare();
               const cc = centerOf(craftStage);
               fx.burst(cc.x, cc.y, paletteFor('result').accents, { count: 30 + now.index * 8, speed: 300, shapes: ['star', 'circle'] });
               // The Elixir of Life: the Great Work is done.
-              if (now.index === SEVEN.craftTiers.length - 1) {
-                sfx.choir();
-                fx.celebrate([...paletteFor('result').accents, '#ffffff']);
-              }
-            } else sfx.pop(3);
+              if (now.index === SEVEN.craftTiers.length - 1) fx.celebrate([...paletteFor('result').accents, '#ffffff']);
+            }
           });
         });
       });
@@ -662,7 +657,7 @@ export function sevenScreen(r: SevenRun): void {
         ],
         { duration: 650, easing: 'cubic-bezier(.4,0,.6,1)' },
       );
-      sfx.drip();
+      // Silent in flight: the sound comes when it lands (the caller's `done`).
       anim.onfinish = () => {
         drop.remove();
         done();
@@ -714,7 +709,6 @@ export function sevenScreen(r: SevenRun): void {
       if (performance.now() - resultAt < SEVEN.resultGuardMs) return;
       phase = 'capturing'; // in transit: ignore input until the next intro
       r.index++;
-      sfx.whoosh();
       sheet.classList.add('down');
       later(450, () => void next());
     }

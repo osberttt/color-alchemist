@@ -68,61 +68,59 @@ function noise(dur: number, opts: { gain?: number; at?: number; freq?: number; q
   src.start(t0);
 }
 
+// Tame by design (ANALYSIS §4.32): sine waves only, fundamentals at or below ~600 Hz, no
+// overtones above ~1 kHz, soft attacks, noise always low-passed. But not below ~150 Hz
+// alone: phone speakers barely play it. Compare the options in docs/previews/sfx-options.html.
+// Transitions (page wipes, the result sheet, reactions) are silent by the user's choice.
 export const sfx = {
   tap() {
-    tone(880, 0.06, { type: 'triangle', gain: 0.12 });
+    tone(330, 0.06, { gain: 0.07, attack: 0.008 });
   },
   shutter() {
-    noise(0.05, { freq: 3500, q: 0.7, gain: 0.5 });
-    tone(140, 0.12, { type: 'sine', gain: 0.5, slide: 0.5 });
-    tone(620, 0.08, { type: 'triangle', gain: 0.18, at: 0.03 });
+    noise(0.06, { filter: 'lowpass', freq: 700, q: 0.5, gain: 0.25 });
+    tone(150, 0.1, { gain: 0.3, slide: 0.7, attack: 0.004 });
   },
   tick(urgent = false) {
-    tone(urgent ? 1320 : 990, 0.05, { type: 'sine', gain: urgent ? 0.18 : 0.08 });
+    tone(urgent ? 466 : 392, 0.06, { gain: urgent ? 0.09 : 0.05, attack: 0.004 });
   },
   drip() {
-    tone(1400, 0.12, { type: 'sine', gain: 0.2, slide: 0.45 });
+    tone(560, 0.11, { gain: 0.12, slide: 0.55, attack: 0.006 });
   },
   bubble(level: number) {
-    tone(300 + level * 120, 0.09, { type: 'sine', gain: 0.12, slide: 1.6 });
+    tone(220 + level * 40, 0.09, { gain: 0.08, slide: 1.3, attack: 0.006 });
   },
+  /**
+   * Each color's intro: "3 · Soft glass" (the user's pick), a rounded glass note one step higher per
+   * color (880–1240 Hz, no overtone). The one deliberate exception to the ≤ 600 Hz rule.
+   */
   clink(step = 0) {
-    const f = 1800 + step * 220;
-    tone(f, 0.35, { type: 'sine', gain: 0.18 });
-    tone(f * 2.76, 0.2, { type: 'sine', gain: 0.06 });
+    tone(880 + step * 60, 0.4, { gain: 0.07, attack: 0.008 });
   },
   stamp() {
-    noise(0.12, { freq: 300, q: 0.8, gain: 0.7 });
-    tone(90, 0.18, { type: 'sine', gain: 0.6, slide: 0.6 });
+    noise(0.1, { filter: 'lowpass', freq: 350, q: 0.6, gain: 0.45 });
+    tone(90, 0.16, { gain: 0.4, slide: 0.7, attack: 0.004 });
   },
   pour() {
-    noise(0.6, { freq: 900, q: 3, gain: 0.15 });
+    noise(0.6, { filter: 'lowpass', freq: 500, q: 0.7, gain: 0.12, swell: true });
   },
   fanfare() {
-    [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, { type: 'triangle', gain: 0.16, at: i * 0.09 }));
+    [262, 330, 392, 523].forEach((f, i) => tone(f, 0.5, { gain: 0.09, attack: 0.02, at: i * 0.1 }));
   },
   choir() {
-    [440, 554, 659, 880].forEach((f) => tone(f, 1.4, { type: 'sine', gain: 0.07, attack: 0.25 }));
+    [220, 277, 330, 440].forEach((f) => tone(f, 1.4, { gain: 0.05, attack: 0.3 }));
   },
   fool() {
-    tone(1200, 0.08, { type: 'square', gain: 0.06 });
-    tone(1500, 0.08, { type: 'square', gain: 0.06, at: 0.08 });
-    tone(110, 0.25, { type: 'sine', gain: 0.4, at: 0.18, slide: 0.7 });
+    tone(220, 0.1, { gain: 0.08, attack: 0.008 });
+    tone(165, 0.22, { gain: 0.1, at: 0.12, slide: 0.8, attack: 0.008 });
   },
   error() {
-    tone(220, 0.18, { type: 'triangle', gain: 0.2, slide: 0.7 });
-  },
-  /** Transitions: a soft, low swell of air with a warm tone under it, gently settling. */
-  whoosh() {
-    noise(0.6, { filter: 'lowpass', freq: 420, q: 0.4, gain: 0.16, swell: true });
-    tone(147, 0.7, { type: 'sine', gain: 0.07, attack: 0.22, slide: 0.88 });
-    tone(220, 0.6, { type: 'sine', gain: 0.025, attack: 0.25, at: 0.05, slide: 0.88 });
+    tone(196, 0.18, { gain: 0.14, slide: 0.75, attack: 0.01 });
   },
   pop(step = 0) {
-    tone(520 + step * 90, 0.08, { type: 'sine', gain: 0.18, slide: 1.8 });
+    tone(300 + step * 35, 0.08, { gain: 0.11, slide: 1.2, attack: 0.005 });
   },
   sparkle() {
-    [2093, 2637, 3136].forEach((f, i) => tone(f, 0.18, { type: 'sine', gain: 0.05, at: i * 0.05 }));
+    [392, 494, 587].forEach((f, i) => tone(f, 0.22, { gain: 0.045, attack: 0.01, at: i * 0.07 }));
   },
 };
 

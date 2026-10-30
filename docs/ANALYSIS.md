@@ -257,6 +257,93 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.34 The potion's progress after a reaction (2026-10-30)
+
+**The change (the user's call).** When a reaction has been judged, the potion panel from the result sheet appears under the outcome.
+- It shows the potion and its bar at the total **before** the reaction. After about 0.7 s the bar moves to the new total, **up or down**, and the label shows the change ("110 (+30) · 30 to Stimulant").
+- If the reaction changes the potion, the bar runs to the end of the old rank (or back to its start), and the potion turns into the new one in place. Going up adds the rank-up fanfare; going down is silent.
+- With three extracts (Equilibrium), the swatches give way to the panel; the rows already name each color.
+- The reaction's own sparkle sound is gone (§4.33: one sound per arrival). The stamp thunk stays.
+
+**Market:** players want to see what a bonus round did to their goal. Showing the potion's bar move makes the reaction's payoff (or cost) concrete, like a score tally after a bonus stage.
+
+**Game design:** reactions can now lose points as well as gain them, and the panel shows both honestly. A drop is felt as "my potion slipped" rather than a bare "−15". It also reminds the player of the run's goal between colors.
+
+**Digit7 Jam:** the panel reuses the result sheet's potion art and palette (`seven/progress-panel.ts`), so no new assets. It fits 360×640 with one or three extracts, with no overflow and no errors at 1280×720. With reduced motion it updates without animation.
+
+### 4.33 Fewer sounds: one per moment (2026-10-30)
+
+**The change (the user's call).** From the photo to the potion there are now exactly three sounds:
+1. the **shutter** when the photo is taken;
+2. a soft **pop** when the blended color lands in the extracted swatch;
+3. one sound when the drop is **in** the potion: a pop, or the low fanfare on a potion rank-up.
+
+Plus the **quality stamp's** low thunk when it lands on the result sheet (added back right after, at the user's request).
+
+Removed:
+- the pour while the square swirls together;
+- the drip while a drop flies (both flights are silent now);
+- the result sheet's sparkle and Flawless choir;
+- the Elixir choir, which used to play on top of the fanfare.
+
+The motion and confetti all stay. Before any of these, the color intro (soft glass), the last-seconds ticks and the failed-capture sound are unchanged.
+
+**Market:** quiet games feel premium and cozy, and every extra sound competes for attention. One sound per meaningful moment is the norm in calm mobile design.
+
+**Game design:** sound now marks arrivals, not travel. You hear the photo, the color arriving, and the drop landing, so each sound confirms something happened. Flawless and the Elixir still get their visual celebrations, so they don't need a sound to feel big.
+
+**Digit7 Jam:** this is polish. Sound stays optional and the game reads fully with it muted.
+
+### 4.32 Sound: lowkey, small and tame (2026-10-30)
+
+**The change (the user's call).** No high pitches: every sound should be lowkey, small and tame. The user didn't like the §4.31 transition sound either, so it is to be picked from options.
+- A listening page, `docs/previews/sfx-options.html`, offers six transition options and plays every sound "now" against "tame", plus a run's worth of sounds in a row:
+  - A · Breath (soft air)
+  - B · Felt (a low mallet note)
+  - C · Bloop (a low bubble)
+  - D · Page (a paper slide)
+  - E · Pad (two warm notes)
+  - F · Silence
+- The game uses the tame set now.
+- **The user's picks:**
+  - For transitions, **C · Bloop** at first, then **silence (F)**: page wipes, the result sheet and reactions make no sound. The wipe and the slide carry the change visually, and fewer sounds means the ones left (the color intro, the shutter, the stamp) mean more.
+  - All the tame sounds, **except the clink** (each color's intro).
+- **Clink options** are on the same page: original glass, tame bell, soft glass, marimba, bloop, two-note chime and silence.
+  - The user picked **3 · Soft glass**: a single rounded sine, 880 Hz rising 60 Hz per color (up to 1240 Hz), with no overtone, a soft 8 ms start and low volume.
+  - It's the one deliberate exception to the ≤ 600 Hz rule. A glass note needs some height to sound like glass, and without the old 2.76× overtone (up to 8.5 kHz) it stays gentle.
+
+**What was wrong (the audit).** The game uses 13 sounds (all WebAudio synthesis, no files). Eight were high or harsh:
+
+| Sound | Where | Was | Now |
+|---|---|---|---|
+| clink | every color's intro | 1.8–3.1 kHz plus an overtone up to **8.5 kHz** | 330–462 Hz plus a soft fifth |
+| sparkle | good results | 2.1–3.1 kHz | 392 / 494 / 587 Hz |
+| drip | every ingredient dose | 1.4 kHz falling | 560 Hz falling |
+| tick | last seconds | 990 / 1320 Hz | 392 / 466 Hz |
+| pop | reveals, summary | up to about 2 kHz, sliding up ×1.8 | 300–510 Hz, ×1.2 |
+| tap | buttons | 880 Hz triangle | 330 Hz sine |
+| shutter | extract | noise at 3.5 kHz plus a 620 Hz triangle | low-passed noise plus 150 Hz |
+| fanfare | potion rank-up | 523 → 1047 Hz triangle | 262 → 523 Hz sine |
+
+  Also lowered or softened: choir (440–880 → 220–440 Hz), pour (narrow 900 Hz noise → low-passed swell), stamp and error (quieter, softer).
+
+**The rules now (in `sfx.ts`):**
+- **Waveforms:** sine waves only, no buzzy square or triangle.
+- **Pitch:** fundamentals at or below about 600 Hz, and no overtones above about 1 kHz.
+- **Attacks:** soft, 4–30 ms, so nothing clicks.
+- **Noise:** always low-passed.
+- **Volume:** most gains roughly halved.
+- **Phone speakers:** they barely play anything below about 150–200 Hz. So every sound keeps some body around 200–500 Hz, or it would vanish on a phone. A 150 Hz thud alone is inaudible there.
+
+**Market:** calm, low, rounded sounds (soft marimba, felt, air, bubbles) are the norm in cozy and relaxing mobile games. High glassy pings and fast ticks read as "arcade" and get tiring over a 5–7 minute run. Color-hunt players are often indoors or in public, so quiet sounds are also more polite.
+
+**Game design**
+- **Repetition:** the intro bell plays 7 times a run, and drips play on every dose. High sounds that repeat are what grates, so these were the priority.
+- **Lower pitch means less urgency:** the last-seconds tick is now a soft low knock, so the countdown pressure comes from the visible clock and the pulse, not from the sound.
+- **Meaning kept:** each sound's role and timing are unchanged, so the feedback still works with the sound on.
+
+**Digit7 Jam:** this is art & polish. There are still no audio files, nothing to license and no downloads. The sound must work on phone speakers, which the "body at 200–500 Hz" rule addresses. Mute stays one tap away on every screen.
+
 ### 4.31 A soothing transition sound; a shutter dip instead of a shake (2026-10-30)
 
 **The change (the user's call).**

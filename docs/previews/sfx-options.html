@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colorchemy: sound options</title>
+<style>
+  :root { color-scheme: dark; --bg: #0f0f12; --panel: #1a1a1f; --line: #2a2a31; --text: #edeae3; --muted: #a9a9b2; --hi: #ffd34d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  h2 { margin: 30px 0 6px; font-size: 20px; }
+  p { margin: 0 0 10px; color: var(--muted); max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+  .card h3 { margin: 0; font-size: 16px; }
+  .card .k { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--muted); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; color: var(--text); background: #26262d; border: 1px solid #3a3a44; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  button:hover { background: #30303a; }
+  button.tame { background: #2a3a2a; border-color: #3e5a3e; }
+  .pick { outline: 2px solid var(--hi); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 14px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  td.hz { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  .bad { color: #ff8a7a; }
+  .ok { color: #9fe09f; }
+  .note { font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Colorchemy: sound options</h1>
+  <p>Click to listen (use your phone speaker too: phone speakers barely play anything below ~200 Hz, so "low" sounds must still have some body around 200–500 Hz, or they vanish on phones). "Play 3×" repeats a sound the way it repeats in a run.</p>
+
+  <h2>1. Transition sound (page changes, result sheet, reactions): pick one</h2>
+  <div class="grid" id="trans"></div>
+
+  <h2>1b. Color intro (clink): pick one</h2>
+  <p>Plays once at the start of each of the 7 colors. "▶ Run" plays it the way a run does: 7 times, one step higher each color.</p>
+  <div class="grid" id="clinks"></div>
+
+  <h2>2. Every sound: now vs. tame</h2>
+  <p>Tame rules: sine waves only (no buzzy square/triangle), fundamentals at or below ~600 Hz, no overtones above ~1 kHz, soft attacks (no clicks), noise always low-passed, quieter overall.</p>
+  <div class="row" style="margin: 8px 0 12px">
+    <button id="seq-now">▶ A run's worth of sounds: now</button>
+    <button id="seq-tame" class="tame">▶ A run's worth of sounds: tame</button>
+  </div>
+  <table>
+    <thead><tr><th>Sound</th><th>Where</th><th>Now</th><th>Tame</th><th></th></tr></thead>
+    <tbody id="all"></tbody>
+  </table>
+</main>
+<script>
+let ctx = null, master = null;
+function ac() {
+  if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination); }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+function tone(freq, dur, o = {}) {
+  const c = ac(); const t0 = c.currentTime + (o.at || 0);
+  const osc = c.createOscillator(), g = c.createGain();
+  osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(freq, t0);
+  if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq * o.slide), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(o.gain ?? 0.3, t0 + (o.attack ?? 0.005)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(master); osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+function noise(dur, o = {}) {
+  const c = ac(); const t0 = c.currentTime + (o.at || 0);
+  const len = Math.max(1, Math.floor(c.sampleRate * dur)); const buf = c.createBuffer(1, len, c.sampleRate); const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (o.swell ? Math.sin(Math.PI * i / len) ** 2 : 1 - i / len);
+  const s = c.createBufferSource(); s.buffer = buf; const f = c.createBiquadFilter(); f.type = o.filter || 'bandpass'; f.frequency.value = o.freq || 2000; f.Q.value = o.q || 1;
+  const g = c.createGain(); g.gain.value = o.gain ?? 0.3; s.connect(f).connect(g).connect(master); s.start(t0);
+}
+
+// --- 1. Transition options --------------------------------------------------------
+const TRANSITIONS = [
+  { id: 'none', name: 'F · Silence', desc: 'No transition sound at all: the paint wipe is enough. The calmest option.', play() {} },
+  { id: 'breath', name: 'A · Breath', desc: 'Soft air swelling in and out, nothing tonal. Like a slow exhale.', play() { noise(0.45, { filter: 'lowpass', freq: 380, q: 0.4, gain: 0.14, swell: true }); } },
+  { id: 'felt', name: 'B · Felt', desc: 'One soft, low mallet note (G3) with a quiet fifth. Like a felt marimba.', play() { tone(196, 0.32, { gain: 0.1, attack: 0.02 }); tone(294, 0.26, { gain: 0.025, attack: 0.02 }); } },
+  { id: 'bloop', name: 'C · Bloop', desc: 'A small, low bubble rising: liquid, on theme, very short.', play() { tone(170, 0.16, { gain: 0.11, attack: 0.012, slide: 1.45 }); } },
+  { id: 'page', name: 'D · Page', desc: 'A soft paper slide: muffled noise, no pitch. Like turning a page in a grimoire.', play() { noise(0.26, { filter: 'lowpass', freq: 900, q: 0.3, gain: 0.07, swell: true }); } },
+  { id: 'pad', name: 'E · Pad', desc: 'Two low notes fading in and out together. Warm and slow, the most "musical".', play() { tone(196, 0.55, { gain: 0.05, attack: 0.15 }); tone(294, 0.55, { gain: 0.035, attack: 0.18 }); } },
+  { id: 'now', name: 'Now (what you heard)', desc: 'Low-passed air swell plus a 147 Hz tone and a fifth, settling down.', play() { noise(0.6, { filter: 'lowpass', freq: 420, q: 0.4, gain: 0.16, swell: true }); tone(147, 0.7, { gain: 0.07, attack: 0.22, slide: 0.88 }); tone(220, 0.6, { gain: 0.025, attack: 0.25, at: 0.05, slide: 0.88 }); } },
+  { id: 'old', name: 'Before (original)', desc: 'Bright band-passed noise burst plus a rising tone.', play() { noise(0.32, { freq: 700, q: 0.6, gain: 0.22 }); tone(260, 0.3, { gain: 0.06, slide: 2.2 }); } },
+];
+const trans = document.getElementById('trans');
+for (const t of TRANSITIONS) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `<h3>${t.name}</h3><p class="note">${t.desc}</p><div class="row"><button>▶ Play</button><button>▶ 3×</button></div>`;
+  const [one, three] = el.querySelectorAll('button');
+  one.onclick = () => t.play();
+  three.onclick = () => [0, 900, 1800].forEach((ms) => setTimeout(() => t.play(), ms));
+  trans.append(el);
+}
+
+// --- 1b. Color intro (clink) options; step = color 0–6 ------------------------------
+const CLINKS = [
+  { name: '1 · Original glass', desc: 'The first version: a bright glass ping with a high overtone (up to 8.5 kHz).', play(s) { const f = 1800 + s * 220; tone(f, 0.35, { gain: 0.18 }); tone(f * 2.76, 0.2, { gain: 0.06 }); } },
+  { name: '2 · Tame bell', desc: 'What the game has now: a soft low bell with a quiet fifth (330–462 Hz).', play(s) { const f = 330 + s * 22; tone(f, 0.45, { gain: 0.1, attack: 0.01 }); tone(f * 1.5, 0.25, { gain: 0.02, attack: 0.01 }); } },
+  { name: '3 · Soft glass', desc: 'Still glassy, but an octave lower and with no overtone, a rounded start (880–1250 Hz).', play(s) { const f = 880 + s * 60; tone(f, 0.4, { gain: 0.07, attack: 0.008 }); } },
+  { name: '4 · Marimba', desc: 'A short wooden note, warm and dry, with a faint "knock" on top (392–555 Hz).', play(s) { const f = 392 + s * 27; tone(f, 0.22, { gain: 0.11, attack: 0.004 }); tone(f * 4, 0.04, { gain: 0.012, attack: 0.002 }); } },
+  { name: '5 · Bloop', desc: 'Matches the transition: a small low bubble, a little higher each color (200–290 Hz).', play(s) { const f = 200 + s * 15; tone(f, 0.18, { gain: 0.11, attack: 0.01, slide: 1.45 }); } },
+  { name: '6 · Two-note chime', desc: 'A gentle rising pair, like a soft doorbell (330–462 Hz, then a fourth up).', play(s) { const f = 330 + s * 22; tone(f, 0.3, { gain: 0.08, attack: 0.01 }); tone(f * 4 / 3, 0.4, { gain: 0.07, attack: 0.01, at: 0.12 }); } },
+  { name: '7 · Silence', desc: 'No sound: the color splash on screen is the cue.', play() {} },
+];
+const clinks = document.getElementById('clinks');
+for (const c of CLINKS) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `<h3>${c.name}</h3><p class="note">${c.desc}</p><div class="row"><button>▶ Play</button><button>▶ Run</button></div>`;
+  const [one, run] = el.querySelectorAll('button');
+  one.onclick = () => c.play(2);
+  run.onclick = () => [0, 1, 2, 3, 4, 5, 6].forEach((s) => setTimeout(() => c.play(s), s * 700));
+  clinks.append(el);
+}
+
+// --- 2. Every sound: now vs tame --------------------------------------------------
+const SOUNDS = [
+  { name: 'clink', where: 'each color\'s intro (step = color 0–6)', nowHz: '1800–3100 + overtone 5–8.5 kHz', tameHz: '330–462 + fifth ≤ 700',
+    now: () => { const f = 1800 + 2 * 220; tone(f, 0.35, { gain: 0.18 }); tone(f * 2.76, 0.2, { gain: 0.06 }); },
+    tame: () => { const f = 330 + 2 * 22; tone(f, 0.45, { gain: 0.1, attack: 0.01 }); tone(f * 1.5, 0.25, { gain: 0.02, attack: 0.01 }); } },
+  { name: 'sparkle', where: 'good result, reaction gain', nowHz: '2093 / 2637 / 3136', tameHz: '392 / 494 / 587',
+    now: () => [2093, 2637, 3136].forEach((f, i) => tone(f, 0.18, { gain: 0.05, at: i * 0.05 })),
+    tame: () => [392, 494, 587].forEach((f, i) => tone(f, 0.22, { gain: 0.045, attack: 0.01, at: i * 0.07 })) },
+  { name: 'drip', where: 'every ingredient dose, drop into the potion', nowHz: '1400 → 630', tameHz: '560 → 310',
+    now: () => tone(1400, 0.12, { gain: 0.2, slide: 0.45 }),
+    tame: () => tone(560, 0.11, { gain: 0.12, slide: 0.55, attack: 0.006 }) },
+  { name: 'tick', where: 'last 10 s of a hunt, last 3 s of a reaction', nowHz: '990 / urgent 1320', tameHz: '392 / urgent 466',
+    now: () => tone(1320, 0.05, { gain: 0.18 }),
+    tame: () => tone(466, 0.06, { gain: 0.09, attack: 0.004 }) },
+  { name: 'pop', where: 'swatch reveals, summary swatches', nowHz: '520–1150, sliding up ×1.8', tameHz: '300–510, sliding ×1.2',
+    now: () => tone(520 + 3 * 90, 0.08, { gain: 0.18, slide: 1.8 }),
+    tame: () => tone(300 + 3 * 35, 0.08, { gain: 0.11, slide: 1.2, attack: 0.005 }) },
+  { name: 'tap', where: 'button taps', nowHz: '880 (triangle)', tameHz: '330',
+    now: () => tone(880, 0.06, { type: 'triangle', gain: 0.12 }),
+    tame: () => tone(330, 0.06, { gain: 0.07, attack: 0.008 }) },
+  { name: 'shutter', where: 'extract (taking the photo)', nowHz: 'noise 3.5 kHz + 140 + 620', tameHz: 'noise ≤ 700 + 150',
+    now: () => { noise(0.05, { freq: 3500, q: 0.7, gain: 0.5 }); tone(140, 0.12, { gain: 0.5, slide: 0.5 }); tone(620, 0.08, { type: 'triangle', gain: 0.18, at: 0.03 }); },
+    tame: () => { noise(0.06, { filter: 'lowpass', freq: 700, q: 0.5, gain: 0.25 }); tone(150, 0.1, { gain: 0.3, slide: 0.7, attack: 0.004 }); } },
+  { name: 'fanfare', where: 'potion rank-up, summary', nowHz: '523 → 1047 (triangle)', tameHz: '262 → 523',
+    now: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, { type: 'triangle', gain: 0.16, at: i * 0.09 })),
+    tame: () => [262, 330, 392, 523].forEach((f, i) => tone(f, 0.5, { gain: 0.09, attack: 0.02, at: i * 0.1 })) },
+  { name: 'choir', where: 'Flawless, Elixir of Life', nowHz: '440 → 880', tameHz: '220 → 440',
+    now: () => [440, 554, 659, 880].forEach((f) => tone(f, 1.4, { gain: 0.07, attack: 0.25 })),
+    tame: () => [220, 277, 330, 440].forEach((f) => tone(f, 1.4, { gain: 0.05, attack: 0.3 })) },
+  { name: 'stamp', where: 'quality stamp slams', nowHz: 'noise 300 + 90', tameHz: 'same, quieter',
+    now: () => { noise(0.12, { freq: 300, q: 0.8, gain: 0.7 }); tone(90, 0.18, { gain: 0.6, slide: 0.6 }); },
+    tame: () => { noise(0.1, { filter: 'lowpass', freq: 350, q: 0.6, gain: 0.45 }); tone(90, 0.16, { gain: 0.4, slide: 0.7, attack: 0.004 }); } },
+  { name: 'pour', where: 'blend reveal', nowHz: 'noise 900 (narrow)', tameHz: 'noise ≤ 500, swell',
+    now: () => noise(0.6, { freq: 900, q: 3, gain: 0.15 }),
+    tame: () => noise(0.6, { filter: 'lowpass', freq: 500, q: 0.7, gain: 0.12, swell: true }) },
+  { name: 'error', where: 'a capture fails', nowHz: '220 (triangle)', tameHz: '196',
+    now: () => tone(220, 0.18, { type: 'triangle', gain: 0.2, slide: 0.7 }),
+    tame: () => tone(196, 0.18, { gain: 0.14, slide: 0.75, attack: 0.01 }) },
+];
+const HIGH = new Set(['clink', 'sparkle', 'drip', 'tick', 'pop', 'tap', 'shutter', 'fanfare']);
+const tbody = document.getElementById('all');
+for (const s of SOUNDS) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><b>${s.name}</b></td><td class="note">${s.where}</td><td class="hz ${HIGH.has(s.name) ? 'bad' : ''}">${s.nowHz}</td><td class="hz ok">${s.tameHz}</td><td><div class="row"><button>▶ now</button><button class="tame">▶ tame</button></div></td>`;
+  const [a, b] = tr.querySelectorAll('button');
+  a.onclick = s.now; b.onclick = s.tame;
+  tbody.append(tr);
+}
+const seq = (which) => ['clink', 'tick', 'tick', 'shutter', 'pour', 'pop', 'stamp', 'drip', 'sparkle', 'fanfare'].forEach((n, i) => setTimeout(() => SOUNDS.find((s) => s.name === n)[which](), i * 650));
+document.getElementById('seq-now').onclick = () => seq('now');
+document.getElementById('seq-tame').onclick = () => seq('tame');
+</script>
+</body>
+</html>
