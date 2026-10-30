@@ -94,8 +94,8 @@ async function session(name, viewport, mobile) {
   await page.waitForTimeout(500);
   await shot('01-howto');
   // The guide lists every reaction with an example.
-  if ((await page.locator('.howto .rg-list > li').count()) !== 6) problems.push(`[${name}] the guide doesn't list the 5 reactions + no reaction`);
-  await page.locator('.howto .rx-guide').scrollIntoViewIfNeeded();
+  if ((await page.locator('.howto .rg-list > li').count()) !== 5) problems.push(`[${name}] the guide doesn't list the 5 reactions`);
+  await page.locator('.howto .rg-list').scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);
   await shot('01b-howto-reactions');
   await overflow('howto');
@@ -104,7 +104,7 @@ async function session(name, viewport, mobile) {
   await overflow('title');
 
   // Practice run: all seven sections.
-  await page.getByRole('button', { name: /Practice/ }).click();
+  await page.getByRole('button', { name: 'Practice · practice scenes' }).click();
   await page.waitForSelector('.vf-overlay.intro:not([hidden])');
   await shot('03-intro');
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 5000 });
@@ -145,8 +145,8 @@ async function session(name, viewport, mobile) {
   await shot('07-board');
   await page.getByRole('button', { name: 'Back' }).click();
 
-  // Test photos (dev only)
-  await page.getByRole('button', { name: /Test photos/ }).click();
+  // Practice from your gallery (dev builds start with a test photo)
+  await page.getByRole('button', { name: 'Practice · from gallery' }).click();
   await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 8000 });
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 8000 });
   await page.waitForTimeout(800);
@@ -161,10 +161,10 @@ async function session(name, viewport, mobile) {
   await page.getByRole('button', { name: 'Abandon' }).click();
 
   // Camera (Chromium's fake camera: a moving test pattern)
-  await page.getByRole('button', { name: 'Begin the hunt' }).click();
-  const open = page.getByRole('button', { name: 'Open the eye' });
+  await page.getByRole('button', { name: 'Brew', exact: true }).click();
+  const open = page.getByRole('button', { name: 'Allow the camera' });
   // Screens arrive after a paint-wipe transition: wait for the prompt or the hunt.
-  await page.locator('.vf-overlay.intro:not([hidden]), button:has-text("Open the eye")').first().waitFor({ timeout: 10000 });
+  await page.locator('.vf-overlay.intro:not([hidden]), button:has-text("Allow the camera")').first().waitFor({ timeout: 10000 });
   if (await open.isVisible().catch(() => false)) {
     await page.waitForTimeout(500);
     await shot('10a-camera-prompt');

@@ -257,6 +257,145 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.40 A text revision of the whole game (2026-10-31)
+
+**The change (the user's call).**
+- **The user's lines:**
+  - the ledger's tabs are **"Live potions"** and **"Gallery potions"**;
+  - an empty ledger says **"The ledger waits for your first Elixir of Life."** (it named the old "Magnum Opus");
+  - quitting asks **"Abandon this potion? Your colors so far will be lost."** with **"Keep brewing"** and **"Abandon"**.
+- **Then a revision of every in-game text, with four rules:**
+  - **One vocabulary:** potion (never "run", "brew" or "craft"), extract, quality, the square, the ledger.
+  - **Plain and short:** one idea per line, contractions, no jargon.
+  - **Consistent form:** sentence case, digits for counts ("All 3 extracts"), curly apostrophes, the same "·" separators in help lines.
+  - **The user's own texts stay as written:** the title line, the guide, the reaction headings and lines.
+
+**What changed besides the user's lines:**
+- **Hunt tips:**
+  - "Feed the machine one color. Fill it completely." → "Fill the square with one color."
+  - "…kill the glare" → "…avoid glare"
+  - "Extracts rising or falling one quality at a time set off a reaction." → "Qualities rising or falling in steps cause reactions."
+  - "…whatever it holds. Keep it aimed." → "…whatever is in the square."
+- **Intro:** "Fill the machine. Blend if you must." → "Fill the square with it. Blend colors if you must."
+- **Desktop help:** "Drag or arrows: aim · Space: extract · +/−: zoom · Esc: quit".
+- **Messages:** "Time's up! The machine extracts what's in the square." and "Couldn't switch cameras."
+- **Result sheet:** "your brew begins" → "your potion begins".
+- **Reactions:** "Drop ingredients into your extract to bring it closer to Tan.", "Every ingredient goes into all 3.", "All 3 extracts are exposed…", "in all +15" → "Total +15".
+- **Summary:** "#3 on this device's board." → "#3 in the ledger."; the "Title" button → "Menu". The share text's tagline is capitalized ("Is your life full of colors?").
+- **Ledger:** "Your best runs on this device…" → "Your best potions on this device…".
+- **Camera screens:**
+  - The headings keep their flavor ("The Alchemist needs eyes.", "The eye will not open.").
+  - The buttons are plain: "Allow the camera" (was "Open the eye"), "No camera? Practice instead", "Practice instead".
+  - The privacy line is tightened, and the last error reads "The camera couldn't start."
+- **Kept on purpose:** ΔE on the result sheet and in the reaction result. When the quality doesn't change, it's the only sign of how close a color got, or how much a reaction helped.
+
+**Market:** consistent words are what make a small game feel finished. Judges notice "run", "brew", "craft" and "potion" used for the same thing.
+
+**Game design:** a player learns one word per idea. "The square" is what they aim, "extract" is what comes out, "quality" is how good it is, and "potion" is what they make.
+
+**Digit7 Jam:** art & polish and execution. The smoke test passes at 360×640 and 1280×720 with the new labels.
+
+### 4.39 Which runs are recorded; shorter buttons; semi-reactions offer what the extract needs (2026-10-31)
+
+**The change (the user's call).**
+- **The ledger has two boards, "Live potion" (camera) and "Gallery potion" (practice from the gallery).** Gallery runs are now recorded on their own board. Practice-scene runs are no longer recorded ("Practice potion (not recorded)"), because their painted scenes are the same for everyone and easy. The title's "best run" counts live runs only. Old practice-scene scores stay in storage but aren't shown.
+- **Buttons:** the result sheet says **"Next ▶"** (it was "Next color · 2/7 ▶") and, after the last color, **"Reveal potion ▶"** (it was "Reveal the craft ▶").
+- **The summary:** the "is your life full of colors?" line is gone, and so is ΔE in each color's row (now "Tan · Kindred · Calcination"). The eyebrow says "Live potion" or "Gallery potion". The share text marks gallery runs "(gallery)".
+- **Weighted ingredients for semi-reactions:** the 4 ingredients are still drawn at random, but weighted by what the exposed extract needs.
+  - For each of the 8, the game computes how much closer one dose would bring the extract to its target (`ingredientNeeds`).
+  - Each ingredient's weight is 1 plus `needWeight` (1.5) per point it would save; ingredients that would make it worse keep weight 1.
+  - Measured on a too-dark teal: Sunlight is offered in over 80 % of hands (chance is 50 %), Darkness in fewer than half, and the hands still vary.
+
+**Market:** separating an honest camera board from a gallery board is the usual answer to "anyone can pick a photo from the web". Each board compares like with like. A shared leaderboard that trusts gallery runs would be cheatable in seconds.
+
+**Game design:**
+- **Gallery is a real mode now:** a gallery run is scored and kept, which gives desk-bound players and webcam-less judges a reason to play it.
+- **Semi-reactions feel fairer:** the 4 ingredients usually include at least one that helps, so a semi-reaction is a real chance to improve, not a lottery. Surprise and judgment remain: which ingredients, how many doses, and the two that don't help.
+- **Fewer numbers:** without ΔE, the summary speaks in qualities only, which players understand.
+
+**Digit7 Jam:** product fit (two clear, honest boards) and gameplay (reactions that reward attention). New unit tests check the weighting. The smoke test passes at 360×640 and 1280×720.
+
+### 4.38 Plainer in-game text: no element or tier, reaction pages named (2026-10-30)
+
+**The change (the user's call).**
+- **The hunt panel no longer shows the color's element and tier** ("△ Fire · Lead"): just the target swatch, the color name and the hidden extract.
+  - Elements still keep two colors in a row from the same family, and tiers still order a run from common to rare. Players simply don't see the jargon.
+- **The result sheet** lost "Take your time. The clock starts with the next color."
+- **Reaction pages, in the user's words.** The small heading above the reaction's name names the page:
+  - **"You caused a reaction!"** on the briefing;
+  - **"Mixing with ingredients"** while the clock runs;
+  - **"Reaction result"** when judged.
+
+  The briefing's line is now "Qualities of your last 2 (or 3) extracts rose (or fell) in steps"; for Equilibrium, "Qualities of your last 3 extracts stayed the same".
+
+**Market:** "You caused a reaction!" puts the player at the center, a familiar celebration beat. Fewer labels on the hunt screen leave more attention for the camera.
+
+**Game design:** the element and tier never affected scoring, so showing them invited questions without answers. The page headings now tell the player where they are in a reaction: what happened → act → outcome.
+
+**Digit7 Jam:** clarity for first-time judges. The smoke test passes at 360×640 and 1280×720, and the reaction screenshots in `docs/previews/reaction-pages.html` are refreshed.
+
+### 4.37 The logo: every letter in color, an E condenser and a Y funnel; the hover bug (2026-10-30)
+
+**The change (the user's call).**
+- **"CHEMY" in color too:** every letter now takes the palette's most visible accents in turn. A letter below 3:1 against the page keeps its color with a thin ink outline (§4.36).
+- **More apparatus:** besides the flask O's, the **Y is a funnel**, holding colored liquid that sloshes like the flasks'.
+  - Tried and dropped the same day: an H made of two joined test tubes ("terrible"), and an E as a condenser (the user: "let E be E").
+- **Tagline:** a line break after "Is your life full of colors?".
+- **The real cause of vanishing letters was the hover:** hovering a letter swapped its CSS `animation` for a wobble. When the pointer left, the entrance animation restarted from `opacity: 0`, so the letter vanished and dropped in again.
+  - Hover now tilts and enlarges the letter with the separate `scale`/`rotate` properties and a transition, and never touches `animation`.
+  - Checked: right after hovering and leaving, letters stay fully visible.
+
+**Market:** a wordmark where the name itself is made of lab glass is instantly on theme and memorable in a portal thumbnail, the way the best game logos fold the mechanic into the type.
+
+**Game design:** none. This is identity.
+
+**Digit7 Jam:**
+- **Art & polish:** a flickering logo looked like a bug, and it's fixed.
+- **Compatibility:** individual `scale`/`rotate` properties are supported in all four required browsers.
+- **Tested:** the logo fits 360 px, and the smoke test passes at both sizes.
+
+### 4.36 A one-line logo that never loses a letter (2026-10-30)
+
+**The change (the user's call).**
+- **One line:** the logo was two lines (COLOR / CHEMY). It's now one word on one line, **COLORCHEMY**. "COLOR" is in the palette's accents with its two O's as flasks of color, and "CHEMY" is in the page's ink at the same size, so it reads as color + alchemy. It's sized to fit 360 px with margin, and every letter still bounces in.
+- **No vanishing letters:** a colored letter sometimes vanished when its accent was close to the page color. Five of the 25 palettes (Sherbet, Candy Shop, Citrus Pop, Dusty Rose, Ice Cream) have no accent with 3:1 contrast against their background.
+  - The three colored letters now take the accents that stand out most.
+  - Any that are still below 3:1 (WCAG's bar for large text) get a thin ink outline (`-webkit-text-stroke`, supported in Chrome, Edge, Firefox and Safari).
+  - The logo stays colorful on every palette and every letter is always readable.
+- **Button label:** "Practice · from gallery".
+
+**Market:** a one-line wordmark is how the name appears on jam portals, tabs and share images. It's easier to recognize and screenshot than a stacked logo.
+
+**Game design:** none. This is identity and readability.
+
+**Digit7 Jam:** art & polish and execution. A brand name that flickers to invisible on some palettes would look like a bug to a judge. Checked on several palettes at 360×640 and 1280×720, with no overflow and no errors.
+
+### 4.35 Wording: the title and the guide in the user's words; gallery practice (2026-10-30)
+
+**The change (the user's call).**
+- **Title, top to bottom:**
+  - the logo;
+  - only the small line "Is your life full of colors? Test it out to brew the Elixir of Life." ("Brew medicine with colors in the real world" was tried here and moved to the guide only, at the user's request);
+  - the buttons **Brew**, **Practice · from gallery**, **Practice · practice scenes** and **Leaderboard**.
+
+  The scoring tuner link and the "Your photos never leave your device" footnote are gone. The tuner still exists at `tuner.html`.
+- **Gallery practice is in the jam build** (it was the dev-only "Test photos"). The player picks a photo from their device. The clock waits until one is in ("Pick a photo … The clock starts when it's in.") and "Change photo" is always there. These runs aren't recorded on the leaderboard ("Gallery potion (not recorded)"), because any picture, even one from the web, could be used. "Practice scenes" are the painted still lifes (the user confirmed); the Wikimedia test photos stay dev-only.
+- **The how-to guide is only the user's text:**
+  - the heading **Colorchemy**, then the intro ("Brew medicine with colors in the real world. The closer the colors are to those in the recipe, the better the quality.");
+  - **How to play** ("Allow access to the camera on your phone (or PC). Take photos to match the colors in the recipe.");
+  - **Reactions** (one line, then each reaction with an example chain of quality stamps and a sentence in the user's pattern), with **Equilibrium last**.
+
+  The four numbered steps, the "No reaction" examples and the extra notes are gone. The in-game "All reactions" list shows the same entries.
+- **Two facts kept true to the game** (flagged to the user), with the numbers read from `SEVEN.reaction`:
+  - The draft described Semi-Sublimation as a *drop*; in the game Sublimation is *rising* and Precipitation is *falling*.
+  - The draft said 3 random ingredients; the game gives 4.
+
+**Market:** a one-line pitch and a short tagline are what store pages and jam portals show first. "Brew medicine with colors in the real world" says the hook in eight words. Gallery practice lets players and judges try the game without a camera at all, with their own photos, a common need on desktop.
+
+**Game design:** the guide is now short enough to read, and the reactions are learned by example. Fewer words means more of them get read.
+
+**Digit7 Jam:** product fit and execution. Judges on desktops without webcams can still play properly, with their own photos or the painted scenes. Checked in the jam build: the clock waits for a photo, then extracting works, with no errors. The smoke test passes at 360×640 and 1280×720.
+
 ### 4.34 The potion's progress after a reaction (2026-10-30)
 
 **The change (the user's call).** When a reaction has been judged, the potion panel from the result sheet appears under the outcome.

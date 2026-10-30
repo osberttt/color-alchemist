@@ -5,7 +5,7 @@ import { COLORS, color } from '../src/data/colors';
 import { SEVEN } from '../src/data/tuning';
 import { mulberry32 } from '../src/meta/rng';
 import { extractionOf, judge, tierFor } from '../src/scoring/extract';
-import { dosesToEdits, findReaction, INGREDIENTS, reactionName, type Ranked } from '../src/seven/reaction';
+import { dosesToEdits, findReaction, ingredientNeeds, INGREDIENTS, makeReaction, reactionName, type Ranked } from '../src/seven/reaction';
 import { reactSections, type Section, type SevenRun } from '../src/seven/run';
 
 const ranked = (...names: string[]): Ranked[] =>
@@ -74,6 +74,38 @@ describe('which reaction the latest ranks set off', () => {
     const s = ranked('Kindred', 'Kindred', 'Kindred');
     s[1].empty = true;
     expect(findReaction(s, rng)).toBeNull();
+  });
+});
+
+describe("a semi-reaction's ingredients lean toward what the extract needs", () => {
+  const teal = color('teal');
+  const [r, g, b] = hexToLinear(teal.target);
+  const tooDark: [number, number, number] = [r * 0.5, g * 0.5, b * 0.5];
+
+  it('knows what helps: Sunlight brings a too-dark extract closer, Darkness takes it further', () => {
+    const needs = ingredientNeeds(tooDark, teal.target);
+    expect(needs.sunlight).toBeGreaterThan(2);
+    expect(needs.darkness).toBeLessThan(0);
+  });
+
+  it('offers the helpful ingredient far more often than chance, but not always the same hand', () => {
+    const needsOf = () => ingredientNeeds(tooDark, teal.target);
+    const draw = mulberry32(3);
+    let sunlight = 0;
+    let darkness = 0;
+    const hands = new Set<string>();
+    const n = 400;
+    for (let i = 0; i < n; i++) {
+      const rx = makeReaction('sublimation', [0, 1], ['Awry', 'Wavering'], draw, needsOf);
+      expect(rx.ingredients).toHaveLength(SEVEN.reaction.semiIngredients);
+      if (rx.ingredients.includes('sunlight')) sunlight++;
+      if (rx.ingredients.includes('darkness')) darkness++;
+      hands.add(rx.ingredients.join());
+    }
+    // Pure chance would be 4 of 8: about half of the hands.
+    expect(sunlight / n).toBeGreaterThan(0.8);
+    expect(darkness / n).toBeLessThan(0.5);
+    expect(hands.size).toBeGreaterThan(5);
   });
 });
 

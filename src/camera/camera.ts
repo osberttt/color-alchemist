@@ -18,7 +18,7 @@ export const CAMERA_ERROR_TEXT: Record<CameraError, string> = {
   denied: 'Camera access was blocked. Allow it in your browser settings, then try again.',
   nocamera: 'No camera was found on this device.',
   busy: 'The camera is busy in another app. Close it and try again.',
-  unknown: 'The camera could not start.',
+  unknown: 'The camera couldn’t start.',
 };
 
 function classify(e: unknown): CameraError {

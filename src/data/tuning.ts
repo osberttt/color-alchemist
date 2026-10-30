@@ -104,7 +104,8 @@ export const SEVEN = {
    * tint keep brightness. Deliberately coarse: each dose moves a typical color about 4
    * (OKLab ×100), on every axis alike.
    */
-  reaction: { seconds: 30, equilibriumSeconds: 60, semiIngredients: 4, evPerDose: 0.3, satPerDose: 0.45, warmPerDose: 0.5, tintPerDose: 0.55 },
+  /** needWeight: a semi-reaction's draw weight per point of distance one dose would save (base 1). */
+  reaction: { seconds: 30, equilibriumSeconds: 60, semiIngredients: 4, needWeight: 1.5, evPerDose: 0.3, satPerDose: 0.45, warmPerDose: 0.5, tintPerDose: 0.55 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */

@@ -1,7 +1,7 @@
 // Reusable bits: target cards, meters, grade stamps, logo.
 
 import { ELEMENT_GLYPH, TIER_LABEL, type ColorDef } from '../data/colors';
-import { flaskSvg, h, svg, vialSvg } from './dom';
+import { flaskSvg, funnelSvg, h, svg, vialSvg } from './dom';
 import type { Grade } from '../scoring/score';
 
 export const METER_WORDS = ['cold', 'cool', 'warm', 'hot', 'boiling'];
@@ -58,20 +58,42 @@ export function stamp(grade: Grade | string, extra = ''): HTMLElement {
   return h('span', { class: `stamp grade-${String(grade).toLowerCase().replace(/[^a-z]/g, '')} ${extra}`.trim() }, String(grade));
 }
 
-/** COLOR / CHEMY: the O's are flasks of color, every letter bounces in with its own accent. */
-export function logo(colors: string[]): HTMLElement {
+/**
+ * COLORCHEMY on one line (ANALYSIS §4.36–4.37): every letter in color, and three of them lab
+ * apparatus holding colored liquid: the O's are flasks, the Y a funnel. Every letter bounces in.
+ * `fills`: liquid colors for O, O, Y. `letterColors`: colors for the letters, in turn; one
+ * too close to the page gets a thin ink outline, so no letter melts into the background.
+ */
+export function logo(fills: string[], letterColors: { color: string; outline: boolean }[] = []): HTMLElement {
   let n = 0;
-  const letter = (ch: string) => h('span', { class: 'll', style: { '--i': String(n++), '--c': `var(--p${(n % 5) + 1}, currentColor)` } }, ch);
-  const flask = (fill: string) => {
-    const el = svg(flaskSvg(fill, { level: 0.62 }), 'logo-o ll bubbling');
+  let k = 0;
+  const color = (ch: string) => {
+    const c = letterColors.length ? letterColors[k++ % letterColors.length] : { color: 'var(--text)', outline: false };
+    return h('span', { class: `ll${c.outline ? ' outlined' : ''}`, style: { '--i': String(n++), '--c': c.color } }, ch);
+  };
+  const apparatus = (markup: string, cls: string) => {
+    const el = svg(markup, `logo-o ${cls} ll bubbling`);
     el.style.setProperty('--i', String(n++));
     return el;
   };
+  const fill = (i: number) => fills[i % fills.length];
   return h(
     'h1',
     { class: 'logo', 'aria-label': 'Colorchemy' },
-    h('span', { class: 'logo-top', 'aria-hidden': 'true' }, letter('C'), flask(colors[0]), letter('L'), flask(colors[1]), letter('R')),
-    h('span', { class: 'logo-bottom', 'aria-hidden': 'true' }, ...'CHEMY'.split('').map(letter)),
+    h(
+      'span',
+      { class: 'logo-line', 'aria-hidden': 'true' },
+      color('C'),
+      apparatus(flaskSvg(fill(0), { level: 0.62 }), 'logo-flask'),
+      color('L'),
+      apparatus(flaskSvg(fill(1), { level: 0.62 }), 'logo-flask'),
+      color('R'),
+      color('C'),
+      color('H'),
+      color('E'),
+      color('M'),
+      apparatus(funnelSvg(fill(2)), 'logo-funnel'),
+    ),
   );
 }
 

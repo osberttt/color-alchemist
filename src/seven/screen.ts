@@ -10,7 +10,7 @@ import { Viewfinder } from '../camera/viewfinder';
 import { cameraSource, canvasSource, captureView, imageToCanvas, meanOfRect, squareRect, viewRect, type FrameSource } from '../camera/source';
 import { hexToOklab, mixLab, oklabToHex } from '../color/oklab';
 import { centerOf, floatText, fx, shake } from '../ui/fx';
-import { ELEMENT_GLYPH, TIER_LABEL, type ColorDef } from '../data/colors';
+import type { ColorDef } from '../data/colors';
 import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
@@ -23,20 +23,20 @@ import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
 import { dealSection, finishSection, OPERATIONS, runTotal, type Section, type SevenRun } from './run';
-import { findReaction, makeReaction, REACTION_NAMES, type Reaction, type ReactionKind } from './reaction';
+import { findReaction, ingredientNeeds, makeReaction, REACTION_NAMES, type Reaction, type ReactionKind } from './reaction';
 import { reactionView, type ReactionView } from './reaction-view';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
 const TIPS = [
-  'Feed the machine one color. Fill it completely.',
-  'No orange? Put red and yellow in the machine together.',
+  'Fill the square with one color.',
+  'No orange? Put red and yellow in the square together.',
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
-  'Tilt shiny things to kill the glare.',
-  'Extracts rising or falling one quality at a time set off a reaction.',
-  'Trust your eyes: compare the frame with what is inside it.',
-  'When time runs out, the machine extracts whatever it holds. Keep it aimed.',
+  'Tilt shiny things to avoid glare.',
+  'Qualities rising or falling in steps cause reactions.',
+  'Trust your eyes: compare the frame with what’s in the square.',
+  'When time runs out, the machine extracts whatever is in the square.',
 ];
 
 /**
@@ -98,12 +98,11 @@ export function sevenScreen(r: SevenRun): void {
     // The extracted color stays a mystery until the machine blends it (after the snap).
     const yoursSw = h('span', { class: 'big-sw yours mystery' }, '?');
     const nameEl = h('span', { class: 'tg-name' });
-    const metaEl = h('span', { class: 'tg-meta' });
     const target = h(
       'div',
       { class: 'tg' },
       h('figure', null, targetSw, h('figcaption', null, 'target')),
-      h('div', { class: 'tg-body' }, nameEl, metaEl),
+      h('div', { class: 'tg-body' }, nameEl),
       h('figure', null, yoursSw, h('figcaption', null, 'extracted')),
     );
 
@@ -134,7 +133,7 @@ export function sevenScreen(r: SevenRun): void {
     const zoomRow = h('label', { class: 'slider zoom' }, h('span', { class: 's-label' }, '⌕ Zoom'), zoomInput, zoomOut);
     const tipEl = h('p', { class: 'tip' }, TIPS[tipIndex]);
     const huntHelp =
-      r.mode === 'camera' ? 'Hold things up to the camera. Space: extract · +/−: zoom · Esc: quit' : 'Drag to aim · Space: extract · +/−: zoom · arrows: aim · Esc: quit';
+      r.mode === 'camera' ? 'Hold things up to the camera · Space: extract · +/−: zoom · Esc: quit' : 'Drag or arrows: aim · Space: extract · +/−: zoom · Esc: quit';
     const deskHelp = h('p', { class: 'desk-only muted small' }, huntHelp);
 
     const shutter = h('button', { class: 'shutter', type: 'button', 'aria-label': 'Extract (Space)', onclick: () => void snap() }, h('span'));
@@ -145,25 +144,42 @@ export function sevenScreen(r: SevenRun): void {
         type: 'button',
         hidden: r.mode !== 'camera' || camera.deviceCount < 2,
         onclick: async () => {
-          if (await camera.flip()) toast('Could not switch camera.');
+          if (await camera.flip()) toast('Couldn’t switch cameras.');
         },
       },
       '⇆ Flip',
     );
+    // Practice from your gallery (photo mode): the player picks a photo from their device. The
+    // clock waits until there is one (dev builds also start with a test photo, and offer Next).
     const fileInput = h('input', { type: 'file', accept: 'image/*', hidden: true }) as HTMLInputElement;
+    const pickBtn = h('button', { class: 'btn ghost small', type: 'button', title: 'Pick a photo from your gallery', onclick: () => fileInput.click() }, 'Pick photo');
     const photoBtns = h(
       'div',
       { class: 'row tight', hidden: r.mode !== 'photo' },
-      h('button', { class: 'btn ghost small', type: 'button', title: 'Next test photo (N)', onclick: () => void nextPhoto() }, 'Next ▸'),
-      h('button', { class: 'btn ghost small', type: 'button', title: 'Open an image file', onclick: () => fileInput.click() }, 'Open'),
+      import.meta.env.DEV ? h('button', { class: 'btn ghost small', type: 'button', title: 'Next test photo (N)', onclick: () => void nextPhoto() }, 'Next ▸') : null,
+      pickBtn,
       fileInput,
     );
+    const pickPrompt = h(
+      'div',
+      { class: 'vf-overlay pick', hidden: true },
+      h('p', null, 'Pick a photo from your gallery with this color in it.'),
+      h('button', { class: 'btn primary', type: 'button', onclick: () => fileInput.click() }, 'Pick a photo'),
+      h('p', { class: 'small' }, 'The clock starts when it’s in.'),
+    );
+    viewport.append(pickPrompt);
     fileInput.addEventListener('change', async () => {
       const f = fileInput.files?.[0];
+      fileInput.value = ''; // so the same photo can be picked again later
       if (!f) return;
       const url = URL.createObjectURL(f);
-      setSource(canvasSource(await imageToCanvas(url)));
-      URL.revokeObjectURL(url);
+      try {
+        setSource(canvasSource(await imageToCanvas(url)));
+      } catch {
+        toast('Couldn’t open that image. Try another one.');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     });
 
     screen.classList.add('hunt', 'seven');
@@ -272,6 +288,13 @@ export function sevenScreen(r: SevenRun): void {
       cx = 0.5;
       cy = 0.5;
       layout();
+      updatePickPrompt();
+    }
+
+    /** Gallery practice: ask for a photo while hunting without one. */
+    function updatePickPrompt(): void {
+      pickPrompt.hidden = !(r.mode === 'photo' && !src && phase === 'hunt');
+      pickBtn.textContent = src ? 'Change photo' : 'Pick photo';
     }
 
     function setZoom(z: number): void {
@@ -290,9 +313,7 @@ export function sevenScreen(r: SevenRun): void {
       targetSw.style.background = def.target;
       // The whole machine (frame, pipes, bars, square) is drawn in the target color.
       viewport.style.setProperty('--ing', def.target);
-      nameEl.textContent = def.name;
-      metaEl.textContent = `${ELEMENT_GLYPH[def.element]} ${def.element} · ${TIER_LABEL[def.tier]}`;
-    }
+      nameEl.textContent = def.name;    }
 
     function paintSpectrum(): void {
       segments.forEach((s, i) => {
@@ -308,7 +329,7 @@ export function sevenScreen(r: SevenRun): void {
       } else if (r.mode === 'practice' && def) {
         const rng = mulberry32((r.seed ^ ((r.index + 1) * 2654435761)) >>> 0);
         setSource(canvasSource(paintPracticeCanvas(rng, def).canvas));
-      } else if (!src) {
+      } else if (!src && import.meta.env.DEV) {
         await nextPhoto();
       }
     }
@@ -346,7 +367,7 @@ export function sevenScreen(r: SevenRun): void {
         h('p', { class: 'intro-find' }, 'extract'),
         h('span', { class: 'intro-sw', style: { background: def.target } }),
         h('h2', { class: 'intro-name' }, def.name),
-        h('p', { class: 'small' }, r.index === 0 && r.tutorial ? 'Your jeans will do. Fill the machine with Denim.' : 'Fill the machine. Blend if you must.'),
+        h('p', { class: 'small' }, r.index === 0 && r.tutorial ? 'Your jeans will do: fill the square with Denim.' : 'Fill the square with it. Blend colors if you must.'),
       );
       intro.hidden = false;
       sfx.clink(r.index);
@@ -366,6 +387,7 @@ export function sevenScreen(r: SevenRun): void {
       intro.hidden = true;
       phase = 'hunt';
       lastT = performance.now();
+      updatePickPrompt();
       shutter.disabled = false;
       reticle.classList.remove('ret-go');
       void reticle.offsetWidth;
@@ -376,7 +398,11 @@ export function sevenScreen(r: SevenRun): void {
     async function snap(timedOut = false): Promise<void> {
       if (phase === 'intro') return beginHunt();
       if (phase === 'result') return advance();
-      if (phase !== 'hunt' || !src) return;
+      if (phase !== 'hunt') return;
+      if (!src) {
+        toast('Pick a photo first.');
+        return;
+      }
       if (!src.ready()) {
         if (timedOut) return runDry();
         toast('The camera is still waking up…');
@@ -413,7 +439,7 @@ export function sevenScreen(r: SevenRun): void {
     function timeUp(): void {
       if (phase !== 'hunt') return;
       timerEl.textContent = '0:00';
-      toast("Time's up! The machine extracts what it holds.");
+      toast('Time’s up! The machine extracts what’s in the square.');
       void snap(true);
     }
 
@@ -506,11 +532,11 @@ export function sevenScreen(r: SevenRun): void {
       const craftStage = h('div', { class: 'craft-stage' });
       // The potion is drawn in the result sheet's palette.
       craftStage.innerHTML = potionSvg(prevCraft.index, paletteFor('result'));
-      const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your brew begins' : prevCraft.name);
+      const craftName = h('p', { class: 'craft-name' }, r.index === 0 ? 'your potion begins' : prevCraft.name);
       const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : POTION_BLURBS[prevCraft.index]);
       const barFill = h('i');
       const barLabel = h('span', { class: 'bar-label mono' });
-      const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, last ? 'Reveal the craft ▶' : `Next color · ${r.index + 2}/${SEVEN.sections} ▶`);
+      const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, last ? 'Reveal potion ▶' : 'Next ▶');
       paintBar(before, prevCraft);
 
       sheetInner.replaceChildren(
@@ -526,7 +552,6 @@ export function sevenScreen(r: SevenRun): void {
           h('div', { class: 'craft-info' }, craftName, craftBlurb, h('div', { class: 'craft-bar' }, barFill), barLabel),
         ),
         nextBtn,
-        h('p', { class: 'res-next small' }, last ? '' : 'Take your time. The clock starts with the next color.'),
       );
       sheet.hidden = false;
       sheet.classList.remove('down');
@@ -713,10 +738,16 @@ export function sevenScreen(r: SevenRun): void {
       later(450, () => void next());
     }
 
+    /** What each ingredient would do for a section's extract (semi-reactions favor what helps). */
+    function needsOf(i: number): Record<string, number> {
+      const s = r.sections[i];
+      return s?.extracted ? ingredientNeeds(s.extracted.lin, s.def.target) : {};
+    }
+
     /** After a color: a reaction if the latest qualities set one off, then the next color (or the summary). */
     async function next(): Promise<void> {
       sheet.hidden = true;
-      const rx = (FORCE_KIND ? forcedReaction() : findReaction(r.sections, r.rng)) ?? (FORCE_REACTION ? forcedReaction() : null);
+      const rx = (FORCE_KIND ? forcedReaction() : findReaction(r.sections, r.rng, needsOf)) ?? (FORCE_REACTION ? forcedReaction() : null);
       if (rx) {
         phase = 'reaction';
         reacting = reactionView(screen, r, rx, paintSpectrum);
@@ -745,7 +776,7 @@ export function sevenScreen(r: SevenRun): void {
       const [kind, length] = FORCE_KIND && FORCE_KIND in REACTION_NAMES ? [FORCE_KIND, 3] : kinds[(n - 1) % kinds.length];
       const window = r.sections.slice(Math.max(0, n - length)).filter((s) => !s.empty);
       if (!window.length) return null;
-      return makeReaction(kind, window.map((s) => s.index), window.map((s) => s.tier), r.rng);
+      return makeReaction(kind, window.map((s) => s.index), window.map((s) => s.tier), r.rng, needsOf);
     }
 
     // --- loop ---------------------------------------------------------------------------
@@ -772,7 +803,8 @@ export function sevenScreen(r: SevenRun): void {
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
       }
-      if (phase === 'hunt' && !hidden) {
+      // No clock without something to aim at (gallery practice before a photo is picked).
+      if (phase === 'hunt' && !hidden && src) {
         remaining -= dt;
         const sec = Math.ceil(remaining);
         if (sec !== lastTick && sec <= 10 && sec > 0) {
@@ -811,7 +843,7 @@ export function sevenScreen(r: SevenRun): void {
     let pinchStart: { d: number; zoom: number } | null = null;
     viewport.addEventListener('pointerdown', (e) => {
       if (phase === 'intro') return beginHunt();
-      if (phase !== 'hunt') return;
+      if (phase !== 'hunt' || (e.target as HTMLElement).closest('button')) return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewport.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {

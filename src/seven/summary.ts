@@ -21,8 +21,8 @@ export function sevenShareText(r: SevenRun, total: number, craft: string): strin
   for (const s of r.sections) counts.set(s.tier, (counts.get(s.tier) ?? 0) + 1);
   const order = [...SEVEN.colorTiers.map((t) => t.name), 'Empty'];
   const lines = [
-    `Colorchemy${r.mode === 'camera' ? '' : ' (practice)'}`,
-    `is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
+    `Colorchemy${r.mode === 'camera' ? '' : r.mode === 'photo' ? ' (gallery)' : ' (practice)'}`,
+    `Is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
     r.sections.map((s) => emojiFor(s.hex)).join(''),
     order
       .filter((t) => counts.has(t))
@@ -35,15 +35,17 @@ export function sevenShareText(r: SevenRun, total: number, craft: string): strin
 
 export function sevenSummaryScreen(r: SevenRun): void {
   const res = sevenResult(r);
-  const record = r.mode !== 'photo';
-  const kind: BoardKind = r.mode === 'camera' ? 'seven' : 'seven-practice';
+  // Live (camera) and gallery runs go on their own boards; practice scenes aren't recorded
+  // (the user's call, ANALYSIS §4.39). The personal best on the title counts live runs only.
+  const record = r.mode !== 'practice';
+  const kind: BoardKind = r.mode === 'camera' ? 'seven' : 'seven-gallery';
   const settings = getSettings();
   const entryId = `${Date.now().toString(36)}-${r.seed.toString(36)}`;
   const prevBest = getStats().bestRun;
   const rank = record
     ? addToBoard(kind, { id: entryId, name: settings.name || 'Alchemist', score: res.total, band: res.craft, date: new Date().toISOString(), swatches: res.found })
     : null;
-  if (record) recordRun(res.total, [res.found[0], res.found[res.found.length - 1]]);
+  if (r.mode === 'camera') recordRun(res.total, [res.found[0], res.found[res.found.length - 1]]);
   if (r.mode === 'camera' && r.tutorial) updateSettings({ tutorialDone: true });
 
   show(
@@ -80,8 +82,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
         h(
           'div',
           { class: 'summary' },
-          h('p', { class: 'eyebrow' }, r.mode === 'camera' ? 'Your potion' : r.mode === 'practice' ? 'Practice potion' : 'Test-photo potion (not recorded)'),
-          h('p', { class: 'tagline' }, 'is your life full of colors?'),
+          h('p', { class: 'eyebrow' }, r.mode === 'camera' ? 'Live potion' : r.mode === 'photo' ? 'Gallery potion' : 'Practice potion (not recorded)'),
           hero,
           craftTitle,
           blurb,
@@ -102,7 +103,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
                   h(
                     'span',
                     { class: 'muted small' },
-                    s.empty ? ` · nothing extracted · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`,
+                    s.empty ? ` · nothing extracted · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ${OPERATIONS[s.index]}`,
                     s.reacted ? ` · ${REACTION_NAMES[s.reacted.kind]}, was ${s.reacted.tier}` : '',
                   ),
                 ),
@@ -113,8 +114,8 @@ export function sevenSummaryScreen(r: SevenRun): void {
           h(
             'p',
             { class: 'rankline' },
-            record && res.total > prevBest && prevBest > 0 ? 'New personal best! ' : '',
-            record ? (rank ? `#${rank} on this device's board.` : 'Not in your top 20 this time.') : '',
+            r.mode === 'camera' && res.total > prevBest && prevBest > 0 ? 'New personal best! ' : '',
+            record ? (rank ? `#${rank} in the ledger.` : 'Not in your top 20 this time.') : '',
             final.next ? ` ${fmt(final.next.min - res.total)} more for ${final.next.name}.` : '',
           ),
           record ? h('label', { class: 'sign' }, h('span', null, 'Sign the ledger'), nameInput) : null,
@@ -139,7 +140,7 @@ export function sevenSummaryScreen(r: SevenRun): void {
             'div',
             { class: 'row' },
             h('button', { class: 'btn ghost small', type: 'button', onclick: () => goBoard(kind) }, 'Leaderboard'),
-            h('button', { class: 'btn ghost small', type: 'button', onclick: () => goTitle() }, 'Title'),
+            h('button', { class: 'btn ghost small', type: 'button', onclick: () => goTitle() }, 'Menu'),
           ),
         ),
       );

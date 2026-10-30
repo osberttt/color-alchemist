@@ -101,8 +101,12 @@ export function recordFormula(name: string): boolean {
 
 // --- Offline leaderboard -------------------------------------------------------
 
-/** Seven Colors boards ('seven', 'seven-practice') and Classic pair-mode boards ('camera', 'practice'). */
-export type BoardKind = 'seven' | 'seven-practice' | 'camera' | 'practice';
+/**
+ * Seven Colors boards: 'seven' (Brew, the camera) and 'seven-gallery' (practice from the
+ * gallery). 'seven-practice' held painted-scene runs, which are no longer recorded (ANALYSIS
+ * §4.39). 'camera' and 'practice' are the Classic pair-mode boards.
+ */
+export type BoardKind = 'seven' | 'seven-gallery' | 'seven-practice' | 'camera' | 'practice';
 
 export interface BoardEntry {
   id: string;

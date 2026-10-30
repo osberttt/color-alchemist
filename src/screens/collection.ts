@@ -115,8 +115,8 @@ export function boardScreen(kind: BoardKind): void {
           'div',
           { class: 'page' },
           h('h2', { class: 'page-title' }, 'The Ledger'),
-          h('p', { class: 'muted' }, 'Your best runs on this device. Hand the phone to a friend and see who lives the most colorful life.'),
-          h('div', { class: 'tabs' }, tab('seven', 'Seven Colors'), tab('seven-practice', 'Practice')),
+          h('p', { class: 'muted' }, 'Your best potions on this device. Hand the phone to a friend and see who lives the most colorful life.'),
+          h('div', { class: 'tabs' }, tab('seven', 'Live potions'), tab('seven-gallery', 'Gallery potions')),
           board.length
             ? h(
                 'ol',
@@ -133,7 +133,7 @@ export function boardScreen(kind: BoardKind): void {
                   ),
                 ),
               )
-            : h('p', { class: 'empty' }, 'No runs yet. The ledger waits for your first Magnum Opus.'),
+            : h('p', { class: 'empty' }, 'The ledger waits for your first Elixir of Life.'),
         ),
       );
       // Pop each of the top three as they land.

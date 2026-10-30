@@ -54,7 +54,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
   const how = h(
     'p',
     { class: 'rx-how' },
-    many ? 'Every ingredient goes into all three.' :`Drop ingredients into your extract. Bring it closer to ${secs[0].def.name}.`,
+    many ? 'Every ingredient goes into all 3.' : `Drop ingredients into your extract to bring it closer to ${secs[0].def.name}.`,
   );
   // --- the briefing: what set it off (the extracts and their qualities), what's exposed, the time.
   // The ingredients on offer stay a surprise until Start.
@@ -77,12 +77,14 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
   );
   const offered = INGREDIENTS.filter((i) => rx.ingredients.includes(i.id));
   const startBtn = h('button', { class: 'btn primary rx-btn rx-start', type: 'button', onclick: () => start() }, 'Start ▶');
+  // Names the page: the briefing, then mixing, then the result (the user's wording, ANALYSIS §4.38).
+  const eyebrow = h('p', { class: 'eyebrow' }, 'You caused a reaction!');
   const brief = h(
     'div',
     { class: 'rx-brief' },
     h('p', { class: 'rx-why' }, reactionWhy(rx)),
     chain,
-    h('p', { class: 'rx-what' }, many ? 'All three extracts are exposed. Every ingredient goes into all of them.' : `Your ${secs[0].def.name} extract is exposed.`),
+    h('p', { class: 'rx-what' }, many ? 'All 3 extracts are exposed. Every ingredient goes into all of them.' : `Your ${secs[0].def.name} extract is exposed.`),
     h(
       'p',
       { class: 'rx-offer' },
@@ -113,7 +115,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
   const el = h(
     'div',
     { class: `reaction rx-${rx.kind}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': `Reaction: ${reactionName(rx)}` },
-    h('div', { class: 'rx-inner' }, h('p', { class: 'eyebrow' }, 'Reaction!'), h('h2', { class: 'rx-name' }, reactionName(rx)), brief, mix),
+    h('div', { class: 'rx-inner' }, eyebrow, h('h2', { class: 'rx-name' }, reactionName(rx)), brief, mix),
   );
   host.append(el);
   requestAnimationFrame(() => {
@@ -125,6 +127,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
   function start(): void {
     if (phase !== 'brief') return;
     phase = 'mix';
+    eyebrow.textContent = 'Mixing with ingredients';
     lastT = performance.now();
     brief.hidden = true;
     mix.hidden = false;
@@ -143,6 +146,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
   function finish(): void {
     if (phase !== 'mix') return;
     phase = 'judged';
+    eyebrow.textContent = 'Reaction result';
     judgedAt = performance.now();
     shelf.lock();
     const before = secs.map((s) => ({ tier: s.tier, score: s.score, dE: s.dE }));
@@ -170,7 +174,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
     );
     // The potion's progress again: its bar moves from the total before the reaction to the new one.
     const progress = progressPanel(totalBefore);
-    out.replaceChildren(...rows, many ? h('p', { class: 'rx-sum mono' }, `in all ${signed(gain)}`) : '', progress.el);
+    out.replaceChildren(...rows, many ? h('p', { class: 'rx-sum mono' }, `Total ${signed(gain)}`) : '', progress.el);
     // The outcome takes the place of the clock and the shelf (they no longer matter, and phones are short).
     // With three extracts the rows name each color, so the swatches make room for the potion too.
     how.hidden = time.hidden = shelf.el.hidden = true;

@@ -73,6 +73,17 @@ export function flaskSvg(fill: string | null, opts: { level?: number; id?: strin
 </svg>`;
 }
 
+/** The logo's Y: a funnel, liquid in the cone running down the stem. */
+export function funnelSvg(fill: string): string {
+  const id = `n${Math.random().toString(36).slice(2, 8)}`;
+  const shape = 'M3 5H37L23.5 25V45H16.5V25Z';
+  return `<svg viewBox="0 0 40 48" aria-hidden="true">
+  <defs><clipPath id="${id}"><path d="${shape}"/></clipPath></defs>
+  <g clip-path="url(#${id})"><rect x="0" y="13" width="40" height="40" fill="${fill}"/><path d="M0 13 q5 -2 10 0 t10 0 t10 0 t10 0 v3 h-40z" fill="${fill}" opacity=".6" class="meniscus"/></g>
+  <path d="${shape}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>`;
+}
+
 /** A slim vial for target cards. */
 export function vialSvg(fill: string): string {
   const id = `v${Math.random().toString(36).slice(2, 8)}`;

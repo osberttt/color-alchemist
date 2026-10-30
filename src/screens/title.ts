@@ -10,6 +10,10 @@ import { beginSeven, goBoard, goTitle } from '../flow';
 import { CAMERA_ERROR_TEXT, type CameraError } from '../camera/camera';
 import { sfx, unlockAudio } from '../audio/sfx';
 import { reactionGuide } from '../seven/reaction-guide';
+import { contrast } from '../ui/palettes';
+
+/** WCAG contrast a logo letter needs against the page (3 is the bar for large text). */
+const LOGO_MIN_CONTRAST = 3;
 
 export function titleScreen(): void {
   show((screen) => {
@@ -31,21 +35,31 @@ export function titleScreen(): void {
     };
     const tint = (n: number) => ({ '--tint': `var(--p${n})` });
 
-    const logoEl = logo([accents[1], accents[3]]);
+    // The logo's letters take the three accents that stand out most from the page, in turn;
+    // one still below 3:1 keeps its color with a thin ink outline, so it stays readable.
+    const ranked = pal ? [...pal.accents].sort((a, b) => contrast(b, pal.bg) - contrast(a, pal.bg)).slice(0, 3) : [];
+    const logoEl = logo(
+      [accents[1], accents[3], accents[0]],
+      ranked.map((c) => ({ color: c, outline: contrast(c, pal!.bg) < LOGO_MIN_CONTRAST })),
+    );
     screen.append(
       h('div', { class: 'topbar' }, h('span'), h('div', { class: 'row tight' }, howToButton(), muteButton())),
-      h('div', { class: 'title-hero' }, logoEl, h('p', { class: 'tagline' }, 'is your life full of colors', h('span', { class: 'qmark' }, '?', drop))),
+      h(
+        'div',
+        { class: 'title-hero' },
+        logoEl,
+        // Under the logo, only the small invitation (the user's call, ANALYSIS §4.35).
+        h('p', { class: 'tagline small-tag' }, 'Is your life full of colors', h('span', { class: 'qmark' }, '?', drop), h('br'), 'Test it out to brew the Elixir of Life.'),
+      ),
       h(
         'div',
         { class: 'title-actions stagger' },
-        h('button', { class: 'btn primary xl glow', type: 'button', onclick: go(() => void beginSeven('camera')) }, 'Begin the hunt'),
-        h('button', { class: 'btn tinted', type: 'button', style: tint(2), onclick: go(() => void beginSeven('practice')) }, 'Practice · no camera'),
-        import.meta.env.DEV ? h('button', { class: 'btn tinted', type: 'button', style: tint(4), onclick: go(() => void beginSeven('photo')) }, 'Test photos (dev only)') : null,
-        import.meta.env.MODE !== 'production' ? h('a', { class: 'btn tinted', href: './tuner.html', style: tint(5) }, 'Scoring tuner (test builds)') : null,
+        h('button', { class: 'btn primary xl glow', type: 'button', onclick: go(() => void beginSeven('camera')) }, 'Brew'),
+        h('button', { class: 'btn tinted', type: 'button', style: tint(2), onclick: go(() => void beginSeven('photo')) }, 'Practice · from gallery'),
+        h('button', { class: 'btn tinted', type: 'button', style: tint(4), onclick: go(() => void beginSeven('practice')) }, 'Practice · practice scenes'),
         h('button', { class: 'btn tinted', type: 'button', style: tint(3), onclick: () => goBoard('seven') }, 'Leaderboard'),
         stats.runs > 0 ? h('p', { class: 'muted small center' }, `best run ${fmt(stats.bestRun)} · ${stats.runs} run${stats.runs === 1 ? '' : 's'} brewed`) : null,
       ),
-      h('p', { class: 'footnote' }, `Your photos never leave your device.${pal ? ` · today's palette: ${pal.name}` : ''}`),
     );
     // The logo pops in letter by letter with a splash of color under each flask.
     const splashes = window.setTimeout(() => {
@@ -83,27 +97,20 @@ export function howTo(onDone?: () => void): void {
     if (e.key === 'Escape' || e.key === 'Enter') close();
   };
   window.addEventListener('keydown', key);
-  const step = (n: string, title: string, text: string) =>
-    h('li', null, h('span', { class: 'step-n' }, n), h('div', null, h('h3', null, title), h('p', null, text)));
+  // The user's wording (ANALYSIS §4.35): nothing more.
   const overlay = h(
     'div',
     { class: 'overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'How to play' },
     h(
       'div',
       { class: 'dialog howto' },
-      h('h2', null, 'The Great Work'),
-      h('p', { class: 'muted' }, 'You are an alchemist. Your potions are only as good as your colors, and the colors are out there in your real life.'),
-      h(
-        'ol',
-        { class: 'steps' },
-        step('I', 'Seven colors', 'A run is seven colors, one at a time, 30 seconds each. The whole camera view is the color extracting machine; its square is framed in the color you need.'),
-        step('II', 'Feed the machine', 'It extracts the average of everything inside the square. Find the color, zoom, walk closer, shade the light with your hand. No orange? Blend red and yellow in the square.'),
-        step('III', 'Extract', 'Only then does the machine blend what it caught into one color. Botched 10 points … Flawless 100. When time runs out, the machine extracts whatever it holds. Every color is a drop in your brew: from Gunk to the Elixir of Life.'),
-        step('IV', 'Reactions', 'The qualities of your latest extracts can set off a reaction: extracts are exposed for a few seconds, and you drop ingredients into them to bring them closer to their colors. All five are below.'),
-      ),
+      h('h2', null, 'Colorchemy'),
+      h('p', { class: 'howto-intro' }, 'Brew medicine with colors in the real world. The closer the colors are to those in the recipe, the better the quality.'),
+      h('h2', { class: 'howto-sub' }, 'How to play'),
+      h('p', null, 'Allow access to the camera on your phone (or PC). Take photos to match the colors in the recipe.'),
       h('h2', { class: 'howto-sub' }, 'Reactions'),
+      h('p', null, 'The change in quality of the colors extracted may cause chemical reactions.'),
       reactionGuide(),
-      h('p', { class: 'muted small' }, 'Trust your eyes: compare the frame with what is inside it, then extract.'),
       h('button', { class: 'btn primary', type: 'button', onclick: close }, 'Understood'),
     ),
   );
@@ -119,7 +126,7 @@ export function cameraPromptScreen(onOpen: () => void, onPractice: () => void): 
         { class: 'center-col' },
         h('div', { class: 'eye', 'aria-hidden': 'true' }, '◉'),
         h('h2', null, 'The Alchemist needs eyes.'),
-        h('p', null, 'We use your camera to find colors around you. Your photos stay on your device. Nothing is uploaded.'),
+        h('p', null, 'Your camera finds the colors around you. Photos stay on your device; nothing is uploaded.'),
         h(
           'button',
           {
@@ -130,9 +137,9 @@ export function cameraPromptScreen(onOpen: () => void, onPractice: () => void): 
               onOpen();
             },
           },
-          'Open the eye',
+          'Allow the camera',
         ),
-        h('button', { class: 'btn ghost', type: 'button', onclick: onPractice }, 'No camera? Try practice'),
+        h('button', { class: 'btn ghost', type: 'button', onclick: onPractice }, 'No camera? Practice instead'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => goTitle() }, 'Back'),
       ),
     );
@@ -149,7 +156,7 @@ export function cameraErrorScreen(err: CameraError, retry: () => void, onPractic
         h('h2', null, 'The eye will not open.'),
         h('p', null, CAMERA_ERROR_TEXT[err]),
         h('button', { class: 'btn primary', type: 'button', onclick: retry }, 'Try again'),
-        h('button', { class: 'btn', type: 'button', onclick: onPractice }, 'Play practice instead'),
+        h('button', { class: 'btn', type: 'button', onclick: onPractice }, 'Practice instead'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => goTitle() }, 'Back'),
       ),
     );

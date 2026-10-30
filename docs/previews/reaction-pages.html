@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colorchemy: the reaction pages</title>
+<style>
+  body { margin: 0; background: #0f0f12; color: #edeae3; font: 15px/1.4 system-ui, sans-serif; }
+  main { padding: 24px; }
+  h1 { margin: 0 0 6px; font-size: 26px; }
+  p { margin: 0 0 18px; color: #a9a9b2; }
+  .row { display: grid; grid-template-columns: 150px repeat(3, 240px); gap: 14px; align-items: start; margin-bottom: 22px; }
+  .row b { padding-top: 8px; }
+  figure { margin: 0; }
+  img { width: 240px; border-radius: 10px; border: 1px solid #2a2a31; display: block; }
+  figcaption { font-size: 12px; color: #a9a9b2; margin-top: 4px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The reaction pages (360×640, from the smoke test)</h1>
+  <p>Each reaction: the briefing (no clock) → Start → the clock and ingredients → Done or time up → judged, with the potion's progress. Plus the "All reactions" list.</p>
+  <div id="rows"></div>
+  <div class="row"><b>"All reactions" list</b><figure><img src="reactions/all-reactions-list.png"><figcaption>from the briefing</figcaption></figure></div>
+</main>
+<script>
+  const rows = document.getElementById('rows');
+  for (let i = 1; i <= 7; i++) {
+    const r = document.createElement('div');
+    r.className = 'row';
+    r.innerHTML = `<b>Reaction ${i}</b>` +
+      [['1-briefing', 'briefing'], ['2-clock', 'clock + ingredients'], ['3-judged', 'judged + progress']]
+        .map(([f, c]) => `<figure><img src="reactions/${i}-${f}.png"><figcaption>${c}</figcaption></figure>`).join('');
+    rows.append(r);
+  }
+</script>
+</body>
+</html>

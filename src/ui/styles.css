@@ -306,25 +306,27 @@ p {
   padding: 20px 0;
   text-align: center;
 }
+/* COLORCHEMY on one line: sized so all ten glyphs fit 360 px with room to spare. */
 .logo {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
+  margin: 0;
+  max-width: 100%;
   font-family: var(--display);
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.01em;
 }
-.logo-top {
+.logo-line {
   display: flex;
   align-items: flex-end;
-  font-size: clamp(56px, 18vw, 104px);
+  justify-content: center;
+  font-size: clamp(34px, 11.2vw, 92px);
   line-height: 0.9;
+  white-space: nowrap;
 }
 .logo-o {
   display: inline-block;
-  width: 0.62em;
-  height: 0.78em;
-  margin: 0 0.02em;
+  width: 0.6em;
+  height: 0.76em;
+  margin: 0 0.015em;
   color: var(--text);
 }
 .logo-o svg {
@@ -332,11 +334,14 @@ p {
   height: 100%;
   overflow: visible;
 }
-.logo-bottom {
-  font-size: clamp(22px, 7.4vw, 42px);
-  letter-spacing: 0.34em;
-  margin-right: -0.34em;
-  font-weight: 600;
+/* The Y (a funnel) is a little wider than the flask O's. */
+.logo-o.logo-funnel {
+  width: 0.68em;
+}
+/* A logo letter whose color is close to the page: a thin ink outline keeps it readable. */
+.ll.outlined {
+  -webkit-text-stroke: 0.035em var(--text);
+  paint-order: stroke fill;
 }
 .tagline {
   font-family: var(--display);
@@ -345,6 +350,14 @@ p {
   font-size: clamp(22px, 6.4vw, 34px);
   line-height: 1.15;
   max-width: 14ch;
+}
+/* Title: under the logo, only the small invitation. */
+.tagline.small-tag {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 13.5px;
+  line-height: 1.35;
+  opacity: 0.85;
 }
 .qmark {
   position: relative;
@@ -467,9 +480,14 @@ p {
   font-size: 14px;
 }
 /* The reaction list with example chains (guide and in-game). */
+.howto .howto-intro {
+  font-family: var(--display);
+  font-size: 19px;
+  line-height: 1.3;
+}
 .howto .howto-sub {
   margin-top: 6px;
-  font-size: 24px;
+  font-size: 22px;
 }
 .rx-guide {
   display: grid;
@@ -1967,9 +1985,15 @@ body[data-theme='palette'] .page-title {
   color: var(--c, var(--text));
   animation: letter-in 0.7s cubic-bezier(0.2, 1.7, 0.4, 1) both;
   animation-delay: calc(var(--i) * 45ms + 100ms);
+  transition:
+    scale 0.25s cubic-bezier(0.3, 1.6, 0.5, 1),
+    rotate 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
+/* Hover tilts the letter with the separate scale/rotate properties. It must never swap the
+   `animation`: that restarted the entrance (from invisible) when the pointer left. */
 .ll:hover {
-  animation: wobble 0.5s ease;
+  scale: 1.12;
+  rotate: -7deg;
 }
 .logo-o.ll {
   color: var(--text);
@@ -1978,14 +2002,6 @@ body[data-theme='palette'] .page-title {
   from {
     opacity: 0;
     transform: translateY(-60px) rotate(-12deg) scale(0.6);
-  }
-}
-@keyframes wobble {
-  30% {
-    transform: rotate(-8deg) scale(1.1);
-  }
-  60% {
-    transform: rotate(6deg);
   }
 }
 .bubbling .meniscus {

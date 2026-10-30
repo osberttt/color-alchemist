@@ -89,9 +89,12 @@ The sections after this one describe the original pair-based design ("Classic").
   - **Elixir of Life:** a heart-shaped flask holding every color, glowing and swirling, motes of light rising, a glowing orb stopper, a halo and turning rays.
 
 **Modes**
-- **Begin the hunt**: the camera.
-- **Practice · no camera**: a painted still life per color; drag to aim, zoom like a camera. Its own leaderboard.
-- **Test photos (dev builds only)**: real photos from `test-photos/` or any image file. Not in the jam build: the game is live-camera only.
+The title (ANALYSIS §4.35) reads: the logo, then, very small, "Is your life full of colors? Test it out to brew the Elixir of Life."
+- **Brew**: the camera.
+- **Practice · from gallery**: photos the player picks from their device ("Pick a photo"; the clock waits until one is in; "Change photo" any time). In the jam build too. Recorded on its own board, "Gallery potion" (§4.39). Dev builds start with a photo from `test-photos/` and offer Next.
+- **Practice · practice scenes**: a painted still life per color; drag to aim, zoom like a camera. Not recorded.
+- The ledger's boards: **Live potion** (camera) and **Gallery potion**.
+- **Leaderboard**.
 
 **Look and feel**
 - **Menus are full of color:** every page outside the hunt (title, how-to, camera prompt/error, leaderboard, summary, dialogs) gets its own palette from 21 (`src/ui/palettes.ts`): pastel, neon, bright, dull, earthy, dark. New palettes every refresh for now (daily later).

@@ -70,7 +70,7 @@ export function goSevenSummary(r: SevenRun): void {
 }
 
 export async function quitSeven(): Promise<void> {
-  if (await confirmDialog('Abandon this run? Your colors so far will be lost.', 'Abandon', 'Keep hunting')) goTitle();
+  if (await confirmDialog('Abandon this potion? Your colors so far will be lost.', 'Abandon', 'Keep brewing')) goTitle();
 }
 
 // --- Classic (2 colors, crop and edit) ------------------------------------------------

@@ -11,8 +11,10 @@
 // Rising means getting better, one quality at a time (Awry → Wavering → Kindred); a skipped
 // quality (Awry → Kindred) breaks the chain.
 
-import type { Edits } from '../color/plate';
+import { linearToCielab } from '../color/cielab';
+import { editColor, type Edits } from '../color/plate';
 import { SEVEN } from '../data/tuning';
+import { distance } from '../scoring/extract';
 import type { Rng } from '../meta/rng';
 
 export type Axis = 'ev' | 'sat' | 'warm' | 'tint';
@@ -73,8 +75,28 @@ export function reactionName(rx: Pick<Reaction, 'kind' | 'length'>): string {
   return `${rx.length < 3 ? 'Semi-' : ''}${REACTION_NAMES[rx.kind]}`;
 }
 
+/**
+ * How much one dose of each ingredient would help a section's extract: per ingredient id, how
+ * much closer to its target it gets (OKLab ×100; negative = further). Semi-reactions use it
+ * to favor what the extract needs.
+ */
+export type NeedsOf = (index: number) => Record<string, number>;
+
+export function ingredientNeeds(lin: readonly [number, number, number], targetHex: string): Record<string, number> {
+  const [r, g, b] = lin;
+  const now = distance(targetHex, linearToCielab(r, g, b));
+  const out: Record<string, number> = {};
+  for (const ing of INGREDIENTS) {
+    const doses: Record<Axis, number> = { ev: 0, sat: 0, warm: 0, tint: 0 };
+    doses[ing.axis] = ing.sign;
+    const [r2, g2, b2] = editColor(lin, dosesToEdits(doses));
+    out[ing.id] = now - distance(targetHex, linearToCielab(r2, g2, b2));
+  }
+  return out;
+}
+
 /** The reaction the latest colors set off, if any. Colors that extracted nothing never react. */
-export function findReaction(sections: readonly Ranked[], rng: Rng): Reaction | null {
+export function findReaction(sections: readonly Ranked[], rng: Rng, needsOf?: NeedsOf): Reaction | null {
   const n = sections.length;
   for (const length of [3, 2]) {
     if (n < length) continue;
@@ -86,26 +108,31 @@ export function findReaction(sections: readonly Ranked[], rng: Rng): Reaction | 
     if (length === 3 && t.every((x) => x === t[0])) kind = 'equilibrium';
     else if (t.every((x, i) => i === 0 || x === t[i - 1] - 1)) kind = 'sublimation';
     else if (t.every((x, i) => i === 0 || x === t[i - 1] + 1)) kind = 'precipitation';
-    if (kind) return makeReaction(kind, w.map((_, i) => n - length + i), w.map((s) => s.tier), rng);
+    if (kind) return makeReaction(kind, w.map((_, i) => n - length + i), w.map((s) => s.tier), rng, needsOf);
   }
   return null;
 }
 
 /** What a reaction of this kind over these sections exposes, with which ingredients, for how long. */
-export function makeReaction(kind: ReactionKind, window: number[], tiers: string[], rng: Rng): Reaction {
-  const { seconds, equilibriumSeconds, semiIngredients } = SEVEN.reaction;
+export function makeReaction(kind: ReactionKind, window: number[], tiers: string[], rng: Rng, needsOf?: NeedsOf): Reaction {
+  const { seconds, equilibriumSeconds, semiIngredients, needWeight } = SEVEN.reaction;
   const all = INGREDIENTS.map((i) => i.id);
   const length = window.length;
   if (kind === 'equilibrium') return { kind, length, window, indices: window, ingredients: all, seconds: equilibriumSeconds, tiers };
   const indices = [window[Math.floor(rng() * length)]];
   if (length >= 3) return { kind, length, window, indices, ingredients: all, seconds, tiers };
-  // A semi-reaction: a few random ingredients (kept in shelf order).
-  const pool = [...all];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+  // A semi-reaction: a few ingredients drawn at random, but weighted toward what the exposed
+  // extract needs (the user's call, ANALYSIS §4.39): each starts at weight 1, plus needWeight
+  // for every point of distance one dose would save. Never certain, often helpful.
+  const needs = needsOf?.(indices[0]);
+  const pool = all.map((id) => ({ id, w: 1 + needWeight * Math.max(0, needs?.[id] ?? 0) }));
+  const picked = new Set<string>();
+  while (picked.size < semiIngredients && pool.length) {
+    let x = rng() * pool.reduce((t, p) => t + p.w, 0);
+    let k = 0;
+    while (k < pool.length - 1 && (x -= pool[k].w) > 0) k++;
+    picked.add(pool.splice(k, 1)[0].id);
   }
-  const picked = new Set(pool.slice(0, semiIngredients));
   return { kind, length, window, indices, ingredients: all.filter((id) => picked.has(id)), seconds, tiers };
 }
 
@@ -123,41 +150,39 @@ export function dosesToEdits(doses: Record<Axis, number>): Edits {
 
 /** One line on why the reaction happened. */
 export function reactionWhy(rx: Pick<Reaction, 'kind' | 'length'>): string {
-  if (rx.kind === 'equilibrium') return 'Three extracts of the same quality in a row.';
-  return `Your last ${rx.length === 2 ? 'two' : 'three'} extracts ${rx.kind === 'precipitation' ? 'fell' : 'rose'} in quality, one step at a time.`;
+  // The user's wording (ANALYSIS §4.38).
+  if (rx.kind === 'equilibrium') return `Qualities of your last ${rx.length} extracts stayed the same`;
+  return `Qualities of your last ${rx.length} extracts ${rx.kind === 'precipitation' ? 'fell' : 'rose'} in steps`;
 }
 
 export interface ReactionEntry {
   name: string;
-  when: string;
-  what: string;
+  text: string;
   /** An example chain of qualities, oldest first, joined by `sep`. */
   example: string[];
   sep: '→' | '=';
 }
 
-/** Every reaction with an example, for the guide and the in-game list (built from the tuning, so it stays true). */
+/**
+ * Every reaction with an example, for the guide and the in-game list, in the user's wording
+ * (ANALYSIS §4.35), Equilibrium last. Built from the tuning, so the numbers stay true.
+ */
 export function reactionList(): ReactionEntry[] {
   const { seconds, equilibriumSeconds, semiIngredients } = SEVEN.reaction;
-  const all = `All ${INGREDIENTS.length} ingredients, ${seconds} s.`;
-  const semi = `${semiIngredients} random ingredients, ${seconds} s.`;
+  const semi = (moves: string) =>
+    `If the quality of the extracted color ${moves} by one step from the previous one, one of them is exposed for ${seconds} seconds. During the time, you can add ${semiIngredients} random ingredients to improve it.`;
+  const three = (moves: string) =>
+    `If the quality of the colors ${moves} one step at a time for 3 consecutive extracts, one of them is exposed for ${seconds} seconds. During the time, you can add all the ingredients to improve it.`;
   return [
+    { name: 'Semi-Sublimation', text: semi('rises'), example: ['Awry', 'Wavering'], sep: '→' },
+    { name: 'Semi-Precipitation', text: semi('drops'), example: ['Wavering', 'Awry'], sep: '→' },
+    { name: 'Sublimation', text: three('rises'), example: ['Awry', 'Wavering', 'Kindred'], sep: '→' },
+    { name: 'Precipitation', text: three('drops'), example: ['Kindred', 'Wavering', 'Awry'], sep: '→' },
     {
       name: 'Equilibrium',
-      when: 'Three extracts of the same quality in a row.',
-      what: `All three are exposed; every ingredient goes into all of them. All ${INGREDIENTS.length} ingredients, ${equilibriumSeconds} s.`,
+      text: `If the quality of the colors remains the same for 3 consecutive extracts, the 3 extracts are exposed for ${equilibriumSeconds} seconds. During the time, you can add all the ingredients to improve them.`,
       example: ['Kindred', 'Kindred', 'Kindred'],
       sep: '=',
     },
-    { name: 'Sublimation', when: 'Three extracts rising in quality.', what: `One of the three is exposed. ${all}`, example: ['Awry', 'Wavering', 'Kindred'], sep: '→' },
-    { name: 'Precipitation', when: 'Three extracts falling in quality.', what: `One of the three is exposed. ${all}`, example: ['Kindred', 'Wavering', 'Awry'], sep: '→' },
-    { name: 'Semi-Sublimation', when: 'Two extracts rising one quality.', what: `One of the two is exposed. ${semi}`, example: ['Awry', 'Wavering'], sep: '→' },
-    { name: 'Semi-Precipitation', when: 'Two extracts falling one quality.', what: `One of the two is exposed. ${semi}`, example: ['Wavering', 'Awry'], sep: '→' },
   ];
 }
-
-/** Sequences that set nothing off, as examples for the guide. */
-export const NO_REACTION_EXAMPLES: { example: string[]; sep: '→' | '='; why: string }[] = [
-  { example: ['Awry', 'Kindred'], sep: '→', why: 'a quality skipped' },
-  { example: ['Kindred', 'Kindred'], sep: '=', why: 'only two the same' },
-];
