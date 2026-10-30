@@ -112,7 +112,7 @@ async function session(name, viewport, mobile) {
   await shot('04-hunt');
   await overflow('hunt');
   const accs = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     await page.waitForFunction(() => document.querySelector('.vf-overlay.intro')?.hasAttribute('hidden') && document.querySelector('.sheet')?.hasAttribute('hidden'), null, { timeout: 8000 });
     // Aim: zoom in a little so the machine sits inside an object more often.
     if (i % 2 === 1) await page.keyboard.press('+');
@@ -131,7 +131,7 @@ async function session(name, viewport, mobile) {
     await page.keyboard.press('Space');
     await reaction();
   }
-  if (reactions !== 5) problems.push(`FAILED: [${name}] ${reactions} reactions with ?react, expected 5`);
+  if (reactions !== 7) problems.push(`FAILED: [${name}] ${reactions} reactions with ?react, expected 7`);
   await page.waitForSelector('.summary', { timeout: 8000 });
   await page.waitForTimeout(5200);
   await shot('06-summary');

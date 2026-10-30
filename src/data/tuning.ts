@@ -89,7 +89,7 @@ export const TUNING = {
 
 // "Seven Colors" mode: one color per section, the color extracting machine (ANALYSIS §4.1–4.6).
 export const SEVEN = {
-  sections: 5,
+  sections: 7,
   /** Seconds per color. */
   seconds: 30,
   /**
@@ -111,7 +111,8 @@ export const SEVEN = {
   viewShortSide: 360,
   zoomMin: 1,
   zoomMax: 4,
-  tiers: ['lead', 'lead', 'silver', 'silver', 'gold'] as const,
+  /** Lead ×3 → Silver ×3 → Gold ×1 (ANALYSIS §4.30): easy household colors first, one "boss" color last. */
+  tiers: ['lead', 'lead', 'lead', 'silver', 'silver', 'silver', 'gold'] as const,
   maxDarkPerRun: 2,
   /**
    * Per-color rank by plain OKLab distance ×100 (≤ maxDE), best first, with Krillion's
@@ -130,17 +131,17 @@ export const SEVEN = {
   /** Points when nothing could be extracted (the timed-out capture failed). When time runs out the machine normally extracts on its own. */
   emptyPoints: 0,
   /**
-   * The potion the run brews, ranked by the running total of points (max 500: 5 colors
+   * The potion the run brews, ranked by the running total of points (max 700: 7 colors
    * × 100). (Called "craft" in code.) Krillion doesn't publish its depth-zone thresholds;
-   * these are ours: an even 100 per rank. Averages per color: Stimulant 20, Antidote 40,
-   * Panacea 60 (Kindred), Elixir of Life 80.
+   * these are ours: an even 140 per rank, so the averages per color are what they were
+   * with 5 colors: Stimulant 20, Antidote 40, Panacea 60 (Kindred), Elixir of Life 80.
    */
   craftTiers: [
     { name: 'Gunk', min: 0 },
-    { name: 'Stimulant', min: 100 },
-    { name: 'Antidote', min: 200 },
-    { name: 'Panacea', min: 300 },
-    { name: 'Elixir of Life', min: 400 },
+    { name: 'Stimulant', min: 140 },
+    { name: 'Antidote', min: 280 },
+    { name: 'Panacea', min: 420 },
+    { name: 'Elixir of Life', min: 560 },
   ],
   /** The result waits for the player's tap; taps earlier than this are ignored (double-tap guard). */
   resultGuardMs: 900,

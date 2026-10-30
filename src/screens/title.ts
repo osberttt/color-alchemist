@@ -96,7 +96,7 @@ export function howTo(onDone?: () => void): void {
       h(
         'ol',
         { class: 'steps' },
-        step('I', 'Five colors', 'A run is five colors, one at a time, 30 seconds each. The whole camera view is the color extracting machine; its square is framed in the color you need.'),
+        step('I', 'Seven colors', 'A run is seven colors, one at a time, 30 seconds each. The whole camera view is the color extracting machine; its square is framed in the color you need.'),
         step('II', 'Feed the machine', 'It extracts the average of everything inside the square. Find the color, zoom, walk closer, shade the light with your hand. No orange? Blend red and yellow in the square.'),
         step('III', 'Extract', 'Only then does the machine blend what it caught into one color. Botched 10 points … Flawless 100. When time runs out, the machine extracts whatever it holds. Every color is a drop in your brew: from Gunk to the Elixir of Life.'),
         step('IV', 'Reactions', 'The qualities of your latest extracts can set off a reaction: extracts are exposed for a few seconds, and you drop ingredients into them to bring them closer to their colors. All five are below.'),

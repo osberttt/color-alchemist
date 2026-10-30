@@ -387,7 +387,14 @@ export function sevenScreen(r: SevenRun): void {
       sfx.shutter();
       vibrate(20);
       viewport.classList.add('flash');
-      shake(viewport, 'soft');
+      // The camera registering the press: a small dip down and back, not a shake. The class
+      // comes off right after, so it never hides the "urgent" pulse of the next color.
+      if (!reducedMotion()) {
+        viewport.classList.remove('snap-dip');
+        void viewport.offsetWidth;
+        viewport.classList.add('snap-dip');
+        later(320, () => viewport.classList.remove('snap-dip'));
+      }
       const plate = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
       viewport.classList.remove('flash');
       if (!plate) {

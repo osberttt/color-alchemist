@@ -1,4 +1,4 @@
-// Seven Colors run state (the mode kept its name): SEVEN.sections sections (now 5), one color each (ANALYSIS §4.1–4.6).
+// Seven Colors run state: SEVEN.sections sections (7 again, ANALYSIS §4.30), one color each (ANALYSIS §4.1–4.6).
 // Each color is judged by CIEDE2000 between the target and what the color
 // extracting machine captured. The run builds one craft, ranked by the total.
 
@@ -12,8 +12,8 @@ import type { ReactionKind } from './reaction';
 
 export type SevenMode = 'camera' | 'practice' | 'photo';
 
-/** Five operations of the alchemical Great Work, one per color, ending in Coagulation. */
-export const OPERATIONS = ['Calcination', 'Dissolution', 'Conjunction', 'Distillation', 'Coagulation'];
+/** The seven operations of the alchemical Great Work, one per color, ending in Coagulation. */
+export const OPERATIONS = ['Calcination', 'Dissolution', 'Separation', 'Conjunction', 'Fermentation', 'Distillation', 'Coagulation'];
 
 export interface Section {
   index: number;

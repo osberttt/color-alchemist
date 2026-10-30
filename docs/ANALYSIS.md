@@ -257,6 +257,43 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.31 A soothing transition sound; a shutter dip instead of a shake (2026-10-30)
+
+**The change (the user's call).**
+- **Transition sound** (`sfx.whoosh`, used by page wipes, the result sheet and reactions). It was a bright noise burst with a rising tone. Now it's a low, soft swell: low-passed air that rises and falls smoothly, with a warm 147 Hz tone and a quiet fifth above it, both settling slightly downward over about 0.6 s.
+- **Capture:** the sideways shake is gone. The view now dips about 4 px down and comes back up (about 0.3 s), like a camera registering the press, together with the existing white flash and shutter click.
+  - The shake stays where it means something: a failed capture, big rank-ups and a worse reaction.
+
+**Market:** calm, low transition sounds are the norm in cozy and relaxing mobile games. The bright whoosh repeated on every screen change and became grating over a 7-color run. The dip reads as "photo taken" (iOS's camera does a similar soft press), not as an error.
+
+**Game design:** the shake was the same feedback as a failed capture, which muddied its meaning. Now each motion has one meaning.
+
+**Digit7 Jam:** this is art & polish. No assets: the sound is synthesized with WebAudio, and the dip is CSS. It respects `prefers-reduced-motion` (no dip), and the dip's class comes off right away so it never hides the "last 10 seconds" pulse.
+
+### 4.30 Seven colors, seven operations (2026-10-30)
+
+**The change (the user's call).**
+- A run is **7 colors** again (it was 5 since §4.11). Each color is named after one of the seven operations of the Great Work: **Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation**. These follow the modern seven-step summary popularized by Dennis William Hauck; historical lists vary.
+- **Tier ladder:** Lead ×3 → Silver ×3 → Gold ×1, as in §4.1: easy household colors first, one "boss" color last.
+- **Qualities stay 6** (Flawless … Botched): they rate one extract, so the number of colors doesn't touch them. Krillion also keeps 6 tiers across 7 rounds.
+- **Potions, for now:** still 5, with thresholds scaled ×1.4 (140 / 280 / 420 / 560, max 700). That keeps the same average quality per color for each potion as with 5 colors. Whether to add 2 more potions is open (below).
+
+**Market**
+- This is Krillion's shape exactly: 7 prompts, 6 named tiers per answer, a running total and a 7-square share row, the most recognizable shape in daily-puzzle sharing.
+- "Seven" also matches the mode's code name and the classic seven-step alchemy that players may recognize.
+
+**Game design**
+- **Run length:** 7 × (about 2 s intro + up to 30 s hunt + about 5 s reveal and result) is up to about 4.5 minutes. Reactions add more: about **1.8 per run** with qualities spread evenly (computed over all 6⁷ runs, against 1.2 with 5 colors), at 30–60 s each plus a briefing. Expect roughly 5–7 minutes.
+  - Krillion's run is about 4 minutes. If playtests feel long, the levers are a shorter reaction clock (30 → 20 s) or capping reactions per run. Both are single numbers.
+- **One bad color hurts less:** an unavailable color is 1/7 of the run instead of 1/5, which is the Krillion feel.
+- **More reaction windows:** 6 checks per run instead of 4, so the system shows up in most runs.
+- **More potions? The trade-off:**
+  - 7 potions would mean one per 100 points again, a rank-up roughly every color, and a satisfying "7 colors, 7 potions" symmetry.
+  - But each potion is hand-drawn animated SVG art (`ui/potion.ts` + `potion-anim.css`), so two new ones are hours of art with the deadline tomorrow.
+  - Krillion itself has 5 depth bands over 7 rounds.
+
+**Digit7 Jam:** no new assets. The summary's 7-swatch strip and color "flood" already had 7 slots from the original design. A new unit test deals 300 runs and checks 7 distinct colors on the ladder, no element repeated back to back, and at most 2 dark colors. The smoke test plays all 7 colors at 360×640 and 1280×720, with no overflow and no errors.
+
 ### 4.29 Think fast and commit: a bare shelf, 30 s and 60 s (2026-10-30)
 
 **The change (the user's call).**

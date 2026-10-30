@@ -21,8 +21,8 @@ Status: **jam build in progress** (Digit7 Jam, deadline 31 Oct 2026, 23:59:59 UT
 The sections after this one describe the original pair-based design ("Classic"). Where they conflict, **this section wins**. The reasons for each change are in `ANALYSIS.md` §4.1–4.6.
 
 **Loop (Krillion-like, deliberately simple)**
-1. A run is **5 sections**, named after five operations of the Great Work: *Calcination, Dissolution, Conjunction, Distillation, Coagulation*. The run makes **one craft**. (The mode keeps its code name "Seven Colors".)
-2. Each section deals **one** named color. Tier ladder: Lead, Lead, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
+1. A run is **7 sections**, named after the seven operations of the Great Work: *Calcination, Dissolution, Separation, Conjunction, Fermentation, Distillation, Coagulation* (ANALYSIS §4.30). The run makes **one craft**.
+2. Each section deals **one** named color. Tier ladder: Lead ×3, Silver ×3, Gold ×1. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
 4. **Hunt (30 s)**: the live camera in full color. **The whole camera view is the color extracting machine**: a frame in the target color, with pipes from all four sides of the frame into the centered square (30 % of the short side). A nameplate sits on the bottom pipe. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**; nothing else can be adjusted during the 30 s. Time runs out → the machine **extracts on its own**, from wherever the player left it (aim and zoom), and it is judged normally. Only if that capture fails does the color score 0.
    - **No side bars and no tincture any more:** the camera is never adjusted. Ingredients only appear in reactions (step 6b, ANALYSIS §4.25).
@@ -60,7 +60,7 @@ The sections after this one describe the original pair-based design ("Classic").
 
      That's about 4 (OKLab ×100) per dose on every axis: coarse on purpose. The extract changes color live, but its score stays hidden. There are no meters and no undo: think fast and commit (opposite ingredients still cancel, when they're on offer). "Done" ends early.
    - **Judging:** when the clock runs out (or the player taps Done), the extracts are judged again. They can get better or worse, and the running total and potion update. The summary notes each reacted color ("Sublimation, was Awry").
-7. After 5 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Brew again" restarts in one tap.
+7. After 7 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 7 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **7-square emoji row**. "Brew again" restarts in one tap.
 
 **Scoring (simple and even)**
 - **Extraction** = the mean of every pixel in the square, in linear RGB (4 camera frames averaged). A reaction's ingredients then apply to that one color.
@@ -80,7 +80,7 @@ The sections after this one describe the original pair-based design ("Classic").
   | Empty (the timed-out capture failed) | — | 0 |
 
   No time bonus, no tier multiplier.
-- **The potion.** The alchemist brews the **Elixir of Life**; each extracted color is a drop in the brew. Potion rank by the running total (max 500), one rank per 100 points: **Gunk** ("a starter batch") < 100 ≤ **Stimulant** < 200 ≤ **Antidote** < 300 ≤ **Panacea** < 400 ≤ **Elixir of Life**. Retune after real playtests with the tuner (`tuner.html`).
+- **The potion.** The alchemist brews the **Elixir of Life**; each extracted color is a drop in the brew. Potion rank by the running total (max 700), one rank per 140 points: **Gunk** ("a starter batch") < 140 ≤ **Stimulant** < 280 ≤ **Antidote** < 420 ≤ **Panacea** < 560 ≤ **Elixir of Life** (the same per-color averages as with 5 colors: 20 / 40 / 60 / 80). Retune after real playtests with the tuner (`tuner.html`).
 - **Potion art** (`src/ui/potion.ts`, code-drawn SVG: no image files), in the palette of the page it's on (result sheet, summary). Each rank uses more of the palette's colors, nudged a little: Gunk muddy, Stimulant 2, Antidote 3, Panacea 5 a little brighter, Elixir 8 (the 5 accents plus blends) brighter still. On light pages the glass edge takes the page's text color.
   - **Gunk:** a cracked clay crock; sludge oozes over the rim, bubbles pop, a drip falls, a fly circles.
   - **Stimulant:** a corked round-bottom flask, fizzing; it twitches now and then, with little energy zaps.

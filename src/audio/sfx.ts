@@ -47,18 +47,19 @@ function tone(freq: number, dur: number, opts: { type?: OscillatorType; gain?: n
   o.stop(t0 + dur + 0.02);
 }
 
-function noise(dur: number, opts: { gain?: number; at?: number; freq?: number; q?: number } = {}): void {
+function noise(dur: number, opts: { gain?: number; at?: number; freq?: number; q?: number; filter?: BiquadFilterType; swell?: boolean } = {}): void {
   const c = ac();
   if (!c || !master) return;
   const t0 = c.currentTime + (opts.at ?? 0);
   const len = Math.max(1, Math.floor(c.sampleRate * dur));
   const buf = c.createBuffer(1, len, c.sampleRate);
   const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  // Default: a hit that decays. `swell`: rises and falls smoothly (no click at the start).
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (opts.swell ? Math.sin((Math.PI * i) / len) ** 2 : 1 - i / len);
   const src = c.createBufferSource();
   src.buffer = buf;
   const f = c.createBiquadFilter();
-  f.type = 'bandpass';
+  f.type = opts.filter ?? 'bandpass';
   f.frequency.value = opts.freq ?? 2000;
   f.Q.value = opts.q ?? 1;
   const g = c.createGain();
@@ -111,9 +112,11 @@ export const sfx = {
   error() {
     tone(220, 0.18, { type: 'triangle', gain: 0.2, slide: 0.7 });
   },
+  /** Transitions: a soft, low swell of air with a warm tone under it, gently settling. */
   whoosh() {
-    noise(0.32, { freq: 700, q: 0.6, gain: 0.22 });
-    tone(260, 0.3, { type: 'sine', gain: 0.06, slide: 2.2 });
+    noise(0.6, { filter: 'lowpass', freq: 420, q: 0.4, gain: 0.16, swell: true });
+    tone(147, 0.7, { type: 'sine', gain: 0.07, attack: 0.22, slide: 0.88 });
+    tone(220, 0.6, { type: 'sine', gain: 0.025, attack: 0.25, at: 0.05, slide: 0.88 });
   },
   pop(step = 0) {
     tone(520 + step * 90, 0.08, { type: 'sine', gain: 0.18, slide: 1.8 });

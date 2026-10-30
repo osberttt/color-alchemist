@@ -178,12 +178,12 @@ describe('ranks', () => {
   });
 
   it('craft tiers climb with the running total', () => {
-    expect(craftTierFor(70).name).toBe('Gunk');
-    expect(craftTierFor(100).name).toBe('Stimulant');
-    expect(craftTierFor(200).name).toBe('Antidote');
-    expect(craftTierFor(300).name).toBe('Panacea');
-    expect(craftTierFor(400).name).toBe('Elixir of Life');
-    expect(craftTierFor(500).next).toBeNull();
+    expect(craftTierFor(139).name).toBe('Gunk');
+    expect(craftTierFor(140).name).toBe('Stimulant');
+    expect(craftTierFor(280).name).toBe('Antidote');
+    expect(craftTierFor(420).name).toBe('Panacea');
+    expect(craftTierFor(560).name).toBe('Elixir of Life');
+    expect(craftTierFor(700).next).toBeNull();
   });
 });
 

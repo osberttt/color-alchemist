@@ -2334,6 +2334,18 @@ body[data-theme='palette'] .btn.primary {
 .viewport.urgent {
   animation: urgent 1s ease-in-out infinite;
 }
+/* The shutter registering: a small dip down and back up (no sideways shake). */
+.viewport.snap-dip {
+  animation: snap-dip 0.3s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+@keyframes snap-dip {
+  35% {
+    transform: translateY(4px) scale(0.992);
+  }
+  75% {
+    transform: translateY(-1px);
+  }
+}
 @keyframes urgent {
   50% {
     box-shadow:
