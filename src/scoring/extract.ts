@@ -43,7 +43,11 @@ export function extract(plate: Plate, rect = machineRect(plate)): Extraction {
     }
   }
   const n = rect.side * rect.side;
-  const lin: [number, number, number] = [r / n, g / n, b / n];
+  return extractionOf([r / n, g / n, b / n]);
+}
+
+/** An extraction from one linear-RGB color (also what a reaction turns an extract into). */
+export function extractionOf(lin: [number, number, number]): Extraction {
   return { lin, lab: linearToCielab(lin[0], lin[1], lin[2]), hex: linearToHex(lin[0], lin[1], lin[2]) };
 }
 

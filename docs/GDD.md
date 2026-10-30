@@ -23,10 +23,9 @@ The sections after this one describe the original pair-based design ("Classic").
 **Loop (Krillion-like, deliberately simple)**
 1. A run is **5 sections**, named after five operations of the Great Work: *Calcination, Dissolution, Conjunction, Distillation, Coagulation*. The run makes **one craft**. (The mode keeps its code name "Seven Colors".)
 2. Each section deals **one** named color. Tier ladder: Lead, Lead, Silver, Silver, Gold. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
-0. **The tincture (before the first color; no clock; not in Practice)**: the player calibrates the machine for their own light. "Mix your tincture: drop ingredients into the machine until the world inside looks like the world around you." Eight ingredients, dragged (or tapped) into the machine, one dose each, **no limits**; opposite ingredients cancel: **Sunlight / Darkness** (±0.15 stops of light per dose), **Pigment / Ash** (OKLab chroma ×1.07 per dose, compounding, so Ash nears grey but never inverts), **Cinnamon / Cobalt** (warmer / cooler: red up and blue down by 0.06 stops per dose) and **Moss / Rose** (greener / more magenta: green up or down against red and blue by 0.05 stops). Warmth and tint keep brightness: together they are a camera's white balance (Temperature and Tint). Every dose pours as liquid of its color through the pipes into the square, where it pools, sloshes and drains (§4.24). A meter per pair shows the doses (filling softly, never full); "Pour out" resets. The machine is drawn neutral grey here so it doesn't bias the eye. "Start extracting" (or Enter) begins the first color. The tincture then applies, fixed, to the viewfinder and every capture of the run.
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
-4. **Hunt (30 s)**: the live camera in full color, seen through the tincture. **The whole camera view is the color extracting machine**: a frame in the target color, with pipes from all four sides of the frame into the centered square (30 % of the short side). A nameplate sits on the bottom pipe. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**; nothing else can be adjusted during the 30 s. Time runs out → the machine **extracts on its own**, from wherever the player left it (aim and zoom), and it is judged normally. Only if that capture fails does the color score 0.
-   - **No side bars any more:** brightness and saturation moved into the tincture (step 0, ANALYSIS §4.23).
+4. **Hunt (30 s)**: the live camera in full color. **The whole camera view is the color extracting machine**: a frame in the target color, with pipes from all four sides of the frame into the centered square (30 % of the short side). A nameplate sits on the bottom pipe. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**; nothing else can be adjusted during the 30 s. Time runs out → the machine **extracts on its own**, from wherever the player left it (aim and zoom), and it is judged normally. Only if that capture fails does the color score 0.
+   - **No side bars and no tincture any more:** the camera is never adjusted. Ingredients only appear in reactions (step 6b, ANALYSIS §4.25).
    - **Blend reveal** (after the player's extraction or when time runs out): the frame freezes and everything in the square comes together at once: it swirls and shrinks into a round blob at the very center, melting into the one extracted color, and the blob flies straight into the extracted swatch, which shows the color at last.
 5. **No other correction.** Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the square extract as orange.
 6. **Extraction**: once the swatch shows the color, the **result sheet** slides up (its own palette):
@@ -34,10 +33,37 @@ The sections after this one describe the original pair-based design ("Classic").
    - the score, the rank stamp and the exact ΔE00
    - the **potion panel**: the drop falls into the potion, which nudges; on a rank-up it turns into the new potion in place (never vanishing) as the progress bar fills the old rank and starts the next
    It waits for the player's tap; the next clock starts when the next color appears.
+
+6b. **Reactions** (`seven/reaction.ts`, ANALYSIS §4.25–4.29): after each result, the qualities of the latest extracts (Flawless … Botched) may set off a reaction. It's a sliding window checked after every color, and a 3-long sequence beats a 2-long one. "Rising" means getting better **one quality at a time** (Awry → Wavering → Kindred). A skipped quality (Awry → Kindred) sets nothing off.
+
+   | Latest qualities | Reaction | Exposed | Ingredients | Clock |
+   |---|---|---|---|---|
+   | 3 the same | Equilibrium | all 3 (each dose goes into all of them) | all 8 | 60 s |
+   | 3 rising | Sublimation | 1 random of the 3 | all 8 | 30 s |
+   | 3 falling | Precipitation | 1 random of the 3 | all 8 | 30 s |
+   | 2 rising | Semi-Sublimation | 1 random of the 2 | 4 random | 30 s |
+   | 2 falling | Semi-Precipitation | 1 random of the 2 | 4 random | 30 s |
+
+   Two the same (without a third) sets nothing off, and neither does an empty extract.
+   - **The briefing (no clock):** a reaction opens by showing what happened before any clock runs:
+     - the chain of extracts that set it off, joined by → or =. Each shows its target and extracted colors side by side, its quality stamp and its color name, and the exposed extract is outlined;
+     - which extract is exposed;
+     - "You have 30 seconds and 4 ingredients to bring it closer to Tangerine". Which ingredients is a surprise until Start;
+     - an "All reactions" button that opens the full list with examples (`reaction-guide.ts`, built from the tuning values). The same list is in the how-to guide.
+
+     The clock only starts when the player taps **Start** (or presses Space/Enter).
+   - **The reaction screen:** there's no camera. Each exposed extract sits right next to its target, with a clock and an ingredient shelf showing only the ingredients on offer, four to a row. Ingredients are dragged (or tapped) into the extracts, one dose each, with no limits, and opposite ingredients cancel:
+     - **Sunlight / Darkness:** ±0.3 stops of light per dose.
+     - **Pigment / Ash:** OKLab chroma ×1.45 per dose, compounding.
+     - **Cinnamon / Cobalt:** warmer or cooler by 0.5 stops.
+     - **Moss / Rose:** greener or more magenta by 0.55 stops.
+
+     That's about 4 (OKLab ×100) per dose on every axis: coarse on purpose. The extract changes color live, but its score stays hidden. There are no meters and no undo: think fast and commit (opposite ingredients still cancel, when they're on offer). "Done" ends early.
+   - **Judging:** when the clock runs out (or the player taps Done), the extracts are judged again. They can get better or worse, and the running total and potion update. The summary notes each reacted color ("Sublimation, was Awry").
 7. After 5 colors, the **potion reveal**: the potion evolves rank by rank to its final form. You also get the total, the 5 extracted swatches, the list of colors (rank, ΔE, points), a local leaderboard entry and a share text with a **5-square emoji row**. "Brew again" restarts in one tap.
 
 **Scoring (simple and even)**
-- **Extraction** = the mean of every pixel in the square (after the tincture), in linear RGB (4 camera frames averaged).
+- **Extraction** = the mean of every pixel in the square, in linear RGB (4 camera frames averaged). A reaction's ingredients then apply to that one color.
 - **Distance** = the **straight-line distance in OKLab**, ×100: √(ΔL² + Δa² + Δb²). No weights or special cases; OKLab is built so this plain distance tracks how different colors look, so every color is judged the same way. About 2 is just noticeable. (Until §4.21 this was a weighted CIEDE2000, which was about twice as forgiving on vivid blues and pinks as on muted colors.)
 - **Per-color rank and points (Krillion's exact values):**
 

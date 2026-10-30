@@ -14,6 +14,7 @@ import { sfx } from '../audio/sfx';
 import { SEVEN } from '../data/tuning';
 import { craftTierFor } from '../scoring/extract';
 import { OPERATIONS, sevenResult, type SevenRun } from './run';
+import { REACTION_NAMES } from './reaction';
 
 export function sevenShareText(r: SevenRun, total: number, craft: string): string {
   const counts = new Map<string, number>();
@@ -94,7 +95,17 @@ export function sevenSummaryScreen(r: SevenRun): void {
                 'li',
                 { style: { '--i': String(i) } },
                 h('span', { class: 'p-sw' }, swatch(s.def.target, 'target'), swatch(s.hex, 'extracted')),
-                h('span', { class: 'p-name' }, s.def.name, h('span', { class: 'muted small' }, s.empty ? ` · nothing extracted · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`)),
+                h(
+                  'span',
+                  { class: 'p-name' },
+                  s.def.name,
+                  h(
+                    'span',
+                    { class: 'muted small' },
+                    s.empty ? ` · nothing extracted · ${OPERATIONS[s.index]}` : ` · ${s.tier} · ΔE ${s.dE.toFixed(1)} · ${OPERATIONS[s.index]}`,
+                    s.reacted ? ` · ${REACTION_NAMES[s.reacted.kind]}, was ${s.reacted.tier}` : '',
+                  ),
+                ),
                 h('span', { class: 'mono' }, `+${s.score}`),
               ),
             ),

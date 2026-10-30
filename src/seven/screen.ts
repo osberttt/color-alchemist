@@ -1,9 +1,8 @@
 // Seven Colors: one screen for the whole run. Each section: intro → hunt (live
 // camera, the color extracting machine framed in the target color, zoom, on the
 // clock) → snap → extraction → result sheet (precise judgement + the craft grows).
-// The whole camera view is the machine: a frame with pipes into the square. Before the
-// first color the player mixes a tincture (tincture.ts) that calibrates the machine for
-// their light; it applies to every capture (what you see is what's extracted).
+// The whole camera view is the machine: a frame with pipes into the square. After a
+// color's result, the last three ranks may set off a reaction (reaction.ts).
 
 import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
@@ -16,7 +15,7 @@ import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
 import { craftTierFor, machineRect, mosaic } from '../scoring/extract';
-import { applyEdits, type Plate } from '../color/plate';
+import { NO_EDITS, type Plate } from '../color/plate';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
 import { POTION_BLURBS, potionSvg } from '../ui/potion';
@@ -24,7 +23,8 @@ import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
 import { dealSection, finishSection, OPERATIONS, runTotal, type Section, type SevenRun } from './run';
-import { tinctureMixer } from './tincture';
+import { findReaction, makeReaction, REACTION_NAMES, type Reaction, type ReactionKind } from './reaction';
+import { reactionView, type ReactionView } from './reaction-view';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
@@ -34,16 +34,18 @@ const TIPS = [
   'Zoom in or walk closer.',
   'Too bright? Shade it with your hand.',
   'Tilt shiny things to kill the glare.',
-  'Your tincture tints everything the machine sees.',
+  'Extracts rising or falling one quality at a time set off a reaction.',
   'Trust your eyes: compare the frame with what is inside it.',
   'When time runs out, the machine extracts whatever it holds. Keep it aimed.',
 ];
 
-const TINCTURE_TIPS = [
-  'Show the machine something white, like paper. It should look white inside.',
-  'Compare something you know well, like your hand, with how it looks inside.',
-  'Too dim? Sunlight. Washed out? Pigment. Too blue? Cinnamon. Too green? Rose.',
-];
+/**
+ * Dev only, to try reactions quickly: `?react` sets one off after every color (each kind in
+ * turn when the ranks set nothing off); `?react=equilibrium` (or sublimation, precipitation)
+ * always that kind, over the last three colors.
+ */
+const FORCE_REACTION = import.meta.env.DEV && new URLSearchParams(location.search).has('react');
+const FORCE_KIND = FORCE_REACTION ? (new URLSearchParams(location.search).get('react') as ReactionKind | '') : '';
 
 interface PhotoDeck {
   urls: string[];
@@ -73,7 +75,8 @@ export function sevenScreen(r: SevenRun): void {
     let zoom: number = SEVEN.zoomMin;
     let cx = 0.5;
     let cy = 0.5;
-    let phase: 'tincture' | 'intro' | 'hunt' | 'capturing' | 'result' | 'done' = 'intro';
+    let phase: 'intro' | 'hunt' | 'capturing' | 'result' | 'reaction' | 'done' = 'intro';
+    let reacting: ReactionView | null = null;
     let remaining: number = SEVEN.seconds;
     let lastT = performance.now();
     let lastTick = Math.ceil(remaining);
@@ -116,12 +119,6 @@ export function sevenScreen(r: SevenRun): void {
     machine.classList.add('machine');
     machine.setAttribute('aria-hidden', 'true');
     const viewport = h('div', { class: 'viewport seven-vp' }, vfCanvas, reticle, machine, nameplate, warn, intro);
-    const mixer = tinctureMixer(r.tincture, () => viewport, (color) => pourTincture(color));
-    // The machine's pipe ends (frame → square), kept by drawMachine for the tincture's flow.
-    let pipeEnds: [number, number, number, number][] = [];
-    let machineSize = { W: 1, H: 1 };
-    mixer.el.hidden = true;
-    const startBtn = h('button', { class: 'btn primary tc-start', type: 'button', hidden: true, onclick: () => finishTincture() }, 'Start extracting ▶');
     const stageWrap = h('div', { class: 'stage-wrap' }, viewport);
     const vf = new Viewfinder(vfCanvas);
     if (!vf.ok) viewport.classList.add('no-gl');
@@ -185,7 +182,6 @@ export function sevenScreen(r: SevenRun): void {
         h(
           'div',
           { class: 'hunt-side' },
-          mixer.el,
           target,
           zoomRow,
           deskHelp,
@@ -194,7 +190,7 @@ export function sevenScreen(r: SevenRun): void {
           'div',
           { class: 'hunt-main' },
           stageWrap,
-          h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, startBtn, h('div', { class: 'side right' }, flipBtn)),
+          h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, h('div', { class: 'side right' }, flipBtn)),
           tipEl,
         ),
       ),
@@ -233,13 +229,6 @@ export function sevenScreen(r: SevenRun): void {
       const xL = mx - S / 2;
       const xR = mx + S / 2;
       const m = 5; // frame inset
-      machineSize = { W, H };
-      pipeEnds = [
-        [m, my, xL, my],
-        [W - m, my, xR, my],
-        [mx, m, mx, my - S / 2],
-        [mx, H - m, mx, my + S / 2],
-      ];
       const pipe = (x1: number, y1: number, x2: number, y2: number) => {
         const d = `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`;
         return `<path class="pipe-o" d="${d}"/><path class="pipe-i" d="${d}"/>`;
@@ -334,78 +323,6 @@ export function sevenScreen(r: SevenRun): void {
       setSource(canvasSource(await imageToCanvas(url)));
     }
 
-    // --- the tincture (before the first color) ------------------------------------------
-    /** No clock: the player mixes until the world inside the machine matches their own. */
-    async function startTincture(): Promise<void> {
-      phase = 'tincture';
-      mixer.el.hidden = false;
-      startBtn.hidden = false;
-      target.hidden = zoomRow.hidden = true;
-      shutter.hidden = true;
-      deskHelp.textContent = 'Drag (or click) ingredients into the machine · Enter: start extracting · Esc: quit';
-      tipEl.textContent = TINCTURE_TIPS[0];
-      // A neutral machine: a colored frame would bias the eye while calibrating.
-      viewport.style.setProperty('--ing', '#c8c8c8');
-      stageEl.textContent = 'Tincture';
-      timerEl.textContent = '';
-      paintSpectrum();
-      await prepareSource();
-    }
-
-    /**
-     * A dose going in: liquid of the ingredient's color runs through all four pipes into
-     * the square, rises there as a wavy pool, sloshes and drains away (about 0.65 s), leaving the view
-     * clear for comparing again. Purely decorative: the tincture itself is already applied.
-     */
-    function pourTincture(color: string): void {
-      if (reducedMotion()) return;
-      const NS = 'http://www.w3.org/2000/svg';
-      const flow = document.createElementNS(NS, 'svg');
-      flow.classList.add('tc-flow');
-      flow.setAttribute('viewBox', `0 0 ${machineSize.W} ${machineSize.H}`);
-      flow.setAttribute('aria-hidden', 'true');
-      for (const [x1, y1, x2, y2] of pipeEnds) {
-        const path = document.createElementNS(NS, 'path');
-        path.setAttribute('d', `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`);
-        path.style.stroke = color;
-        flow.append(path);
-        // Blobs of liquid travelling along the pipe toward the square.
-        path.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: -140 }], { duration: 280, easing: 'linear' });
-      }
-      viewport.append(flow);
-      flow.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 300 }).onfinish = () => flow.remove();
-
-      // The pool in the square: two wave layers drifting sideways while the level rises and falls.
-      const wave = (y: number) => `M-100,${y} q12.5,-7 25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 t25,0 L200,120 L-100,120 Z`;
-      const pool = h('div', { class: 'tc-pool', 'aria-hidden': 'true' });
-      pool.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="tc-wave a" d="${wave(8)}" fill="${color}"/><path class="tc-wave b" d="${wave(12)}" fill="${color}"/></svg>`;
-      reticle.append(pool);
-      const level = pool.firstElementChild as SVGElement;
-      level.animate(
-        [
-          { transform: 'translateY(100%)' },
-          { transform: 'translateY(30%)', offset: 0.35 },
-          { transform: 'translateY(40%)', offset: 0.55 },
-          { transform: 'translateY(100%)' },
-        ],
-        { duration: 600, delay: 60, easing: 'ease-in-out', fill: 'both' },
-      ).onfinish = () => pool.remove();
-    }
-
-    function finishTincture(): void {
-      if (phase !== 'tincture') return;
-      phase = 'capturing'; // in transit to the first intro
-      sfx.pour();
-      fx.splash(centerOf(reticle).x, centerOf(reticle).y, '#c8c8c8', 20);
-      mixer.el.hidden = true;
-      startBtn.hidden = true;
-      target.hidden = zoomRow.hidden = false;
-      shutter.hidden = false;
-      deskHelp.textContent = huntHelp;
-      tipEl.textContent = TIPS[tipIndex];
-      void startSection();
-    }
-
     // --- section flow ---------------------------------------------------------------
     async function startSection(): Promise<void> {
       const def = dealSection(r);
@@ -457,7 +374,6 @@ export function sevenScreen(r: SevenRun): void {
 
     /** `timedOut`: the clock ran out, so the machine extracts on its own, from wherever the player left it. */
     async function snap(timedOut = false): Promise<void> {
-      if (phase === 'tincture') return finishTincture();
       if (phase === 'intro') return beginHunt();
       if (phase === 'result') return advance();
       if (phase !== 'hunt' || !src) return;
@@ -472,10 +388,8 @@ export function sevenScreen(r: SevenRun): void {
       vibrate(20);
       viewport.classList.add('flash');
       shake(viewport, 'soft');
-      const shot = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
+      const plate = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
       viewport.classList.remove('flash');
-      // The machine extracts what the player saw: the tincture applied to every pixel.
-      const plate = shot && applyEdits(shot, r.tincture);
       if (!plate) {
         phase = 'hunt';
         if (timedOut) return runDry();
@@ -795,15 +709,42 @@ export function sevenScreen(r: SevenRun): void {
       r.index++;
       sfx.whoosh();
       sheet.classList.add('down');
-      later(450, () => {
-        sheet.hidden = true;
-        if (r.index >= SEVEN.sections) {
-          phase = 'done';
-          goSevenSummary(r);
-          return;
-        }
-        void startSection();
-      });
+      later(450, () => void next());
+    }
+
+    /** After a color: a reaction if the latest qualities set one off, then the next color (or the summary). */
+    async function next(): Promise<void> {
+      sheet.hidden = true;
+      const rx = (FORCE_KIND ? forcedReaction() : findReaction(r.sections, r.rng)) ?? (FORCE_REACTION ? forcedReaction() : null);
+      if (rx) {
+        phase = 'reaction';
+        reacting = reactionView(screen, r, rx, paintSpectrum);
+        await reacting.done;
+        reacting = null;
+        phase = 'capturing';
+      }
+      if (r.index >= SEVEN.sections) {
+        phase = 'done';
+        goSevenSummary(r);
+        return;
+      }
+      void startSection();
+    }
+
+    /** Dev `?react`: when the ranks set nothing off, each kind in turn on the latest extracts. */
+    function forcedReaction(): Reaction | null {
+      const n = r.sections.length;
+      const kinds: [ReactionKind, number][] = [
+        ['sublimation', 2],
+        ['precipitation', 2],
+        ['equilibrium', 3],
+        ['sublimation', 3],
+        ['precipitation', 3],
+      ];
+      const [kind, length] = FORCE_KIND && FORCE_KIND in REACTION_NAMES ? [FORCE_KIND, 3] : kinds[(n - 1) % kinds.length];
+      const window = r.sections.slice(Math.max(0, n - length)).filter((s) => !s.empty);
+      if (!window.length) return null;
+      return makeReaction(kind, window.map((s) => s.index), window.map((s) => s.tier), r.rng);
     }
 
     // --- loop ---------------------------------------------------------------------------
@@ -817,10 +758,6 @@ export function sevenScreen(r: SevenRun): void {
       const mirror = src.mirrored ? ' scaleX(-1)' : '';
       const el = src.el as HTMLElement;
       el.style.transform = `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)${mirror}`;
-      // Without WebGL the tincture's preview is approximate (CSS filters work in sRGB, and
-      // warmth isn't shown); the capture itself is exact.
-      const { ev, sat } = r.tincture;
-      el.style.filter = ev || sat ? `brightness(${Math.pow(2, ev).toFixed(3)}) saturate(${(1 + sat).toFixed(3)})` : '';
     };
 
     const loop = (now: number) => {
@@ -828,9 +765,9 @@ export function sevenScreen(r: SevenRun): void {
       const dt = (now - lastT) / 1000;
       lastT = now;
       // After the snap the view freezes (the last frame stays) while the machine blends.
-      const live = phase === 'hunt' || phase === 'intro' || phase === 'tincture';
+      const live = phase === 'hunt' || phase === 'intro';
       if (src && live) {
-        if (vf.ok) vf.render(src, view(), r.tincture);
+        if (vf.ok) vf.render(src, view(), NO_EDITS);
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
       }
@@ -859,8 +796,7 @@ export function sevenScreen(r: SevenRun): void {
 
     const tipTimer = window.setInterval(() => {
       tipIndex = (tipIndex + 1) % TIPS.length;
-      const list = phase === 'tincture' ? TINCTURE_TIPS : TIPS;
-      tipEl.textContent = list[tipIndex % list.length];
+      tipEl.textContent = TIPS[tipIndex];
     }, 6000);
 
     const onVis = () => {
@@ -874,7 +810,7 @@ export function sevenScreen(r: SevenRun): void {
     let pinchStart: { d: number; zoom: number } | null = null;
     viewport.addEventListener('pointerdown', (e) => {
       if (phase === 'intro') return beginHunt();
-      if (phase !== 'hunt' && phase !== 'tincture') return;
+      if (phase !== 'hunt') return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewport.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {
@@ -937,10 +873,10 @@ export function sevenScreen(r: SevenRun): void {
       e.preventDefault();
     });
 
-    // The painted practice scenes are exact already: nothing to calibrate.
-    void (r.mode === 'practice' ? startSection() : startTincture());
+    void startSection();
 
     return () => {
+      reacting?.cancel();
       cancelAnimationFrame(raf);
       clearInterval(tipTimer);
       timers.forEach(clearTimeout);

@@ -1,6 +1,7 @@
 // The Seven Colors viewfinder: the source in full color, with digital zoom,
-// panning (image sources) and the player's tincture applied exactly like the
-// scorer applies it (exposure and warmth as linear gains, saturation as OKLab chroma).
+// panning (image sources). It can apply edits exactly like `applyEdits` (exposure and
+// warmth as linear gains, saturation as OKLab chroma); since the tincture went (ANALYSIS
+// §4.25) the run passes none.
 
 import { editGains, type Edits } from '../color/plate';
 import type { FrameSource, Rect } from './source';

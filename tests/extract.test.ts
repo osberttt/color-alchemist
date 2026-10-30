@@ -6,6 +6,7 @@ import type { Plate } from '../src/color/plate';
 import { COLORS, color } from '../src/data/colors';
 import { SEVEN } from '../src/data/tuning';
 import { craftTierFor, distance, distanceParts, extract, judge, machineRect, mosaic, scoreFor, tierFor } from '../src/scoring/extract';
+import { dosesToEdits } from '../src/seven/reaction';
 
 describe('CIELAB', () => {
   it('white is L 100, a = b = 0', () => {
@@ -102,7 +103,7 @@ describe('the color extracting machine', () => {
   });
 });
 
-describe("the player's tincture (the machine's calibration)", () => {
+describe('ingredients (edits: light, color, warmth, tint)', () => {
   const orange = plate(4, 4, () => [0.6, 0.2, 0.04]);
 
   it('no adjustment changes nothing', () => {
@@ -152,7 +153,7 @@ describe("the player's tincture (the machine's calibration)", () => {
 
   it('no limits, but Ash never pushes a color past grey', () => {
     // Saturation compounds per dose, so even 100 doses of Ash leave a dull orange, not its opposite.
-    const sat = Math.pow(1 + SEVEN.tincture.satPerDose, -100) - 1; // as the mixer computes it
+    const sat = dosesToEdits({ ev: 0, sat: -100, warm: 0, tint: 0 }).sat; // as a reaction computes it
     expect(sat).toBeGreaterThan(-1);
     const out = applyEdits(plate(1, 1, () => [0.6, 0.2, 0.04]), { ev: 0, sat });
     const ok = linearToOklab(out.lin[0], out.lin[1], out.lin[2]);

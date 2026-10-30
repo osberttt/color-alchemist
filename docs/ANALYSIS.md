@@ -257,6 +257,155 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.29 Think fast and commit: a bare shelf, 30 s and 60 s (2026-10-30)
+
+**The change (the user's call).**
+- **The shelf shows only the ingredients on offer**, four to a row: 4 tiles for a semi-reaction, 8 for the others.
+  - It has no empty slots for missing opposites, no meters (Light, Color, Warmth, Tint) and no "Pour out".
+  - Every dose sticks. The only feedback is the extract's color, changing live next to its target.
+- **Semi-reactions keep 4 random ingredients** (§4.26). For a moment they were going to offer one pair of opposites (both sides of one axis). The user preferred the 4 random ones, and the pair version was undone before release.
+- **Longer clocks:** **30 s** for Sublimation, Precipitation and the semi-reactions (up from 10 s), and **60 s** for Equilibrium (up from 30 s).
+
+**Market:** commit-only inputs, with no undo, are a familiar source of tension in arcade games (cooking games, rhythm games): each tap is a decision. A bare row of jars reads at a glance on a phone.
+
+**Game design**
+- **Why no undo works now:** opposite ingredients still cancel. A wrong Sunlight can be answered with Darkness when it's on offer, but not when it isn't, as can happen in a 4-random hand.
+  - That's the "think fast and commit" risk: a careless tap can cost a quality. Doing nothing still changes nothing.
+- **Why longer clocks:** without meters, players judge every dose by eye, and that needs time to look.
+  - 30 s gives a semi-reaction room for several careful doses.
+  - 60 s fits Equilibrium, where one dose must suit three different extracts.
+- **Run length:** about 1–2 reactions per run (§4.28) at 30–60 s each adds up to a minute or so. That's acceptable while reactions stay rare. Done ends any of them early.
+- **Simpler code:** the shelf no longer needs to group ingredients by axis.
+
+**Digit7 Jam:** fewer elements on the reaction screen, so it's cleaner at 360×640, and there are no new assets. Unit tests cover the 4 random ingredients again. The smoke test plays reactions at both required sizes.
+
+### 4.28 One quality at a time; colors in the briefing; the reaction list in the guide (2026-10-30)
+
+**The change (the user's call).**
+- **Rising and falling now go one quality at a time.**
+  - Awry → Wavering is a Semi-Sublimation; Awry → Kindred is nothing, because a quality was skipped.
+  - I applied the same rule to the 3-long reactions: Awry, Wavering, Kindred is a Sublimation, and Botched, Wavering, Harmonious is nothing. Otherwise a 3-long chain could skip qualities while its 2-long tail couldn't.
+  - If you'd rather 3-long chains may skip, it's one line in `findReaction`.
+- **The briefing shows the colors:** each extract in the chain shows its target and extracted colors side by side, above its quality stamp. This replaces §4.27's hidden colors.
+- **The briefing hides the ingredients.** The count stays ("10 seconds and 4 ingredients"), but which ones is a surprise until Start.
+- **Wording:** players see "quality" (of an extract), not "rank": "Your last two extracts fell in quality, one step at a time."
+- **The how-to guide lists all five reactions**, each with an example chain of quality stamps, plus examples that set nothing off (a skipped quality; only two the same).
+  - The in-game "All reactions" list is the same component (`seven/reaction-guide.ts`), so the two can't drift apart.
+
+**Market**
+- Examples drawn as stamps make the rules readable without any text, like a poker hand chart. Pattern games teach their rules this way.
+- A surprise shelf adds a small reveal at Start.
+
+**Game design**
+- **Frequency drops:** with qualities spread evenly, a run now sets off about **1.2 reactions** (computed over all 6⁵ runs). The old any-step rule gave about 3.4.
+  - Real qualities cluster around a player's skill, so neighbors are common. Expect about 1–2 per run, which is closer to a bonus than a routine. That eases the run-length worry in §4.25.
+- **A straight is earned:** stepping exactly one quality is a recognizable pattern, and the chain in the briefing shows it.
+- **Colors in the briefing:** players can see before Start how far off each extract is. The clock is then about acting, not first sight.
+  - That favors thinking over reflexes, but the ingredients are still unknown, so a plan can't be made in full ahead of time.
+
+**Digit7 Jam**
+- **Learnability and polish:** the guide teaches the whole system with examples, and the briefing shows what happened in color.
+- **Tested:**
+  - Unit tests cover skipped qualities: Awry → Kindred is nothing, and Botched → Wavering → Kindred falls back to the 2-long tail.
+  - The smoke test checks that the guide lists 5 reactions plus "No reaction", and screenshots it. There's no overflow and there are no errors at 360×640 and 1280×720.
+
+### 4.27 A briefing before the reaction's clock (2026-10-30)
+
+**The change (the user's call).**
+- A reaction no longer starts its clock right away. It first shows a briefing:
+  - why it happened ("Your last two ranks rose."), with the chain of rank stamps (→ for rising or falling, = for Equilibrium) and the exposed extract outlined and tagged "exposed";
+  - which extract is exposed;
+  - the offer: "You have 10 seconds and 4 ingredients to bring it closer to Tangerine", with the ingredients as chips;
+  - an **All reactions** button.
+- The player taps **Start** (or presses Space/Enter) when ready.
+- "All reactions" opens a list of the five reactions in the how-to's style. It's generated from `SEVEN.reaction`, so the numbers can't drift from the game.
+
+**One choice of mine:** the swatches stay hidden during the briefing. If they showed, the briefing would be untimed thinking time and the clock would only govern tapping. Hidden, the clock still measures judging by eye.
+- If you'd rather players study the colors first, it's a small change: show the stack in the briefing.
+
+**Market:** a "here's what happened, here's what you get, ready?" card is the standard beat before a bonus round in arcade and mobile games. Starting it yourself avoids the "the clock ran while I was reading" frustration, which is a common complaint about timed popups.
+
+**Game design**
+- **Learnability:** the briefing teaches the system the moment it fires. The chain shows the pattern, and the list is one tap away. Players don't need to have read the how-to.
+- **Agency:** the player chooses when the 10 s (or 30 s) begin, so all of that time counts.
+- **Cost:** one more tap per reaction, about 2–3 per run. That's acceptable because each tap comes with new information.
+
+**Digit7 Jam**
+- **Fun and execution:** a clear, readable moment, and good for screenshots and the demo video.
+- **Tested:** the smoke test checks at 360×640 and 1280×720 that the clock doesn't start without the player, that the list opens, and that Escape closes only the list, not the run. There's no overflow and there are no errors.
+  - This found and fixed one bug: the list's key listener wasn't being removed, which would have swallowed Space for the rest of the run.
+
+### 4.26 Semi-reactions, with 4 random ingredients (2026-10-30)
+
+**The change (the user's call).** The 2-long reactions are now **Semi-Sublimation** and **Semi-Precipitation** (they were "Lesser …"). They offer **4** random ingredients out of 8, up from 3 (`SEVEN.reaction.semiIngredients`).
+
+**Market:** "Semi-" reads as "half a reaction" at a glance, which suits a 2-long sequence. It's shorter than "Lesser", so the title fits a phone on one line.
+
+**Game design**
+- **Half the shelf:** with 4 of 8 ingredients, a semi-reaction now offers half the shelf. It covers at least 2 axes and often 3–4, usually with one side of each pair.
+- **Fewer dead hands:** about 77 % of draws now include at least one complete pair (both sides of one axis), against 43 % with 3. More often the player can push a color both ways on some axis, so semi-reactions get a little less luck-driven and a little more useful. They're still clearly weaker than the 3-long reactions, which offer all 8.
+- **Points:** scores rise a little further, which adds to the threshold retuning noted in §4.25.
+
+**Digit7 Jam:** no layout change. The shelf already reserves an empty slot for each missing ingredient, and 4 ingredients fit the same 2 × 2 grid that was checked at 360×640 and 1280×720.
+
+### 4.25 Reactions replace the tincture (2026-10-30)
+
+**The change (the user's design, revised once the same day).**
+- **The tincture is gone.** There's no step before the first color, and the viewfinder and captures are never adjusted. §4.23–4.24 are superseded.
+- **Reactions:** after each color's result, the latest ranks may set one off. It's a sliding window checked after every color, and a 3-long sequence beats a 2-long one. "Rising" means getting better.
+
+  | Latest ranks | Reaction | Exposed | Ingredients | Clock |
+  |---|---|---|---|---|
+  | 3 the same | Equilibrium | all 3 (each dose goes into all of them) | all 8 | 30 s |
+  | 3 rising | Sublimation | 1 random of the 3 | all 8 | 10 s |
+  | 3 falling | Precipitation | 1 random of the 3 | all 8 | 10 s |
+  | 2 rising | Semi-Sublimation | 1 random of the 2 | 4 random | 10 s |
+  | 2 falling | Semi-Precipitation | 1 random of the 2 | 4 random | 10 s |
+
+  Two the same (without a third) and empty extracts set nothing off.
+- **The reaction screen:** there's no camera, just each exposed extract touching its target, a clock and the ingredient shelf. "Pour out" resets the doses and "Done" ends early. The extracts are then judged again: they can get better or worse, and the running total and potion follow. The summary notes "Sublimation, was Awry".
+- **The first draft** (same day) used only 3-long sequences: rising offered light and color, falling offered warmth and tint, the same rank exposed one random extract, and every case got 10 s. When I pointed out that every 3-long window falls into one of the cases, the user revised it into the table above.
+- **Names (mine, easy to change).**
+  - *Equilibrium* for a balance of three equal ranks.
+  - *Sublimation* (a substance rising as vapor) for rising ranks, and *Precipitation* (settling out) for falling ones. Both are real alchemy and chemistry operations.
+  - *Semi-* marks the 2-long versions.
+
+**Stronger, coarser doses (the user asked for the rate).** The median shift per dose, over the 55 colors, in OKLab ×100 (the score's unit):
+
+| Ingredient | Before (tincture) | Now |
+|---|---|---|
+| Sunlight / Darkness | 2.1 (0.15 stops) | 4.2 (0.3 stops) |
+| Pigment / Ash | 0.7 (×1.07) | 4.2 (×1.45) |
+| Cinnamon / Cobalt | 0.5 (0.06 stops) | 3.7 (0.5 stops) |
+| Moss / Rose | 0.4 (0.05 stops) | 4.1 (0.55 stops) |
+
+- Every axis now moves about the same amount, where before white balance was 5× weaker than light.
+- One dose is about two-thirds of the Harmonious band (6). So a reaction can lift a rank or two in a few taps, but reaching Flawless (≤ 2) with ingredients is luck, not precision.
+- A test pins the median between 3 and 5.
+
+**Market**
+- This is a pattern-bonus layer, like three-of-a-kind and straights in poker, or combo hands in Balatro. "Three the same" and "rising" are readable at a glance, with no tutorial. The run's history becomes a second thing to watch.
+- Short timed edit bursts are familiar from photo apps and party games. 10 s keeps the arcade pace.
+
+**Game design**
+- **Frequency:** a reaction is checked after colors 2–5. With ranks spread evenly, about 85 % of checks fire. Real ranks cluster, which means more "two the same", so expect about 2–3 reactions per run. That adds roughly 30–60 s to a run of about 3 minutes, and Equilibrium alone is 30 s.
+  - Watch this in playtests. The levers, not built: a cap per run, or no reaction after the last color.
+- **An opportunity, not a punishment:** doing nothing changes nothing (it shows as "untouched"). A wrong ingredient can cost a rank, but only by the player's own hand.
+- **Equilibrium brings back the tincture's purpose:** shared doses help only when all three are off the same way, for example all too dark in a dim room. That is the lighting correction the tincture offered, now earned and only when it's needed.
+- **Each kind feels different:**
+  - Semi-reactions add luck: four random ingredients, sometimes from opposite sides, sometimes all on one axis.
+  - Sublimation rewards an improving run.
+  - Precipitation rescues a falling one.
+- **Judged by eye:** the score stays hidden until the clock ends, just as the extraction is hidden while hunting. The two colors touch, which is the most accurate way to compare by eye.
+- **Scores rise:** reactions mostly add points, so the potion thresholds (100/200/300/400) will need retuning after playtests.
+
+**Digit7 Jam**
+- **Gameplay & fun, retention:** a second decision layer and more variety from run to run, without a meta system.
+- **Originality:** rank patterns that unlock hands-on color correction tie the scoring to the alchemy fiction.
+- **Product fit:** no step before the first color any more, so the player is in the camera faster on every replay.
+- **Technical:** no new assets or network requests, and reactions use the same color math as before (`editColor`). Unit tests cover the rules, the dose strength and re-judging. The smoke test plays reactions at 360×640 and 1280×720: no overflow, no errors, and the 3-row Equilibrium fits a 360×640 screen without scrolling.
+  - The dev-only `?react` (or `?react=equilibrium`) forces reactions for testing; it's stripped from the jam build.
+
 ### 4.24 Tincture: full white balance, no limits, a pouring animation (2026-10-29)
 
 **The change (the user's call).**

@@ -9,6 +9,7 @@ import { centerOf, fx } from '../ui/fx';
 import { beginSeven, goBoard, goTitle } from '../flow';
 import { CAMERA_ERROR_TEXT, type CameraError } from '../camera/camera';
 import { sfx, unlockAudio } from '../audio/sfx';
+import { reactionGuide } from '../seven/reaction-guide';
 
 export function titleScreen(): void {
   show((screen) => {
@@ -96,9 +97,12 @@ export function howTo(onDone?: () => void): void {
         'ol',
         { class: 'steps' },
         step('I', 'Five colors', 'A run is five colors, one at a time, 30 seconds each. The whole camera view is the color extracting machine; its square is framed in the color you need.'),
-        step('II', 'Feed the machine', 'It extracts the average of everything inside the square. Find the color, zoom, walk closer, shade the light with your hand. The side bars nudge brightness and saturation, a little. No orange? Blend red and yellow in the square.'),
+        step('II', 'Feed the machine', 'It extracts the average of everything inside the square. Find the color, zoom, walk closer, shade the light with your hand. No orange? Blend red and yellow in the square.'),
         step('III', 'Extract', 'Only then does the machine blend what it caught into one color. Botched 10 points … Flawless 100. When time runs out, the machine extracts whatever it holds. Every color is a drop in your brew: from Gunk to the Elixir of Life.'),
+        step('IV', 'Reactions', 'The qualities of your latest extracts can set off a reaction: extracts are exposed for a few seconds, and you drop ingredients into them to bring them closer to their colors. All five are below.'),
       ),
+      h('h2', { class: 'howto-sub' }, 'Reactions'),
+      reactionGuide(),
       h('p', { class: 'muted small' }, 'Trust your eyes: compare the frame with what is inside it, then extract.'),
       h('button', { class: 'btn primary', type: 'button', onclick: close }, 'Understood'),
     ),

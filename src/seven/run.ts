@@ -6,8 +6,9 @@ import { COLORS, color, type ColorDef } from '../data/colors';
 import { SEVEN } from '../data/tuning';
 import { mulberry32, pickWeighted, randomSeed, type Rng } from '../meta/rng';
 import { getSettings } from '../meta/storage';
-import { craftTierFor, extract, judge, type Extraction } from '../scoring/extract';
-import { NO_EDITS, type Edits, type Plate } from '../color/plate';
+import { craftTierFor, extract, extractionOf, judge, type Extraction } from '../scoring/extract';
+import { editColor, type Edits, type Plate } from '../color/plate';
+import type { ReactionKind } from './reaction';
 
 export type SevenMode = 'camera' | 'practice' | 'photo';
 
@@ -31,6 +32,8 @@ export interface Section {
   total: number;
   craft: string;
   craftIndex: number;
+  /** Set when a reaction changed this extract: what it was before. */
+  reacted?: { kind: ReactionKind; hex: string; tier: string; score: number; dE: number };
 }
 
 export interface SevenRun {
@@ -42,8 +45,6 @@ export interface SevenRun {
   used: Set<string>;
   tutorial: boolean;
   current: ColorDef | null;
-  /** The player's tincture: mixed before the first color, applied to every capture. */
-  tincture: Edits;
 }
 
 export let seven: SevenRun | null = null;
@@ -59,7 +60,6 @@ export function newSeven(mode: SevenMode): SevenRun {
     used: new Set(),
     tutorial: mode === 'camera' && !getSettings().tutorialDone,
     current: null,
-    tincture: { ...NO_EDITS, warm: 0, tint: 0 },
   };
   return seven;
 }
@@ -118,6 +118,28 @@ export function finishSection(r: SevenRun, view: Plate | null, zoom: number): Se
   };
   r.sections.push(section);
   return section;
+}
+
+/**
+ * A reaction's ingredients go into each of these sections' extracts (the same doses into
+ * all): each is judged again (it can get better or worse), and the running totals are
+ * recomputed.
+ */
+export function reactSections(r: SevenRun, indices: number[], edits: Edits, kind: ReactionKind): void {
+  for (const index of indices) {
+    const s = r.sections[index];
+    if (!s.extracted) continue;
+    const was = { kind, hex: s.hex, tier: s.tier, score: s.score, dE: s.dE };
+    const extracted = extractionOf(editColor(s.extracted.lin, edits));
+    const j = judge(s.def, extracted);
+    Object.assign(s, { extracted, hex: extracted.hex, dE: j.dE, score: j.score, tier: j.tier, tierIndex: j.tierIndex, reacted: was });
+  }
+  let total = 0;
+  for (const t of r.sections) {
+    total += t.score;
+    const craft = craftTierFor(total);
+    Object.assign(t, { total, craft: craft.name, craftIndex: craft.index });
+  }
 }
 
 export interface SevenResult {

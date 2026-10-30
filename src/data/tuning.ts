@@ -93,15 +93,18 @@ export const SEVEN = {
   /** Seconds per color. */
   seconds: 30,
   /**
-   * The tincture (ANALYSIS §4.23–4.24): before the first color the player calibrates the
-   * machine by dropping ingredients into it, as many doses as they like (no limits).
+   * Reactions (ANALYSIS §4.25–4.29): a run of qualities sets one off, and extracts are
+   * exposed for `seconds` (`equilibriumSeconds` when three are exposed at once) while the
+   * player drops ingredients into them (no limits). Semi-reactions (2 in a row) offer only
+   * `semiIngredients` random ingredients.
    * Sunlight/Darkness: ±evPerDose stops in linear light. Pigment/Ash: OKLab chroma
    * ×(1 + satPerDose) per dose, compounding (so Ash approaches grey but never inverts).
    * Cinnamon/Cobalt: warmer/cooler, red up and blue down by warmPerDose stops. Moss/Rose:
    * greener/more magenta, green up against red and blue by tintPerDose stops. Warmth and
-   * tint keep brightness. It then applies, fixed, to every color of the run.
+   * tint keep brightness. Deliberately coarse: each dose moves a typical color about 4
+   * (OKLab ×100), on every axis alike.
    */
-  tincture: { evPerDose: 0.15, satPerDose: 0.07, warmPerDose: 0.06, tintPerDose: 0.05 },
+  reaction: { seconds: 30, equilibriumSeconds: 60, semiIngredients: 4, evPerDose: 0.3, satPerDose: 0.45, warmPerDose: 0.5, tintPerDose: 0.55 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */

@@ -356,10 +356,14 @@ function editPixel(lin: Float32Array, i: number, k: [number, number, number], s:
   out[2] = Math.min(1, Math.max(0, b));
 }
 
-/**
- * The plate as the player saw it through the viewfinder, edits applied to every pixel
- * (Seven Colors: the player's tincture). Extraction averages this.
- */
+/** One linear-RGB color with edits applied (a reaction's ingredients on an extract). */
+export function editColor(lin: readonly [number, number, number], edits: Edits): [number, number, number] {
+  const out: [number, number, number] = [0, 0, 0];
+  editPixel(Float32Array.from(lin), 0, editGains(edits), 1 + edits.sat, out);
+  return out;
+}
+
+/** A plate with edits applied to every pixel, exactly as the viewfinder's shader does. */
 export function applyEdits(plate: Plate, edits: Edits): Plate {
   if (!edits.ev && !edits.sat && !edits.warm && !edits.tint) return plate;
   const k = editGains(edits);

@@ -466,6 +466,80 @@ p {
   color: var(--muted);
   font-size: 14px;
 }
+/* The reaction list with example chains (guide and in-game). */
+.howto .howto-sub {
+  margin-top: 6px;
+  font-size: 24px;
+}
+.rx-guide {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.rx-guide > p {
+  margin: 0;
+}
+.rg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.rg-list li {
+  display: grid;
+  gap: 5px;
+  padding-left: 12px;
+  border-left: 3px solid var(--p1, var(--line));
+}
+.rg-list li:nth-child(2) {
+  border-left-color: var(--p2, var(--line));
+}
+.rg-list li:nth-child(3) {
+  border-left-color: var(--p3, var(--line));
+}
+.rg-list li:nth-child(4) {
+  border-left-color: var(--p4, var(--line));
+}
+.rg-list li:nth-child(5) {
+  border-left-color: var(--p5, var(--line));
+}
+.rg-list li.rg-none {
+  border-left: 3px dashed var(--line);
+}
+.rg-list h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.rg-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.rg-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.rg-chain .stamp {
+  font-size: 9.5px;
+  padding: 1px 4px;
+  border-width: 2px;
+  letter-spacing: 0.02em;
+}
+.rg-sep {
+  font-weight: 700;
+  color: var(--muted);
+}
+.rg-none-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
 .palette-overlay .muted {
   color: var(--muted);
 }
@@ -2623,52 +2697,305 @@ body[data-theme='palette'] .btn.primary {
   animation: slam 0.6s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 
-/* ---------- The tincture (calibration before the first color) ---------- */
+/* ---------- Reactions: an extract exposed for a few seconds (ANALYSIS §4.25) ---------- */
 
-.tincture {
+.reaction {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: var(--ink);
+  color: var(--bone);
+  overflow-y: auto;
+  animation: sheet-up 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.reaction.down {
+  animation: sheet-down 0.35s cubic-bezier(0.6, 0, 0.8, 0.4) forwards;
+}
+.rx-inner {
+  min-height: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 14px);
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+}
+.reaction .eyebrow,
+.rx-why,
+.rx-how {
+  margin: 0;
+}
+.rx-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(28px, 8vw, 38px);
+  font-weight: 800;
+  line-height: 1;
+}
+.rx-why,
+.rx-how {
+  font-size: 13px;
+  color: var(--fog);
+  line-height: 1.35;
+}
+/* The briefing before the clock: the chain of extracts that set it off, what's exposed, the time. */
+.rx-brief,
+.rx-mix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.rx-inner {
+  grid-template-columns: minmax(0, 1fr);
+}
+.rx-brief {
+  gap: 14px;
+}
+.rx-chain {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 0;
+}
+.rx-link {
+  flex: 0 1 112px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 3px 8px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  overflow-wrap: anywhere;
+}
+.rx-link .stamp {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-width: 2px;
+  letter-spacing: 0.04em;
+}
+.rx-link.picked {
+  border-color: var(--bone);
+  background: rgba(237, 234, 227, 0.06);
+}
+.rx-link-name {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.15;
+}
+.rx-link-tag {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+.rx-link.picked .rx-link-tag {
+  color: var(--bone);
+  font-weight: 700;
+}
+.rx-sep {
+  flex: none;
+  align-self: center;
+  margin-top: -18px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fog);
+}
+.rx-what,
+.rx-offer {
+  margin: 0;
+  line-height: 1.35;
+}
+.rx-what {
+  font-size: 16px;
+  font-weight: 650;
+}
+.rx-offer {
+  font-size: 14px;
+  color: var(--fog);
+}
+/* Each extract in the chain: its target and what was extracted, touching. */
+.rx-mini {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(84px, 100%);
+  height: 40px;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--ash);
+}
+
+/* Target and extract touching, so the eye compares them directly; one row per exposed extract. */
+.rx-stack {
   display: grid;
   gap: 6px;
+  border-radius: 20px;
 }
-.tc-head {
+.rx-stack.drop-ready {
+  box-shadow: 0 0 0 3px var(--bone);
+}
+.rx-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: clamp(100px, 22dvh, 190px);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--ash);
+}
+.rx-stack.many .rx-compare {
+  height: clamp(44px, 8.5dvh, 76px);
+  border-radius: 12px;
+}
+.rx-half {
+  position: relative;
+  display: block;
+  transition: background 0.25s ease-out;
+}
+.rx-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow:
+    0 0 3px #000,
+    0 0 6px rgba(0, 0, 0, 0.8);
+}
+.rx-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: -4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+.rx-time {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
-.tc-head h2 {
-  margin: 0;
-  font-size: 19px;
+.rx-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ash);
+  overflow: hidden;
 }
-.tc-how {
-  margin: 0;
-  font-size: 13px;
-  color: var(--smoke);
-  line-height: 1.35;
+.rx-bar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--bone);
 }
-.tc-shelf {
+.rx-num {
+  min-width: 2ch;
+  font-size: 18px;
+  font-weight: 700;
+}
+.reaction.urgent .rx-num {
+  animation: pulse 1s ease-in-out infinite;
+}
+.rx-out {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 12px;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0;
+  animation: rx-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
-.tc-pair {
-  display: grid;
+.rx-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 52px;
+}
+/* Three outcomes: one compact line each, stamps in a column. */
+.rx-stack.many ~ .rx-out {
+  justify-content: stretch;
   gap: 4px;
-  justify-items: center;
+}
+.rx-stack.many ~ .rx-out .rx-row {
+  justify-content: start;
+  gap: 10px;
+  min-height: 44px;
+}
+.rx-stack.many ~ .rx-out .stamp {
+  min-width: 96px;
+  text-align: center;
+}
+.rx-stack.many ~ .rx-out .rx-delta {
+  flex: 1;
   min-width: 0;
 }
-.tc-tiles {
+.rx-stack.many ~ .rx-out .rx-change {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rx-stack.many ~ .rx-out .rx-points {
+  font-size: 20px;
+}
+.rx-sum {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+@keyframes rx-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.rx-delta {
+  text-align: left;
+}
+.rx-delta p {
+  margin: 0;
+}
+.rx-change {
+  font-size: 16px;
+  font-weight: 700;
+}
+.rx-points {
+  font-size: 30px;
+  font-weight: 800;
+}
+.rx-points.down {
+  color: var(--fog);
+}
+.rx-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.rx-btn {
+  min-width: 170px;
+  min-height: 52px;
+  font-size: 16px;
+}
+
+/* The ingredient shelf: just the ingredients on offer, four to a row. */
+.rx-shelf {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.rx-shelf.locked {
+  opacity: 0.4;
 }
 .ing {
   display: grid;
   justify-items: center;
   gap: 3px;
   min-width: 0;
-  min-height: 50px;
-  padding: 5px 0 3px;
+  min-height: 54px;
+  padding: 6px 0 4px;
   border-radius: 12px;
   border: 1px solid var(--ash);
   background: rgba(255, 255, 255, 0.04);
@@ -2684,15 +3011,18 @@ body[data-theme='palette'] .btn.primary {
   cursor: grabbing;
   background: rgba(255, 255, 255, 0.1);
 }
+.ing:disabled {
+  cursor: default;
+}
 .ing-name {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
 }
 .ing-jar {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   box-shadow:
     inset 0 -3px 6px rgba(0, 0, 0, 0.35),
@@ -2731,144 +3061,15 @@ body[data-theme='palette'] .btn.primary {
 /* The ingredient being dragged (or pouring itself in). */
 .ing-ghost {
   position: fixed;
-  z-index: 60;
+  z-index: 120;
   width: 40px;
   height: 40px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.tc-meter {
-  position: relative;
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--ash);
-  overflow: hidden;
-}
-.tc-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  transition:
-    left 0.15s ease-out,
-    width 0.15s ease-out;
-}
-.tc-ev .tc-fill[data-side='plus'] {
-  background: #ffd34d;
-}
-.tc-ev .tc-fill[data-side='minus'] {
-  background: #6a6fa8;
-}
-.tc-sat .tc-fill[data-side='plus'] {
-  background: linear-gradient(90deg, #ff4d6d, #ffb000, #4cd964, #2fa8ff);
-}
-.tc-sat .tc-fill[data-side='minus'] {
-  background: #9a9a9a;
-}
-.tc-warm .tc-fill[data-side='plus'] {
-  background: #c8763a;
-}
-.tc-warm .tc-fill[data-side='minus'] {
-  background: #4a7be8;
-}
-.tc-tint .tc-fill[data-side='plus'] {
-  background: #5f9a3c;
-}
-.tc-tint .tc-fill[data-side='minus'] {
-  background: #d94f8f;
-}
-.tc-zero {
-  position: absolute;
-  left: calc(50% - 1px);
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--bone);
-  opacity: 0.7;
-}
-.tc-axis {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--smoke);
-}
-/* A dose going in: liquid running through the pipes, then a wavy pool in the square. */
-.tc-flow {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-  pointer-events: none;
-}
-.tc-flow path {
-  fill: none;
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-dasharray: 14 21;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
-}
-.tc-pool {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.tc-pool svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.tc-wave {
-  animation: tc-slosh 0.36s linear infinite;
-}
-.tc-wave.a {
-  opacity: 0.55;
-}
-.tc-wave.b {
-  opacity: 0.42;
-  animation-duration: 0.52s;
-  animation-direction: reverse;
-}
-@keyframes tc-slosh {
-  to {
-    transform: translateX(50px);
-  }
-}
-/* While an ingredient is dragged, the machine shows it's ready to take it. */
-.viewport.tc-target {
-  box-shadow:
-    0 0 0 2px var(--bone),
-    0 0 18px rgba(237, 234, 227, 0.35);
-}
-.tc-start {
-  min-height: 56px;
-  padding: 0 18px;
-  font-size: 15px;
-  white-space: nowrap;
-}
-/* Desktop: the side column has room, so each pair gets a row and full names. */
 @media (min-width: 900px) and (min-aspect-ratio: 5/4) {
-  .tincture {
-    gap: 10px;
-  }
-  .tc-shelf {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .ing {
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    justify-items: start;
-    gap: 8px;
-    min-height: 48px;
-    padding: 6px 10px;
-  }
   .ing-name {
     font-size: 13px;
-  }
-  .tc-start {
-    min-width: 220px;
-    font-size: 16px;
   }
 }
 
