@@ -1,6 +1,6 @@
 # Colorchemy
 
-> Is your life full of colors? Test it out to brew the Elixir of Life.
+> Does your life have enough colors to heal you? Test it out to brew the Elixir of Life.
 
 **Build version: 1.0.0** (git tag `v1.0.0`) · Digit7 Jam 2026 · HTML arcade game
 
@@ -14,7 +14,7 @@ osbert
 Min Htet Naing (osbert) · minhtetnaing25mhn@gmail.com · +66 61 283 5475 · Telegram @minhtetnaing111
 
 ## 4. Short game description
-Colorchemy is a real-world color hunt. You brew medicine with the colors around you, so the closer your colors are to those in the recipe, the better the quality.
+Does your life have enough colors to heal you? Colorchemy is a real-world color hunt. You brew medicine with the colors around you, so the closer your colors are to those in the recipe, the better the quality.
 
 - **The machine:** each run is 7 colors, the seven stages of alchemy from Calcination to Coagulation. For each color you get 30 seconds to fill the square of the color extracting machine (your camera view) with something of that color, then extract it.
 - **Scoring:** the machine averages everything in the square and judges how close it is. The quality runs Flawless, Harmonious, Kindred, Wavering, Awry, Botched, worth 100 down to 10 points. Every color is a drop in your potion: Gunk, Stimulant, Antidote, Panacea, and finally the Elixir of Life.
@@ -69,7 +69,7 @@ The **?** button on the title screen opens the guide, which lists all reactions 
 - **Sound:** all synthesized in code with the Web Audio API; there are no audio files and no music.
 - **Repository only:** dev-only test photos from Wikimedia Commons are in the repository for testing and are never in the build. See `test-photos/CREDITS.md`.
 
-Full list: `ASSET_CREDITS.md`.
+Full list: `submission/ASSET_CREDITS.md`.
 
 ## 12. Special testing instructions
 - **No webcam:** use **Practice · practice scenes**, or **Practice · from gallery** with any photo.
@@ -86,7 +86,7 @@ The layout adapts in between, with no horizontal scrolling.
 None. After loading, the game makes no network requests: no analytics, no ads, no external APIs, and the fonts are self-hosted. Photos never leave the device; nothing is uploaded or stored except the local leaderboard and settings in localStorage.
 
 ## 15. AI tools used, their purpose, and the affected code or assets
-Claude Code (Anthropic) was used to write most of the code (TypeScript, CSS, the code-drawn art and the synthesized sounds), the tests and the documentation, under the developer's direction. The developer made the design decisions, playtested, and reviewed every change. No AI-generated images, music or voice are used. Full declaration: `AI_USE_DECLARATION.md`.
+Claude Code (Anthropic) was used to write most of the code (TypeScript, CSS, the code-drawn art and the synthesized sounds), the tests and the documentation, under the developer's direction. The developer made the design decisions, playtested, and reviewed every change. No AI-generated images, music or voice are used. Full declaration: `submission/AI_USE_DECLARATION.md`.
 
 ## 16. Private repository access and submission commit/tag
 - **Repository:** https://github.com/osberttt/colorchemy (private). Reviewer access is granted to the account announced by Digit7s.

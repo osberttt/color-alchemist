@@ -257,6 +257,25 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.41 A new tagline: "Does your life have enough colors to heal you?" (2026-10-31)
+
+**The change (the user's call).**
+- The tagline and thesis are now **"Does your life have enough colors to heal you?"** It was "Is your life full of colors?".
+- It appears in:
+  - the title (with "Test it out to brew the Elixir of Life." on the next line);
+  - the loading screen and the page description;
+  - the share text;
+  - the README and the portal description;
+  - the pitch deck and the cover;
+  - the demo video's closing caption.
+- The jam build, ZIP, screenshots, video, cover and deck were regenerated with it.
+
+**Market:** the old line was a pleasant question; the new one carries a stake ("heal you") and a promise of meaning. It reads as a hook in a portal thumbnail, and it ties the game to wellbeing, a theme that travels well in casual games.
+
+**Game design:** it finally connects the fantasy and the mechanic. You brew *medicine* (Stimulant, Antidote, Panacea, Elixir of Life), and its strength comes from the colors you find. The question becomes the run's goal: find enough color to brew the Elixir of Life.
+
+**Digit7 Jam:** originality and product fit. A clear thesis helps judges place the game in one sentence. The build is unchanged otherwise: tests pass, and the version stays 1.0.0 because nothing has been submitted yet.
+
 ### 4.40 A text revision of the whole game (2026-10-31)
 
 **The change (the user's call).**

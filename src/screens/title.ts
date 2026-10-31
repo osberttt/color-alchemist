@@ -49,7 +49,7 @@ export function titleScreen(): void {
         { class: 'title-hero' },
         logoEl,
         // Under the logo, only the small invitation (the user's call, ANALYSIS §4.35).
-        h('p', { class: 'tagline small-tag' }, 'Is your life full of colors', h('span', { class: 'qmark' }, '?', drop), h('br'), 'Test it out to brew the Elixir of Life.'),
+        h('p', { class: 'tagline small-tag' }, 'Does your life have enough colors to heal you', h('span', { class: 'qmark' }, '?', drop), h('br'), 'Test it out to brew the Elixir of Life.'),
       ),
       h(
         'div',

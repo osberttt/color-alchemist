@@ -2,7 +2,7 @@
   "name": "colorchemy",
   "private": true,
   "version": "1.0.0",
-  "description": "Colorchemy: a real-world color hunt arcade game. is your life full of colors?",
+  "description": "Colorchemy: a real-world color hunt arcade game. Does your life have enough colors to heal you?",
   "type": "module",
   "scripts": {
     "dev": "vite",

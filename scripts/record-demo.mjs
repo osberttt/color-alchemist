@@ -313,7 +313,7 @@ await caption('Every color and its quality');
 await wait(1500);
 await shot(9);
 await wait(1500);
-await caption('Colorchemy · Is your life full of colors?');
+await caption('Colorchemy · Does your life have enough colors to heal you?');
 await wait(2600);
 console.log(`reactions: ${reactions} (screenshots from one with ${bestReactionShots.doses} doses)`);
 bestReactionShots.bufs.forEach((buf, k) => writeFileSync(join(shotsDir, `osbert_Colorchemy_Screenshot0${5 + k}.png`), buf));

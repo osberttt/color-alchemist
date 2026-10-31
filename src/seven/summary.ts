@@ -1,4 +1,4 @@
-// The finished craft: "is your life full of colors?" answered. The craft evolves
+// The finished craft: "Does your life have enough colors to heal you?" answered. The craft evolves
 // through every rank it passed, lands on its final form, and the run is shared
 // as a row of squares, one per color.
 
@@ -22,7 +22,7 @@ export function sevenShareText(r: SevenRun, total: number, craft: string): strin
   const order = [...SEVEN.colorTiers.map((t) => t.name), 'Empty'];
   const lines = [
     `Colorchemy${r.mode === 'camera' ? '' : r.mode === 'photo' ? ' (gallery)' : ' (practice)'}`,
-    `Is your life full of colors?  ${craft.toUpperCase()}  ${fmt(total)}`,
+    `Does your life have enough colors to heal you?  ${craft.toUpperCase()}  ${fmt(total)}`,
     r.sections.map((s) => emojiFor(s.hex)).join(''),
     order
       .filter((t) => counts.has(t))

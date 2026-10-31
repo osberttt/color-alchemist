@@ -1,6 +1,6 @@
 # Colorchemy — Game Design Document
 
-> **is your life full of colors?**
+> **Does your life have enough colors to heal you?**
 
 | | |
 |---|---|
@@ -89,7 +89,7 @@ The sections after this one describe the original pair-based design ("Classic").
   - **Elixir of Life:** a heart-shaped flask holding every color, glowing and swirling, motes of light rising, a glowing orb stopper, a halo and turning rays.
 
 **Modes**
-The title (ANALYSIS §4.35) reads: the logo, then, very small, "Is your life full of colors? Test it out to brew the Elixir of Life."
+The title (ANALYSIS §4.35) reads: the logo, then, very small, "Does your life have enough colors to heal you? Test it out to brew the Elixir of Life."
 - **Brew**: the camera.
 - **Practice · from gallery**: photos the player picks from their device ("Pick a photo"; the clock waits until one is in; "Change photo" any time). In the jam build too. Recorded on its own board, "Gallery potion" (§4.39). Dev builds start with a photo from `test-photos/` and offer Next.
 - **Practice · practice scenes**: a painted still life per color; drag to aim, zoom like a camera. Not recorded.
