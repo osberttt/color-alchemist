@@ -21,7 +21,7 @@
 ## Submission (v1.0.0)
 
 - Release **1.0.0**: `package.json`, `<meta name="version">` in `index.html`, git tag `v1.0.0`. Bump all three together for any resubmission.
-- Repo root: `README.md` (the jam's 17 items), `ASSET_CREDITS.md`, `TECHNICAL_NOTES.md`, `AI_USE_DECLARATION.md`. `submission/`: the build ZIP (git-ignored), screenshots, `README_osbert_Colorchemy.md` (a copy of the README), team profile, originality declaration, portal answers, demo plan, `CHECKLIST.md`. Team name: **osbert** (solo).
+- Repo root: `README.md` (the jam's 17 items), `ASSET_CREDITS.md`, `TECHNICAL_NOTES.md`, `AI_USE_DECLARATION.md`. `submission/`: the build ZIP (git-ignored), screenshots, `README_osbert_Colorchemy.md` (a copy of the README), team profile, originality declaration, portal answers, demo plan, `CHECKLIST.md`. Team name: **osbert** (solo, Min Htet Naing). Media: `scripts/record-demo.mjs` records the captioned practice-scene demo video (`--shots` = phone screenshots 390×844 @3×); `scripts/render-deck.mjs` renders `submission/deck/deck.html` (served by the dev server) to the pitch-deck PDF and the cover image.
 
 ## Hard rules
 
