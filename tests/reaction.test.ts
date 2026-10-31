@@ -19,22 +19,33 @@ describe('which reaction the latest ranks set off', () => {
     expect(findReaction(ranked('Kindred'), rng)).toBeNull();
   });
 
-  it('the same rank three times: Equilibrium, all three exposed, every ingredient, 30 s', () => {
-    expect(findReaction(ranked('Awry', 'Kindred', 'Kindred', 'Kindred'), rng)).toMatchObject({
-      kind: 'equilibrium',
-      length: 3,
-      indices: [1, 2, 3],
-      ingredients: ALL,
-      seconds: SEVEN.reaction.equilibriumSeconds,
-    });
+  /** The offered ingredients are whole opposite pairs, in shelf order. */
+  const expectPairs = (ids: string[], pairs: number) => {
+    expect(ids).toHaveLength(pairs * 2);
+    expect(ALL.filter((id) => ids.includes(id))).toEqual(ids);
+    const axes = INGREDIENTS.filter((i) => ids.includes(i.id)).map((i) => i.axis);
+    expect(new Set(axes).size).toBe(pairs);
+  };
+
+  it('the same rank three times: Equilibrium on one random of the three, 3 pairs', () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 40; i++) {
+      const rx = findReaction(ranked('Awry', 'Kindred', 'Kindred', 'Kindred'), rng)!;
+      expect(rx).toMatchObject({ kind: 'equilibrium', length: 3, window: [1, 2, 3], seconds: SEVEN.reaction.seconds });
+      expect(rx.indices).toHaveLength(1);
+      expectPairs(rx.ingredients, SEVEN.reaction.pairs.equilibrium);
+      seen.add(rx.indices[0]);
+    }
+    expect([...seen].sort()).toEqual([1, 2, 3]);
   });
 
-  it('three falling: Precipitation on one random of the three, every ingredient, 10 s', () => {
+  it('three falling: Precipitation on one random of the three, 2 pairs', () => {
     const seen = new Set<number>();
     for (let i = 0; i < 40; i++) {
       const rx = findReaction(ranked('Flawless', 'Kindred', 'Wavering', 'Awry'), rng)!;
-      expect(rx).toMatchObject({ kind: 'precipitation', length: 3, ingredients: ALL, seconds: SEVEN.reaction.seconds });
+      expect(rx).toMatchObject({ kind: 'precipitation', length: 3, seconds: SEVEN.reaction.seconds });
       expect(rx.indices).toHaveLength(1);
+      expectPairs(rx.ingredients, SEVEN.reaction.pairs.three);
       seen.add(rx.indices[0]);
     }
     expect([...seen].sort()).toEqual([1, 2, 3]);
@@ -52,14 +63,12 @@ describe('which reaction the latest ranks set off', () => {
     expect(findReaction(ranked('Botched', 'Wavering', 'Kindred'), rng)).toMatchObject({ kind: 'sublimation', length: 2, window: [1, 2] });
   });
 
-  it('two rising or falling: a semi-reaction on one of the two, with 4 random ingredients', () => {
+  it('two rising or falling: a semi-reaction on one of the two, with 1 random pair', () => {
     for (let i = 0; i < 20; i++) {
       const rx = findReaction(ranked('Kindred', 'Awry', 'Wavering'), rng)!;
       expect(rx).toMatchObject({ kind: 'sublimation', length: 2, seconds: SEVEN.reaction.seconds });
       expect([1, 2]).toContain(rx.indices[0]);
-      expect(rx.ingredients).toHaveLength(SEVEN.reaction.semiIngredients);
-      expect(new Set(rx.ingredients).size).toBe(rx.ingredients.length);
-      expect(ALL.filter((id) => rx.ingredients.includes(id))).toEqual(rx.ingredients); // shelf order
+      expectPairs(rx.ingredients, SEVEN.reaction.pairs.two);
     }
     expect(findReaction(ranked('Wavering', 'Awry'), rng)).toMatchObject({ kind: 'precipitation', length: 2 });
     expect(reactionName({ kind: 'precipitation', length: 2 })).toBe('Semi-Precipitation');
@@ -77,7 +86,7 @@ describe('which reaction the latest ranks set off', () => {
   });
 });
 
-describe("a semi-reaction's ingredients lean toward what the extract needs", () => {
+describe("a reaction's pairs lean toward what the extract needs", () => {
   const teal = color('teal');
   const [r, g, b] = hexToLinear(teal.target);
   const tooDark: [number, number, number] = [r * 0.5, g * 0.5, b * 0.5];
@@ -88,24 +97,21 @@ describe("a semi-reaction's ingredients lean toward what the extract needs", () 
     expect(needs.darkness).toBeLessThan(0);
   });
 
-  it('offers the helpful ingredient far more often than chance, but not always the same hand', () => {
+  it('offers the helpful pair far more often than chance, but not always the same one', () => {
     const needsOf = () => ingredientNeeds(tooDark, teal.target);
     const draw = mulberry32(3);
     let sunlight = 0;
-    let darkness = 0;
     const hands = new Set<string>();
     const n = 400;
     for (let i = 0; i < n; i++) {
       const rx = makeReaction('sublimation', [0, 1], ['Awry', 'Wavering'], draw, needsOf);
-      expect(rx.ingredients).toHaveLength(SEVEN.reaction.semiIngredients);
+      expect(rx.ingredients).toHaveLength(2);
       if (rx.ingredients.includes('sunlight')) sunlight++;
-      if (rx.ingredients.includes('darkness')) darkness++;
       hands.add(rx.ingredients.join());
     }
-    // Pure chance would be 4 of 8: about half of the hands.
-    expect(sunlight / n).toBeGreaterThan(0.8);
-    expect(darkness / n).toBeLessThan(0.5);
-    expect(hands.size).toBeGreaterThan(5);
+    // Pure chance would be 1 pair of 4: a quarter of the hands.
+    expect(sunlight / n).toBeGreaterThan(0.35);
+    expect(hands.size).toBeGreaterThan(2);
   });
 });
 

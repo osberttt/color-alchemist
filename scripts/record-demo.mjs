@@ -266,6 +266,15 @@ const huntReady = () =>
 
 let reactions = 0;
 let resultShot = false;
+// The tincture: a dose of Sunlight and one of Pigment, then the run starts.
+await page.waitForSelector('.tinc', { timeout: 10000 });
+await caption('First, mix a tincture: it tunes the machine to your light');
+await wait(1200);
+await page.locator('.tinc button.ing-sunlight').click();
+await wait(700);
+await page.locator('.tinc button.ing-pigment').click();
+await wait(1400);
+await page.locator('.tinc-start').click();
 await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 10000 });
 await caption('7 colors, 30 seconds each');
 for (let i = 0; i < 7; i++) {

@@ -105,6 +105,11 @@ async function session(name, viewport, mobile) {
 
   // Practice run: all seven sections.
   await page.getByRole('button', { name: 'Practice · practice scenes' }).click();
+  // Every run opens with the tincture; here it's left as it is.
+  await page.waitForSelector('.tinc', { timeout: 8000 });
+  await page.waitForTimeout(400);
+  await shot('02b-practice-tincture');
+  await page.locator('.tinc-start').click();
   await page.waitForSelector('.vf-overlay.intro:not([hidden])');
   await shot('03-intro');
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 5000 });
@@ -113,7 +118,12 @@ async function session(name, viewport, mobile) {
   await overflow('hunt');
   const accs = [];
   for (let i = 0; i < 7; i++) {
-    await page.waitForFunction(() => document.querySelector('.vf-overlay.intro')?.hasAttribute('hidden') && document.querySelector('.sheet')?.hasAttribute('hidden'), null, { timeout: 8000 });
+    // The hunt is on once the shutter is enabled (between a reaction and the next intro, the intro is hidden too).
+    await page.waitForFunction(
+      () => document.querySelector('.vf-overlay.intro')?.hasAttribute('hidden') && document.querySelector('.sheet')?.hasAttribute('hidden') && !document.querySelector('.shutter')?.disabled,
+      null,
+      { timeout: 8000 },
+    );
     // Aim: zoom in a little so the machine sits inside an object more often.
     if (i % 2 === 1) await page.keyboard.press('+');
     await page.keyboard.press('Space');
@@ -147,6 +157,12 @@ async function session(name, viewport, mobile) {
 
   // Practice from your gallery (dev builds start with a test photo)
   await page.getByRole('button', { name: 'Practice · from gallery' }).click();
+  // The tincture again, started from the keyboard this time (Space).
+  await page.waitForSelector('.tinc', { timeout: 8000 });
+  await page.waitForTimeout(600);
+  await page.locator('.tinc button.ing-sunlight').click();
+  await page.locator('.tinc-start').focus();
+  await page.keyboard.press('Space');
   await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 8000 });
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 8000 });
   await page.waitForTimeout(800);
@@ -164,12 +180,29 @@ async function session(name, viewport, mobile) {
   await page.getByRole('button', { name: 'Brew', exact: true }).click();
   const open = page.getByRole('button', { name: 'Allow the camera' });
   // Screens arrive after a paint-wipe transition: wait for the prompt or the hunt.
-  await page.locator('.vf-overlay.intro:not([hidden]), button:has-text("Allow the camera")').first().waitFor({ timeout: 10000 });
+  await page.locator('.tinc, button:has-text("Allow the camera")').first().waitFor({ timeout: 10000 });
   if (await open.isVisible().catch(() => false)) {
     await page.waitForTimeout(500);
     await shot('10a-camera-prompt');
     await open.click();
   }
+  // The tincture: drag one ingredient into the machine, tap another, then start.
+  await page.waitForSelector('.tinc', { timeout: 10000 });
+  await page.waitForTimeout(600);
+  const tinc = page.locator('.tinc .ing');
+  const tFrom = await tinc.nth(1).boundingBox();
+  const tTo = await page.locator('.seven-vp').boundingBox();
+  await page.mouse.move(tFrom.x + tFrom.width / 2, tFrom.y + tFrom.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tTo.x + tTo.width / 2, tTo.y + tTo.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await tinc.nth(5).click();
+  await page.waitForTimeout(500);
+  const fills = await page.locator('.ing-meter-bar i').evaluateAll((els) => els.map((e) => e.style.width));
+  if (fills.filter((w) => parseFloat(w) > 0).length !== 2) problems.push(`[${name}] tincture meters: ${fills.join(' ')}`);
+  await shot('09-tincture');
+  await overflow('tincture');
+  await page.locator('.tinc-start').click();
   await page.waitForSelector('.vf-overlay.intro:not([hidden])', { timeout: 10000 });
   await page.waitForSelector('.vf-overlay.intro', { state: 'hidden', timeout: 10000 });
   await page.waitForTimeout(1200);

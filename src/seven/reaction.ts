@@ -2,12 +2,14 @@
 // (Flawless … Botched) may set one off. Extracts are then exposed for a few seconds and the
 // player drops ingredients into them, trying to bring them closer to their targets. Pure
 // rules; the screen is reaction-view.ts.
-// Checked on a sliding window after every color; a 3-long sequence beats a 2-long one:
-//   3 the same      Equilibrium            all 3 exposed (every dose goes into all), all ingredients, 60 s
-//   3 rising        Sublimation            1 random of the 3, all ingredients, 30 s
-//   3 falling       Precipitation          1 random of the 3, all ingredients, 30 s
-//   2 rising        Semi-Sublimation       1 random of the 2, 4 random ingredients, 30 s
-//   2 falling       Semi-Precipitation     1 random of the 2, 4 random ingredients, 30 s
+// Checked on a sliding window after every color; a 3-long sequence beats a 2-long one. One
+// random extract of the chain is exposed, always, and ingredients come in opposite pairs so
+// every dose can be undone (ANALYSIS §4.45):
+//   3 the same      Equilibrium            3 random pairs, 30 s
+//   3 rising        Sublimation            2 random pairs, 30 s
+//   3 falling       Precipitation          2 random pairs, 30 s
+//   2 rising        Semi-Sublimation       1 random pair, 30 s
+//   2 falling       Semi-Precipitation     1 random pair, 30 s
 // Rising means getting better, one quality at a time (Awry → Wavering → Kindred); a skipped
 // quality (Awry → Kindred) breaks the chain.
 
@@ -113,30 +115,44 @@ export function findReaction(sections: readonly Ranked[], rng: Rng, needsOf?: Ne
   return null;
 }
 
+/** How many pairs of opposite ingredients a reaction offers (ANALYSIS §4.45). */
+export function pairsFor(kind: ReactionKind, length: number): number {
+  const { pairs } = SEVEN.reaction;
+  return kind === 'equilibrium' ? pairs.equilibrium : length >= 3 ? pairs.three : pairs.two;
+}
+
 /** What a reaction of this kind over these sections exposes, with which ingredients, for how long. */
 export function makeReaction(kind: ReactionKind, window: number[], tiers: string[], rng: Rng, needsOf?: NeedsOf): Reaction {
-  const { seconds, equilibriumSeconds, semiIngredients, needWeight } = SEVEN.reaction;
-  const all = INGREDIENTS.map((i) => i.id);
+  const { seconds, needWeight } = SEVEN.reaction;
   const length = window.length;
-  if (kind === 'equilibrium') return { kind, length, window, indices: window, ingredients: all, seconds: equilibriumSeconds, tiers };
+  // One random extract of the chain, always (ANALYSIS §4.45: three at once was too hard).
   const indices = [window[Math.floor(rng() * length)]];
-  if (length >= 3) return { kind, length, window, indices, ingredients: all, seconds, tiers };
-  // A semi-reaction: a few ingredients drawn at random, but weighted toward what the exposed
-  // extract needs (the user's call, ANALYSIS §4.39): each starts at weight 1, plus needWeight
-  // for every point of distance one dose would save. Never certain, often helpful.
+  // Whole pairs only, so every dose can be undone by its opposite. The pairs are drawn at
+  // random, weighted toward what the exposed extract needs (ANALYSIS §4.39): each starts at
+  // weight 1, plus needWeight for every point of distance one dose of its better half would
+  // save. Never certain, often helpful.
   const needs = needsOf?.(indices[0]);
-  const pool = all.map((id) => ({ id, w: 1 + needWeight * Math.max(0, needs?.[id] ?? 0) }));
-  const picked = new Set<string>();
-  while (picked.size < semiIngredients && pool.length) {
+  const axes: Axis[] = ['ev', 'sat', 'warm', 'tint'];
+  const pool = axes.map((axis) => ({
+    axis,
+    w: 1 + needWeight * Math.max(0, ...INGREDIENTS.filter((i) => i.axis === axis).map((i) => needs?.[i.id] ?? 0)),
+  }));
+  const picked = new Set<Axis>();
+  const n = pairsFor(kind, length);
+  while (picked.size < n && pool.length) {
     let x = rng() * pool.reduce((t, p) => t + p.w, 0);
     let k = 0;
     while (k < pool.length - 1 && (x -= pool[k].w) > 0) k++;
-    picked.add(pool.splice(k, 1)[0].id);
+    picked.add(pool.splice(k, 1)[0].axis);
   }
-  return { kind, length, window, indices, ingredients: all.filter((id) => picked.has(id)), seconds, tiers };
+  const ingredients = INGREDIENTS.filter((i) => picked.has(i.axis)).map((i) => i.id);
+  return { kind, length, window, indices, ingredients, seconds, tiers };
 }
 
-/** Doses per axis (Sunlight +1, Darkness −1, …) as edits. Opposite ingredients cancel. */
+/**
+ * Doses per axis (Sunlight +1, Darkness −1, …) as edits. Opposite ingredients cancel.
+ * The tincture uses the same coarse doses as reactions (ANALYSIS §4.44): agency, not precision.
+ */
 export function dosesToEdits(doses: Record<Axis, number>): Edits {
   const { evPerDose, satPerDose, warmPerDose, tintPerDose } = SEVEN.reaction;
   return {
@@ -168,11 +184,12 @@ export interface ReactionEntry {
  * (ANALYSIS §4.35), Equilibrium last. Built from the tuning, so the numbers stay true.
  */
 export function reactionList(): ReactionEntry[] {
-  const { seconds, equilibriumSeconds, semiIngredients } = SEVEN.reaction;
+  const { seconds, pairs } = SEVEN.reaction;
+  const offer = (n: number) => `${n === 1 ? 'a random pair' : `${n} random pairs`} of opposite ingredients`;
   const semi = (moves: string) =>
-    `If the quality of the extracted color ${moves} by one step from the previous one, one of them is exposed for ${seconds} seconds. During the time, you can add ${semiIngredients} random ingredients to improve it.`;
+    `If the quality of the extracted color ${moves} by one step from the previous one, one of them is exposed for ${seconds} seconds. During the time, you can add ${offer(pairs.two)} to improve it.`;
   const three = (moves: string) =>
-    `If the quality of the colors ${moves} one step at a time for 3 consecutive extracts, one of them is exposed for ${seconds} seconds. During the time, you can add all the ingredients to improve it.`;
+    `If the quality of the colors ${moves} one step at a time for 3 consecutive extracts, one of them is exposed for ${seconds} seconds. During the time, you can add ${offer(pairs.three)} to improve it.`;
   return [
     { name: 'Semi-Sublimation', text: semi('rises'), example: ['Awry', 'Wavering'], sep: '→' },
     { name: 'Semi-Precipitation', text: semi('drops'), example: ['Wavering', 'Awry'], sep: '→' },
@@ -180,7 +197,7 @@ export function reactionList(): ReactionEntry[] {
     { name: 'Precipitation', text: three('drops'), example: ['Kindred', 'Wavering', 'Awry'], sep: '→' },
     {
       name: 'Equilibrium',
-      text: `If the quality of the colors remains the same for 3 consecutive extracts, the 3 extracts are exposed for ${equilibriumSeconds} seconds. During the time, you can add all the ingredients to improve them.`,
+      text: `If the quality of the colors remains the same for 3 consecutive extracts, one of them is exposed for ${seconds} seconds. During the time, you can add ${offer(pairs.equilibrium)} to improve it.`,
       example: ['Kindred', 'Kindred', 'Kindred'],
       sep: '=',
     },

@@ -2,7 +2,9 @@
 // camera, the color extracting machine framed in the target color, zoom, on the
 // clock) → snap → extraction → result sheet (precise judgement + the craft grows).
 // The whole camera view is the machine: a frame with pipes into the square. After a
-// color's result, the last three ranks may set off a reaction (reaction.ts).
+// color's result, the last three ranks may set off a reaction (reaction.ts). Every run
+// opens with the tincture (ANALYSIS §4.44): ingredients mixed into the machine, no clock,
+// applied to the viewfinder and every capture.
 
 import { muteButton, onKeys, show } from '../app';
 import { camera } from '../camera/camera';
@@ -10,12 +12,13 @@ import { Viewfinder } from '../camera/viewfinder';
 import { cameraSource, canvasSource, captureView, imageToCanvas, meanOfRect, squareRect, viewRect, type FrameSource } from '../camera/source';
 import { hexToOklab, mixLab, oklabToHex } from '../color/oklab';
 import { centerOf, floatText, fx, shake } from '../ui/fx';
-import type { ColorDef } from '../data/colors';
+import { COLORS, type ColorDef } from '../data/colors';
 import { SEVEN, TUNING } from '../data/tuning';
 import { mulberry32 } from '../meta/rng';
 import { paintPracticeCanvas } from '../practice/plates';
 import { craftTierFor, machineRect, mosaic } from '../scoring/extract';
-import { NO_EDITS, type Plate } from '../color/plate';
+import { applyEdits, NO_EDITS, type Edits, type Plate } from '../color/plate';
+import { updateSettings } from '../meta/storage';
 import { h, toast, fmt, wait, reducedMotion } from '../ui/dom';
 import { stamp, swatch } from '../ui/components';
 import { POTION_BLURBS, potionSvg } from '../ui/potion';
@@ -23,7 +26,8 @@ import { applyPaletteTo, paletteFor } from '../ui/palettes';
 import { goSevenSummary, quitSeven } from '../flow';
 import { sfx, vibrate } from '../audio/sfx';
 import { dealSection, finishSection, OPERATIONS, runTotal, type Section, type SevenRun } from './run';
-import { findReaction, ingredientNeeds, makeReaction, REACTION_NAMES, type Reaction, type ReactionKind } from './reaction';
+import { dosesToEdits, findReaction, ingredientNeeds, INGREDIENTS, makeReaction, REACTION_NAMES, type Reaction, type ReactionKind } from './reaction';
+import { ingredientShelf } from './ingredients';
 import { reactionView, type ReactionView } from './reaction-view';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
@@ -64,7 +68,9 @@ export function sevenScreen(r: SevenRun): void {
     let zoom: number = SEVEN.zoomMin;
     let cx = 0.5;
     let cy = 0.5;
-    let phase: 'intro' | 'hunt' | 'capturing' | 'result' | 'reaction' | 'done' = 'intro';
+    let phase: 'tincture' | 'intro' | 'hunt' | 'capturing' | 'result' | 'reaction' | 'done' = 'intro';
+    /** The tincture's edits, on the viewfinder and every capture of the run. */
+    let tincture: Edits = NO_EDITS;
     let reacting: ReactionView | null = null;
     let remaining: number = SEVEN.seconds;
     let lastT = performance.now();
@@ -122,6 +128,7 @@ export function sevenScreen(r: SevenRun): void {
     const huntHelp =
       r.mode === 'camera' ? 'Hold things up to the camera · Space: extract · +/−: zoom · Esc: quit' : 'Drag or arrows: aim · Space: extract · +/−: zoom · Esc: quit';
     const deskHelp = h('p', { class: 'desk-only muted small' }, huntHelp);
+    const huntSide = h('div', { class: 'hunt-side' }, target, zoomRow, deskHelp);
 
     const shutter = h('button', { class: 'shutter', type: 'button', 'aria-label': 'Extract (Space)', onclick: () => void snap() }, h('span'));
     const flipBtn = h(
@@ -147,12 +154,14 @@ export function sevenScreen(r: SevenRun): void {
       pickBtn,
       fileInput,
     );
+    const pickWhat = h('p', null, 'Pick a photo from your gallery with this color in it.');
+    const pickWhen = h('p', { class: 'small' }, 'The clock starts when it’s in.');
     const pickPrompt = h(
       'div',
       { class: 'vf-overlay pick', hidden: true },
-      h('p', null, 'Pick a photo from your gallery with this color in it.'),
+      pickWhat,
       h('button', { class: 'btn primary', type: 'button', onclick: () => fileInput.click() }, 'Pick a photo'),
-      h('p', { class: 'small' }, 'The clock starts when it’s in.'),
+      pickWhen,
     );
     viewport.append(pickPrompt);
     fileInput.addEventListener('change', async () => {
@@ -169,6 +178,7 @@ export function sevenScreen(r: SevenRun): void {
       }
     });
 
+    const huntControls = h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, h('div', { class: 'side right' }, flipBtn));
     screen.classList.add('hunt', 'seven');
     screen.append(
       spectrum,
@@ -182,19 +192,8 @@ export function sevenScreen(r: SevenRun): void {
       h(
         'div',
         { class: 'hunt-layout' },
-        h(
-          'div',
-          { class: 'hunt-side' },
-          target,
-          zoomRow,
-          deskHelp,
-        ),
-        h(
-          'div',
-          { class: 'hunt-main' },
-          stageWrap,
-          h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, h('div', { class: 'side right' }, flipBtn)),
-        ),
+        huntSide,
+        h('div', { class: 'hunt-main' }, stageWrap, huntControls),
       ),
       sheet,
     );
@@ -277,9 +276,12 @@ export function sevenScreen(r: SevenRun): void {
       updatePickPrompt();
     }
 
-    /** Gallery practice: ask for a photo while hunting without one. */
+    /** Gallery practice: ask for a photo while hunting (or mixing the tincture) without one. */
     function updatePickPrompt(): void {
-      pickPrompt.hidden = !(r.mode === 'photo' && !src && phase === 'hunt');
+      const mixing = phase === 'tincture';
+      pickPrompt.hidden = !(r.mode === 'photo' && !src && (phase === 'hunt' || mixing));
+      pickWhat.textContent = mixing ? 'Pick a photo from your gallery to mix your tincture with.' : 'Pick a photo from your gallery with this color in it.';
+      pickWhen.textContent = mixing ? 'There’s no clock yet.' : 'The clock starts when it’s in.';
       pickBtn.textContent = src ? 'Change photo' : 'Pick photo';
     }
 
@@ -330,6 +332,67 @@ export function sevenScreen(r: SevenRun): void {
       }
       const url = deck.urls[deck.index++ % deck.urls.length];
       setSource(canvasSource(await imageToCanvas(url)));
+    }
+
+    // --- the tincture ------------------------------------------------------------------
+    let endTincture = () => {};
+
+    /**
+     * Before the first color of a camera run: the player mixes ingredients into the machine
+     * until the world inside it looks like the world around them (their room's light, their
+     * camera's white balance). No clock; "Start extracting" begins the run.
+     */
+    async function mixTincture(): Promise<void> {
+      phase = 'tincture';
+      stageEl.textContent = 'Tincture';
+      timerEl.textContent = '';
+      viewport.style.setProperty('--ing', '#d8d2c4');
+      const shelf = ingredientShelf(
+        INGREDIENTS.map((i) => i.id),
+        () => viewport,
+        () => (tincture = dosesToEdits(shelf.doses)),
+        { into: 'the machine', meters: true },
+      );
+      const pourOut = () => {
+        shelf.reset();
+        tincture = NO_EDITS;
+      };
+      const startBtn = h('button', { class: 'btn primary rx-btn tinc-start', type: 'button', onclick: () => endTincture() }, 'Start extracting ▶');
+      const panel = h(
+        'div',
+        { class: 'tinc' },
+        h('p', { class: 'eyebrow' }, 'Before the first color'),
+        h('h2', { class: 'tinc-name' }, 'Mix a tincture'),
+        h(
+          'p',
+          { class: 'tinc-how small' },
+          r.mode === 'camera'
+            ? 'Make the world inside the machine look like the world around you. Hold up something white: it should look white.'
+            : 'It goes into every color of this run. Something white should look white.',
+        ),
+        shelf.el,
+        h('div', { class: 'rx-actions' }, h('button', { class: 'btn ghost small', type: 'button', onclick: pourOut }, 'Pour out'), startBtn),
+      );
+      const huntParts = [target, zoomRow, deskHelp, huntControls];
+      huntParts.forEach((el) => (el.hidden = true));
+      huntSide.append(panel);
+      endTincture = () => {
+        if (phase !== 'tincture') return;
+        shelf.lock();
+        panel.remove();
+        huntParts.forEach((el) => (el.hidden = false));
+        phase = 'intro';
+        updatePickPrompt();
+        void startSection();
+      };
+      if (r.mode === 'practice') {
+        // A still life of its own to mix against (no color is dealt yet).
+        const rng = mulberry32((r.seed ^ 0x9e3779b9) >>> 0);
+        setSource(canvasSource(paintPracticeCanvas(rng, COLORS[Math.floor(rng() * COLORS.length)]).canvas));
+      } else await prepareSource();
+      updatePickPrompt();
+      layout();
+      startBtn.focus();
     }
 
     // --- section flow ---------------------------------------------------------------
@@ -384,6 +447,7 @@ export function sevenScreen(r: SevenRun): void {
 
     /** `timedOut`: the clock ran out, so the machine extracts on its own, from wherever the player left it. */
     async function snap(timedOut = false): Promise<void> {
+      if (phase === 'tincture') return endTincture();
       if (phase === 'intro') return beginHunt();
       if (phase === 'result') return advance();
       if (phase !== 'hunt') return;
@@ -409,7 +473,9 @@ export function sevenScreen(r: SevenRun): void {
         viewport.classList.add('snap-dip');
         later(320, () => viewport.classList.remove('snap-dip'));
       }
-      const plate = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
+      const raw = await captureView(src, view(), SEVEN.viewShortSide, TUNING.framesAveraged);
+      // What the player saw is what's scored: the tincture goes into the capture too.
+      const plate = raw && applyEdits(raw, tincture);
       viewport.classList.remove('flash');
       if (!plate) {
         phase = 'hunt';
@@ -420,6 +486,8 @@ export function sevenScreen(r: SevenRun): void {
       }
       const before = runTotal(r);
       const sec = finishSection(r, plate, zoom);
+      // The tutorial (Denim first) is done once its color is in, even if the run is left.
+      if (r.tutorial && sec.index === 0) updateSettings({ tutorialDone: true });
       blendReveal(plate, sec, before);
     }
 
@@ -777,6 +845,8 @@ export function sevenScreen(r: SevenRun): void {
       const mirror = src.mirrored ? ' scaleX(-1)' : '';
       const el = src.el as HTMLElement;
       el.style.transform = `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)${mirror}`;
+      // Without WebGL the tincture is only approximate on screen (no warmth or tint); captures are exact.
+      el.style.filter = `brightness(${Math.pow(2, tincture.ev)}) saturate(${1 + tincture.sat})`;
     };
 
     const loop = (now: number) => {
@@ -784,9 +854,9 @@ export function sevenScreen(r: SevenRun): void {
       const dt = (now - lastT) / 1000;
       lastT = now;
       // After the snap the view freezes (the last frame stays) while the machine blends.
-      const live = phase === 'hunt' || phase === 'intro';
+      const live = phase === 'hunt' || phase === 'intro' || phase === 'tincture';
       if (src && live) {
-        if (vf.ok) vf.render(src, view(), NO_EDITS);
+        if (vf.ok) vf.render(src, view(), tincture);
         else fallbackStyle();
         if (src.width() && Math.abs(viewport.clientWidth / Math.max(1, viewport.clientHeight) - src.width() / src.height()) > 0.02) layout();
       }
@@ -866,6 +936,8 @@ export function sevenScreen(r: SevenRun): void {
     const offKeys = onKeys((e) => {
       if (document.querySelector('.overlay')) return;
       const k = e.key;
+      // Mixing the tincture: Enter/Space on a focused ingredient pours it instead.
+      if (phase === 'tincture' && (k === ' ' || k === 'Enter') && (e.target as HTMLElement)?.closest?.('.rx-shelf')) return;
       if (k === ' ' || k === 'Enter') {
         e.preventDefault();
         void snap();
@@ -889,7 +961,7 @@ export function sevenScreen(r: SevenRun): void {
       e.preventDefault();
     });
 
-    void startSection();
+    void mixTincture();
 
     return () => {
       reacting?.cancel();

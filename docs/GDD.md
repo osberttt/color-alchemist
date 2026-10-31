@@ -25,7 +25,7 @@ The sections after this one describe the original pair-based design ("Classic").
 2. Each section deals **one** named color. Tier ladder: Lead ×3, Silver ×3, Gold ×1. No two colors in a row share an element, and there are at most 2 dark colors per run. The first-ever camera run opens with **Denim** (jeans).
 3. **Intro beat** (~1.7 s): the operation, "extract", a swatch and the color name.
 4. **Hunt (30 s)**: the live camera in full color. **The whole camera view is the color extracting machine**: a frame in the target color, with pipes from all four sides of the frame into the centered square (30 % of the short side). A nameplate sits on the bottom pipe. The panel shows the **target** swatch and a hidden **"?"** for the extracted color: players judge by eye. They can **zoom** (digital, 1–4×) and **extract**; nothing else can be adjusted during the 30 s. Time runs out → the machine **extracts on its own**, from wherever the player left it (aim and zoom), and it is judged normally. Only if that capture fails does the color score 0.
-   - **No side bars and no tincture any more:** the camera is never adjusted. Ingredients only appear in reactions (step 6b, ANALYSIS §4.25).
+   - **No side bars.** Every run (camera, gallery and practice) opens with the **tincture** (ANALYSIS §4.44): before the first color, with no clock, the player mixes the 8 ingredients (the same doses as reactions) into the machine to match their room's light; it applies to the viewfinder and every capture.
    - **Blend reveal** (after the player's extraction or when time runs out): the frame freezes and everything in the square comes together at once: it swirls and shrinks into a round blob at the very center, melting into the one extracted color, and the blob flies straight into the extracted swatch, which shows the color at last.
 5. **No other correction.** Light is part of the game: shade it with a hand, tilt, move to a window. **Blending is allowed**: red and yellow objects side by side in the square extract as orange.
 6. **Extraction**: once the swatch shows the color, the **result sheet** slides up (its own palette):
@@ -36,13 +36,13 @@ The sections after this one describe the original pair-based design ("Classic").
 
 6b. **Reactions** (`seven/reaction.ts`, ANALYSIS §4.25–4.29): after each result, the qualities of the latest extracts (Flawless … Botched) may set off a reaction. It's a sliding window checked after every color, and a 3-long sequence beats a 2-long one. "Rising" means getting better **one quality at a time** (Awry → Wavering → Kindred). A skipped quality (Awry → Kindred) sets nothing off.
 
-   | Latest qualities | Reaction | Exposed | Ingredients | Clock |
+   | Latest qualities | Reaction | Exposed | Ingredients (random opposite pairs, ANALYSIS §4.45) | Clock |
    |---|---|---|---|---|
-   | 3 the same | Equilibrium | all 3 (each dose goes into all of them) | all 8 | 60 s |
-   | 3 rising | Sublimation | 1 random of the 3 | all 8 | 30 s |
-   | 3 falling | Precipitation | 1 random of the 3 | all 8 | 30 s |
-   | 2 rising | Semi-Sublimation | 1 random of the 2 | 4 random | 30 s |
-   | 2 falling | Semi-Precipitation | 1 random of the 2 | 4 random | 30 s |
+   | 3 the same | Equilibrium | 1 random of the 3 | 3 pairs | 30 s |
+   | 3 rising | Sublimation | 1 random of the 3 | 2 pairs | 30 s |
+   | 3 falling | Precipitation | 1 random of the 3 | 2 pairs | 30 s |
+   | 2 rising | Semi-Sublimation | 1 random of the 2 | 1 pair | 30 s |
+   | 2 falling | Semi-Precipitation | 1 random of the 2 | 1 pair | 30 s |
 
    Two the same (without a third) sets nothing off, and neither does an empty extract.
    - **The briefing (no clock):** a reaction opens by showing what happened before any clock runs:

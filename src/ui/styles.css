@@ -3116,6 +3116,79 @@ body[data-theme='palette'] .btn.primary {
   }
 }
 
+/* The tincture (ANALYSIS §4.44): mixed into the machine before the first color. */
+.tinc {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+.tinc .eyebrow,
+.tinc-how {
+  margin: 0;
+}
+.tinc-name {
+  margin: 0;
+  font-size: 22px;
+}
+.tinc-how {
+  color: var(--fog);
+}
+.viewport.drop-ready {
+  box-shadow: 0 0 0 3px var(--bone);
+}
+.ing-wrap {
+  display: grid;
+  gap: 6px;
+}
+/* One meter per pair: it fills from the middle toward the side poured most. */
+.ing-meters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.ing-meter {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+.ing-meter-bar {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ash);
+  overflow: hidden;
+}
+.ing-meter-bar::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--fog);
+}
+.ing-meter-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--bone);
+  transition:
+    left 0.2s ease-out,
+    width 0.2s ease-out;
+}
+/* Short phones: the tip goes, the camera keeps its room. */
+@media (max-height: 680px) and (max-width: 899px) {
+  .tinc-how {
+    display: none;
+  }
+  .tinc-name {
+    font-size: 18px;
+  }
+}
+
 /* The potion's moving parts live in potion-anim.css (shared with the tuner). */
 
 /* ---------- Desktop (PC layout, GDD §16.7) ---------- */

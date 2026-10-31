@@ -257,6 +257,52 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.46 "Denim and Beige again and again": the tutorial bug and a small Lead tier (2026-10-31)
+
+**The report (a playtester, via the user).** Denim and Beige keep coming up.
+
+**What the code does.** A simulation of 20,000 runs with the dealing rule shows the dealing is fair within each tier: every Lead color appears in 19–23 % of runs, Silver 10–14 %, Gold 6–8 % (Violet 2 %, deliberately). The full list with swatches is in `docs/previews/colors.html` (and `.png`).
+- **Denim was a bug.** The first camera run opens with Denim (the tutorial: "your jeans will do"). The tutorial was marked done only when a camera run reached the summary, so every abandoned or unfinished camera run opened with Denim again. **Fixed:** the tutorial is done once its first color is extracted.
+- **Beige is the small Lead tier.** Only 15 Lead colors fill 3 of the 7 slots, so each one shows up in about 1 run in 5, and the Earth and Sky elements hold 4 of them each. That's chance, not a bug. Not changed.
+
+**Market:** repeats are noticed fast in short replayable games; players read them as "the game has only a few colors". The usual fixes are a larger pool or a "recently seen" memory.
+
+**Game design (suggestions, not built):**
+1. Avoid colors seen in the last 1–2 runs on this device (localStorage). That's the biggest win for how varied the game feels, and it doesn't change difficulty.
+2. Move a few easy Silver colors (Teal, Turquoise, Lavender) down to Lead to widen the pool.
+
+**Digit7 Jam:** retention is judged; a judge replaying 2–3 times would have met Denim every time if they quit a run. The fix is one line and covered by the existing flow.
+
+### 4.45 Reactions: one extract and opposite pairs only (2026-10-31)
+
+**The change (the user's call: "too hard").**
+- **Every reaction exposes one random extract** of the chain that set it off. Equilibrium no longer exposes all 3 at once.
+- **Ingredients come only as opposite pairs** (Sunlight/Darkness, Pigment/Ash, Cinnamon/Cobalt, Moss/Rose), so any dose can be "undone" by its opposite. A 2-long chain offers **1 pair**, a 3-long chain **2 pairs**, Equilibrium **3 pairs**. The pairs are drawn at random, still weighted toward what the extract needs (§4.39).
+- All reactions now last 30 s (Equilibrium had 60 s because it held 3 extracts).
+
+**Market:** fewer, clearer choices under a clock fit casual players; "undo by the opposite" is understood at once.
+
+**Game design:**
+- One target to look at instead of three means the eye can compare properly. Equilibrium had three colors pulled by the same doses, which was mostly luck.
+- The reward ladder is now in the shelf: a longer chain gives more tools (1 → 2 → 3 pairs), which makes Equilibrium the best reaction instead of the hardest.
+- With 1 pair a semi-reaction can sometimes offer an axis the extract doesn't need. The weighting makes the helpful pair about twice as likely as chance (44 % vs 25 % in the test case).
+
+**Digit7 Jam:** gameplay & fun (less frustration), execution (fewer things on the reaction screen; with one row it always fits 360×640). The guide's reaction list is generated from the tuning, so its text follows.
+
+### 4.44 The tincture is back (2026-10-31)
+
+**The change (the user's call).** The tincture of §4.23–4.24 returns, alongside reactions.
+- Before the first color of **every** run (Brew, gallery and practice; the user's call), the player mixes a tincture: the 8 ingredients, dragged or tapped into the machine, one dose at a time, with a meter per pair and "Pour out". No clock; "Start extracting" begins the run.
+- It applies to the viewfinder and to every capture of the run (the same math in the shader and the capture, so what you see is what's scored).
+- Doses are the same as reactions' (`SEVEN.reaction`, about 4 OKLab×100 each; the user's call): the tincture doesn't need to be precise, it gives the player agency. That's 2× the §4.23 light step and about 6–10× its color steps, so a few taps visibly change the world, and a careless tincture can cost a rank on every color.
+- Gallery runs ask for a photo first (no clock yet); practice runs paint a still life of their own to mix against. Both are still corrected by the tincture for the whole run, so a wild tincture costs points there too. For gallery photos it is genuinely useful (photos carry their own light and white balance); in practice scenes, which are painted exact, it is a rehearsal of the ritual: the best tincture there is none.
+
+**Market:** see §4.23: a calibration step turned into an alchemy ritual, and it answers "the game says my blue shirt isn't blue".
+
+**Game design:** fairness holds: it is mixed before any target is known and applies to all 7 colors. The cost is a step before every camera run. Suggestion (not built): remember the last tincture on this device, so replays can start at once.
+
+**Digit7 Jam:** product fit (the machine fiction starts with the player's hands), originality. No new assets or requests. Without WebGL the preview is approximate (CSS filters; no warmth/tint) while the capture stays exact. The smoke test mixes a tincture at 360×640 and 1280×720.
+
 ### 4.43 Camera permission: asked only on the button; "Try again" really asks again (2026-10-31)
 
 **The change (the user's report and call).**

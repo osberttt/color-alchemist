@@ -18,10 +18,11 @@ Does your life have enough colors to heal you? Colorchemy is a real-world color 
 
 - **The machine:** each run is 7 colors, the seven stages of alchemy from Calcination to Coagulation. For each color you get 30 seconds to fill the square of the color extracting machine (your camera view) with something of that color, then extract it.
 - **Scoring:** the machine averages everything in the square and judges how close it is. The quality runs Flawless, Harmonious, Kindred, Wavering, Awry, Botched, worth 100 down to 10 points. Every color is a drop in your potion: Gunk, Stimulant, Antidote, Panacea, and finally the Elixir of Life.
-- **Reactions:** extract qualities that rise or fall in steps set off reactions. One or more extracts are exposed, and you have 30–60 seconds to drop ingredients into them (Sunlight, Darkness, Pigment, Ash, Cinnamon, Cobalt, Rose, Moss) and bring them closer to their colors.
+- **The tincture:** before the first color, you mix ingredients (Sunlight, Darkness, Pigment, Ash, Cinnamon, Cobalt, Rose, Moss) into the machine until the world inside it looks like the world around you. It corrects your room's light and your camera for the whole run.
+- **Reactions:** extract qualities that rise or fall in steps, or stay the same, set off reactions. One extract is exposed, and you have 30 seconds to drop ingredients into it and bring it closer to its color. Ingredients come in opposite pairs, so you can always undo a dose: 1 pair for two extracts in a row, 2 for three, and 3 for Equilibrium.
 
 ## 5. How to open and play
-- Open the playable URL in a current browser. Nothing needs to be installed.
+- Open **https://osbert.dev/colorchemy/** in a current browser. Nothing needs to be installed.
 - **Brew** uses the camera; allow camera access when asked.
 - No camera? Play **Practice · practice scenes** (painted still lifes) or **Practice · from gallery** (pick any photo on your device).
 - To run the build ZIP locally, serve the folder over `http://localhost` or HTTPS; browsers only allow the camera on secure origins. For example: `npx vite preview` from the repository, or any static file server.

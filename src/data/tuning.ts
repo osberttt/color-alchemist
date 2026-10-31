@@ -93,10 +93,10 @@ export const SEVEN = {
   /** Seconds per color. */
   seconds: 30,
   /**
-   * Reactions (ANALYSIS §4.25–4.29): a run of qualities sets one off, and extracts are
-   * exposed for `seconds` (`equilibriumSeconds` when three are exposed at once) while the
-   * player drops ingredients into them (no limits). Semi-reactions (2 in a row) offer only
-   * `semiIngredients` random ingredients.
+   * Reactions (ANALYSIS §4.25–4.29, §4.45): a run of qualities sets one off, and one random
+   * extract of the chain is exposed for `seconds` while the player drops ingredients into it
+   * (no limits). Ingredients come in random opposite pairs (so a dose can be undone):
+   * `pairs.two` for a 2-long chain, `pairs.three` for 3, `pairs.equilibrium` for Equilibrium.
    * Sunlight/Darkness: ±evPerDose stops in linear light. Pigment/Ash: OKLab chroma
    * ×(1 + satPerDose) per dose, compounding (so Ash approaches grey but never inverts).
    * Cinnamon/Cobalt: warmer/cooler, red up and blue down by warmPerDose stops. Moss/Rose:
@@ -104,8 +104,8 @@ export const SEVEN = {
    * tint keep brightness. Deliberately coarse: each dose moves a typical color about 4
    * (OKLab ×100), on every axis alike.
    */
-  /** needWeight: a semi-reaction's draw weight per point of distance one dose would save (base 1). */
-  reaction: { seconds: 30, equilibriumSeconds: 60, semiIngredients: 4, needWeight: 1.5, evPerDose: 0.3, satPerDose: 0.45, warmPerDose: 0.5, tintPerDose: 0.55 },
+  /** needWeight: a pair's draw weight per point of distance one dose would save (base 1). */
+  reaction: { seconds: 30, pairs: { two: 1, three: 2, equilibrium: 3 }, needWeight: 1.5, evPerDose: 0.3, satPerDose: 0.45, warmPerDose: 0.5, tintPerDose: 0.55 },
   /** The color extracting machine: a centered square, as a fraction of the view's short side. */
   squareFraction: 0.3,
   /** Short side of the captured view, in px. */

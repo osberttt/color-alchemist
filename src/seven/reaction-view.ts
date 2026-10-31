@@ -88,7 +88,7 @@ export function reactionView(host: HTMLElement, r: SevenRun, rx: Reaction, onCha
     h(
       'p',
       { class: 'rx-offer' },
-      `You have ${rx.seconds} seconds and ${offered.length === INGREDIENTS.length ? 'every ingredient' : `${offered.length} ingredients`} to bring ${many ? 'them' : 'it'} closer to ${many ? 'their colors' : secs[0].def.name}.`,
+      `You have ${rx.seconds} seconds and ${offered.length === 2 ? 'a pair' : `${offered.length / 2} pairs`} of opposite ingredients to bring ${many ? 'them' : 'it'} closer to ${many ? 'their colors' : secs[0].def.name}.`,
     ),
     h(
       'div',

@@ -1,7 +1,8 @@
-// The ingredient shelf for reactions (ANALYSIS §4.25–4.30): just the ingredients on offer,
-// dragged (or tapped) into the exposed extracts. Each is one dose along one axis; opposite
-// ingredients cancel; there's no limit. No meters and no undo: think fast and commit; the
-// extract's color is the only feedback.
+// The ingredient shelf (ANALYSIS §4.25–4.30): just the ingredients on offer, dragged (or
+// tapped) into the exposed extracts. Each is one dose along one axis; opposite ingredients
+// cancel; there's no limit. In reactions there are no meters and no undo: think fast and
+// commit; the extract's color is the only feedback. The tincture (§4.44) has no clock, so it
+// shows a meter per pair and can be poured out.
 
 import { sfx, vibrate } from '../audio/sfx';
 import { centerOf, fx } from '../ui/fx';
@@ -13,13 +14,31 @@ export interface Shelf {
   doses: Record<Axis, number>;
   /** No more doses (the reaction is over). */
   lock(): void;
+  /** Back to no doses (the tincture's Pour out). */
+  reset(): void;
 }
+
+export interface ShelfOptions {
+  /** What the ingredients go into, for the drop hint and labels. */
+  into?: string;
+  /** A meter per pair of opposite ingredients. */
+  meters?: boolean;
+}
+
+/** The meters, one per axis, in shelf order. */
+const AXIS_NAMES: [Axis, string][] = [
+  ['ev', 'Light'],
+  ['sat', 'Color'],
+  ['warm', 'Warmth'],
+  ['tint', 'Tint'],
+];
 
 /**
  * Drag an ingredient (ids from INGREDIENTS) into `target` (or tap it: it pours itself in).
  * Every dose updates `doses` and calls `onDose` with the ingredient's color.
  */
-export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose: (color: string) => void): Shelf {
+export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose: (color: string) => void, opts: ShelfOptions = {}): Shelf {
+  const into = opts.into ?? 'your extract';
   const offered = INGREDIENTS.filter((i) => ids.includes(i.id));
   const doses: Record<Axis, number> = { ev: 0, sat: 0, warm: 0, tint: 0 };
   let locked = false;
@@ -27,6 +46,7 @@ export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose
   const dose = (ing: Ingredient, at: { x: number; y: number }) => {
     if (locked) return;
     doses[ing.axis] += ing.sign;
+    paintMeters();
     fx.splash(at.x, at.y, ing.fx, 16);
     onDose(ing.fx);
     sfx.drip();
@@ -69,7 +89,7 @@ export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose
   const tile = (ing: Ingredient) => {
     const btn = h(
       'button',
-      { class: `ing ing-${ing.id}`, type: 'button', 'aria-label': `${ing.name}: drop into the extract` },
+      { class: `ing ing-${ing.id}`, type: 'button', 'aria-label': `${ing.name}: drop into ${into}` },
       h('span', { class: `ing-jar ing-${ing.id}`, 'aria-hidden': 'true' }),
       h('span', { class: 'ing-name' }, ing.name),
     );
@@ -101,7 +121,7 @@ export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose
       ghost.remove();
       ghost = null;
       if (!cancelled && inside(target(), e.clientX, e.clientY)) dose(ing, { x: e.clientX, y: e.clientY });
-      else if (!locked) toast('Drop it into your extract.');
+      else if (!locked) toast(`Drop it into ${into}.`);
     };
     btn.addEventListener('pointerup', (e) => end(e, false));
     btn.addEventListener('pointercancel', (e) => end(e, true));
@@ -110,10 +130,39 @@ export function ingredientShelf(ids: string[], target: () => HTMLElement, onDose
     return btn;
   };
 
-  const el = h('div', { class: 'rx-shelf' }, ...offered.map(tile));
+  // Each meter fills from the middle toward the side poured most: half full at 3 doses and
+  // never quite full (there's no limit).
+  const fills = new Map<Axis, HTMLElement>();
+  const meters = opts.meters
+    ? h(
+        'div',
+        { class: 'ing-meters', 'aria-hidden': 'true' },
+        ...AXIS_NAMES.map(([axis, name]) => {
+          const fill = h('i');
+          fills.set(axis, fill);
+          return h('span', { class: 'ing-meter' }, h('span', { class: 'ing-meter-name' }, name), h('span', { class: 'ing-meter-bar' }, fill));
+        }),
+      )
+    : null;
+  function paintMeters(): void {
+    for (const [axis, fill] of fills) {
+      const d = doses[axis];
+      const f = (Math.abs(d) / (Math.abs(d) + 3)) * 50;
+      fill.style.left = `${d < 0 ? 50 - f : 50}%`;
+      fill.style.width = `${f}%`;
+    }
+  }
+  paintMeters();
+
+  const shelf = h('div', { class: 'rx-shelf' }, ...offered.map(tile));
+  const el = meters ? h('div', { class: 'ing-wrap' }, shelf, meters) : shelf;
   return {
     el,
     doses,
+    reset: () => {
+      for (const [axis] of AXIS_NAMES) doses[axis] = 0;
+      paintMeters();
+    },
     lock: () => {
       locked = true;
       el.classList.add('locked');
