@@ -28,17 +28,6 @@ import { reactionView, type ReactionView } from './reaction-view';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
-const TIPS = [
-  'Fill the square with one color.',
-  'No orange? Put red and yellow in the square together.',
-  'Zoom in or walk closer.',
-  'Too bright? Shade it with your hand.',
-  'Tilt shiny things to avoid glare.',
-  'Qualities rising or falling in steps cause reactions.',
-  'Trust your eyes: compare the frame with what’s in the square.',
-  'When time runs out, the machine extracts whatever is in the square.',
-];
-
 /**
  * Dev only, to try reactions quickly: `?react` sets one off after every color (each kind in
  * turn when the ranks set nothing off); `?react=equilibrium` (or sublimation, precipitation)
@@ -84,7 +73,6 @@ export function sevenScreen(r: SevenRun): void {
     let hidden = false;
     let raf = 0;
     let resultAt = 0;
-    let tipIndex = Math.floor(Math.random() * TIPS.length);
     const timers: number[] = [];
     const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, reducedMotion() ? Math.min(ms, 120) : ms));
 
@@ -131,7 +119,6 @@ export function sevenScreen(r: SevenRun): void {
     const zoomInput = h('input', { type: 'range', min: String(SEVEN.zoomMin), max: String(SEVEN.zoomMax), step: '0.01', value: '1', 'aria-label': 'Zoom' }) as HTMLInputElement;
     zoomInput.addEventListener('input', () => setZoom(Number(zoomInput.value)));
     const zoomRow = h('label', { class: 'slider zoom' }, h('span', { class: 's-label' }, '⌕ Zoom'), zoomInput, zoomOut);
-    const tipEl = h('p', { class: 'tip' }, TIPS[tipIndex]);
     const huntHelp =
       r.mode === 'camera' ? 'Hold things up to the camera · Space: extract · +/−: zoom · Esc: quit' : 'Drag or arrows: aim · Space: extract · +/−: zoom · Esc: quit';
     const deskHelp = h('p', { class: 'desk-only muted small' }, huntHelp);
@@ -207,7 +194,6 @@ export function sevenScreen(r: SevenRun): void {
           { class: 'hunt-main' },
           stageWrap,
           h('div', { class: 'hunt-controls' }, h('div', { class: 'side' }, photoBtns), shutter, h('div', { class: 'side right' }, flipBtn)),
-          tipEl,
         ),
       ),
       sheet,
@@ -827,11 +813,6 @@ export function sevenScreen(r: SevenRun): void {
     };
     raf = requestAnimationFrame(loop);
 
-    const tipTimer = window.setInterval(() => {
-      tipIndex = (tipIndex + 1) % TIPS.length;
-      tipEl.textContent = TIPS[tipIndex];
-    }, 6000);
-
     const onVis = () => {
       hidden = document.hidden;
       lastT = performance.now();
@@ -911,7 +892,6 @@ export function sevenScreen(r: SevenRun): void {
     return () => {
       reacting?.cancel();
       cancelAnimationFrame(raf);
-      clearInterval(tipTimer);
       timers.forEach(clearTimeout);
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);

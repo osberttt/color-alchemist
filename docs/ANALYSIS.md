@@ -257,6 +257,19 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.42 Camera screens in plain words; no hunt tips (2026-10-31)
+
+**The change (the user's call).**
+- **Camera prompt:** "The color extracting machine needs a camera to capture the colors around you." / "Photos stay on your device and nothing is uploaded to the cloud." with the buttons "Allow the camera", "No camera? Practice instead" and "Back". It replaces "The Alchemist needs eyes."
+- **Camera blocked:** "The color extracting machine couldn't access the camera." with "Try again", "Practice instead" and "Back". It replaces "The eye will not open." and the per-cause message. The cause (blocked, no camera, not HTTPS…) is still logged to the console for testers.
+- **No hints at the bottom:** the rotating tips under the shutter are gone ("Fill the square with one color.", "Zoom in or walk closer.", …).
+
+**Market:** permission prompts that say plainly why and what happens to the data get more "Allow" taps than flavor text does. The privacy line answers the first worry. A clean hunt screen keeps eyes on the camera.
+
+**Game design:** the guide and the color intro already teach the hunt, so the tips repeated it while the clock ran. Naming the machine in the prompt ties the permission to the fiction.
+
+**Digit7 Jam:** less text and no distractions. Losing the per-cause message makes one case harder: a judge on an insecure (non-HTTPS) page can't see why the camera failed. The Digit7s hosting is HTTPS, so this shouldn't happen there. The build, ZIP, screenshots, video and deck were regenerated.
+
 ### 4.41 A new tagline: "Does your life have enough colors to heal you?" (2026-10-31)
 
 **The change (the user's call).**

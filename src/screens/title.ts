@@ -125,8 +125,8 @@ export function cameraPromptScreen(onOpen: () => void, onPractice: () => void): 
         'div',
         { class: 'center-col' },
         h('div', { class: 'eye', 'aria-hidden': 'true' }, '◉'),
-        h('h2', null, 'The Alchemist needs eyes.'),
-        h('p', null, 'Your camera finds the colors around you. Photos stay on your device; nothing is uploaded.'),
+        h('h2', null, 'The color extracting machine needs a camera to capture the colors around you.'),
+        h('p', null, 'Photos stay on your device and nothing is uploaded to the cloud.'),
         h(
           'button',
           {
@@ -147,14 +147,15 @@ export function cameraPromptScreen(onOpen: () => void, onPractice: () => void): 
 }
 
 export function cameraErrorScreen(err: CameraError, retry: () => void, onPractice: () => void): void {
+  // One plain line for every cause (the user's wording); the cause is still logged for testers.
+  console.info(`camera unavailable: ${err} (${CAMERA_ERROR_TEXT[err]})`);
   show((screen) => {
     screen.append(
       h(
         'div',
         { class: 'center-col' },
         h('div', { class: 'eye closed', 'aria-hidden': 'true' }, '◌'),
-        h('h2', null, 'The eye will not open.'),
-        h('p', null, CAMERA_ERROR_TEXT[err]),
+        h('h2', null, 'The color extracting machine couldn’t access the camera.'),
         h('button', { class: 'btn primary', type: 'button', onclick: retry }, 'Try again'),
         h('button', { class: 'btn', type: 'button', onclick: onPractice }, 'Practice instead'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => goTitle() }, 'Back'),
