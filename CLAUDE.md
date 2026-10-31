@@ -18,6 +18,11 @@
 - Submission needs: playable URL, build ZIP (only runtime files), **private GitHub repo with meaningful commit history**, README (17 listed items), ≥ 3 screenshots, 1–3 min demo video, asset credit list, originality declaration, technical notes, **AI use declaration** (this project uses Claude Code for code and docs).
 - Judging: retention potential, gameplay & fun, technical performance, art & polish, originality, product fit, execution.
 
+## Submission (v1.0.0)
+
+- Release **1.0.0**: `package.json`, `<meta name="version">` in `index.html`, git tag `v1.0.0`. Bump all three together for any resubmission.
+- Repo root: `README.md` (the jam's 17 items), `ASSET_CREDITS.md`, `TECHNICAL_NOTES.md`, `AI_USE_DECLARATION.md`. `submission/`: the build ZIP (git-ignored), screenshots, `README_osbert_Colorchemy.md` (a copy of the README), team profile, originality declaration, portal answers, demo plan, `CHECKLIST.md`. Team name: **osbert** (solo).
+
 ## Hard rules
 
 - **Stay in this folder.** Only read, search or change files inside the project folder, plus Claude's own folders (`C:\Users\User\.claude\`, Claude temp/scratchpad under `C:\Users\User\AppData\`). Ask if something might be elsewhere.

@@ -1,7 +1,7 @@
 {
   "name": "colorchemy",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Colorchemy: a real-world color hunt arcade game. is your life full of colors?",
   "type": "module",
   "scripts": {
