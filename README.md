@@ -40,20 +40,21 @@ Current stable Chrome, Edge, Firefox and Safari, on desktop and mobile. Minimum:
 | Aim | Point the camera | Webcam; in practice modes drag or use the arrow keys |
 | Zoom | Pinch or the zoom slider | `+` / `−`, mouse wheel or the slider |
 | Extract | Tap the round shutter button | `Space` or `Enter` |
-| Add an ingredient (reactions) | Drag it onto the extract, or tap it | Drag with the mouse, or click |
+| Add an ingredient (tincture, reactions) | Drag it into the machine or onto the extract, or tap it | Drag with the mouse, or click |
 | Quit a run | ✕ | `Esc` |
 
-1. Each color shows a target swatch, and the camera view is framed in that color.
-2. Fill the square with something of that color, then extract. You can blend: red and yellow together extract as orange. When time runs out, the machine extracts whatever is in the square.
-3. The extracted color is revealed and judged, and its points go into your potion.
-4. If a reaction happens, read the briefing, tap **Start**, then add ingredients before the clock ends. Watch the extract's color change.
-5. After 7 colors, your potion is revealed and saved to the ledger (Live potions and Gallery potions boards).
+1. First, mix a tincture: drop ingredients into the machine until the world inside it looks like the world around you, then tap **Start extracting**. There is no clock, and the tincture applies to every color of the run. **Pour out** starts it again.
+2. Each color shows a target swatch, and the camera view is framed in that color.
+3. Fill the square with something of that color, then extract. You can blend: red and yellow together extract as orange. When time runs out, the machine extracts whatever is in the square.
+4. The extracted color is revealed and judged, and its points go into your potion.
+5. If a reaction happens, read the briefing, tap **Start**, then add ingredients before the clock ends. Watch the extract's color change. Ingredients come in opposite pairs, so a dose can be undone with its opposite.
+6. After 7 colors, your potion is revealed and saved to the ledger (Live potions and Gallery potions boards).
 
 The **?** button on the title screen opens the guide, which lists all reactions with examples.
 
 ## 9. Known bugs or limitations
 - **Camera access:** Brew needs a camera, permission to use it, and an HTTPS page. If the camera is blocked or missing, the game says why and offers practice instead.
-- **Lighting:** colors depend on the room's light and on the camera's automatic exposure and white balance. This is part of the challenge; there is no light correction.
+- **Lighting:** colors depend on the room's light and on the camera's automatic exposure and white balance. The tincture lets players correct for their light by eye before the run; there is no automatic light correction.
 - **Gallery runs:** any image can be used, so they have their own board, separate from live (camera) potions.
 - **Local leaderboard:** the ledger is stored only in this browser (localStorage); clearing site data erases it.
 - **Sound:** it starts after the first tap, because of browsers' autoplay rules.
@@ -66,8 +67,8 @@ The **?** button on the title screen opens the guide, which lists all reactions 
 ## 11. Asset credit summary
 - **Fonts:** Fraunces, Inter, JetBrains Mono, all under the SIL Open Font License 1.1, self-hosted via Fontsource.
 - **Color names:** the xkcd color survey (CC0).
-- **Art:** all original and drawn in code (SVG/CSS); there are no image files.
-- **Sound:** all synthesized in code with the Web Audio API; there are no audio files and no music.
+- **Art:** all original and procedural, drawn at runtime by code (SVG/CSS) written with Claude Code under the developer's art direction; there are no image files.
+- **Sound:** all synthesized at runtime with the Web Audio API by code written with Claude Code, with every sound chosen by the developer; there are no audio files and no music.
 - **Repository only:** dev-only test photos from Wikimedia Commons are in the repository for testing and are never in the build. See `test-photos/CREDITS.md`.
 
 Full list: `submission/ASSET_CREDITS.md`.

@@ -254,6 +254,8 @@ await wait(700);
 await shot(1);
 await caption('Brew uses your camera. Here: practice with painted scenes');
 await wait(2600);
+// Move the pointer off the title buttons first: a hovered button keeps animating and never counts as stable.
+await page.mouse.move(4, 4);
 await page.getByRole('button', { name: 'Practice · practice scenes' }).click();
 
 // The hunt is ready when no intro, result sheet or reaction is showing.

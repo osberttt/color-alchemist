@@ -108,6 +108,7 @@ export function howTo(onDone?: () => void): void {
       h('p', { class: 'howto-intro' }, 'Brew medicine with colors in the real world. The closer the colors are to those in the recipe, the better the quality.'),
       h('h2', { class: 'howto-sub' }, 'How to play'),
       h('p', null, 'Allow access to the camera on your phone (or PC). Take photos to match the colors in the recipe.'),
+      h('p', null, 'First, mix a tincture: drop ingredients into the machine until the world inside it looks like the world around you. It goes into every color of the run.'),
       h('h2', { class: 'howto-sub' }, 'Reactions'),
       h('p', null, 'The change in quality of the colors extracted may cause chemical reactions.'),
       reactionGuide(),
