@@ -320,10 +320,12 @@ export function sevenScreen(r: SevenRun): void {
       }
     }
 
+    /** Dev builds only: the next photo from test-photos/ (never shipped in the jam build). */
     async function nextPhoto(): Promise<void> {
+      if (!import.meta.env.DEV) return;
       deck ??= await loadPhotoDeck();
       if (!deck.urls.length) {
-        toast('No test photos found. Use Open… to load an image.');
+        toast('No test photos found. Use Pick photo to load an image.');
         return;
       }
       const url = deck.urls[deck.index++ % deck.urls.length];
@@ -874,7 +876,8 @@ export function sevenScreen(r: SevenRun): void {
       if ((e.target as HTMLElement)?.tagName === 'INPUT' && k.startsWith('Arrow')) return;
       if (k === '+' || k === '=') setZoom(zoom * 1.1);
       else if (k === '-' || k === '_') setZoom(zoom / 1.1);
-      else if ((k === 'n' || k === 'N') && r.mode === 'photo') void nextPhoto();
+      // Dev only: the test photos aren't in the jam build.
+      else if (import.meta.env.DEV && (k === 'n' || k === 'N') && r.mode === 'photo') void nextPhoto();
       else if (src?.pannable && k.startsWith('Arrow')) {
         const v = view();
         const step = (e.shiftKey ? 0.2 : 0.05) * v.w;

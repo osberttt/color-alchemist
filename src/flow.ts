@@ -3,7 +3,6 @@
 
 import { camera } from './camera/camera';
 import { newRun, run, dealCurrent, endRun, type BrewRecord } from './game';
-import { getSettings } from './meta/storage';
 import type { Plate } from './color/plate';
 import type { Assayer } from './scoring/assay';
 import type { BoardKind } from './meta/storage';
@@ -25,25 +24,69 @@ export function goTitle(): void {
   titleScreen();
 }
 
+/** Set before reloading to ask for the camera again; read once on the next start. */
+const RETRY_CAMERA_KEY = 'colorchemy:retry-camera';
+
 async function openCameraThen(next: () => void, practice: () => void): Promise<void> {
   const err = await camera.start();
   if (err) {
-    cameraErrorScreen(err, () => void openCameraThen(next, practice), practice);
+    // A browser that was refused the camera won't ask again on this page, whatever we call.
+    // Safari asks again after a reload, so "Try again" reloads and comes back to the camera
+    // screen. A browser that keeps blocking (Chrome remembers) gets a hint on the error screen.
+    const retried = takeRetryFlag();
+    // Always reload: not every browser reports a refusal as "denied" (some say nothing useful),
+    // and a fresh page is the only way to get the request shown again.
+    const retry = () => {
+      try {
+        sessionStorage.setItem(RETRY_CAMERA_KEY, '1');
+      } catch {
+        // No storage: the reload still lands on the title.
+      }
+      location.reload();
+    };
+    cameraErrorScreen(err, retry, practice, retried && (err === 'denied' || err === 'unknown'));
     return;
   }
+  takeRetryFlag();
   next();
 }
 
+let retryPending = false;
+function takeRetryFlag(): boolean {
+  const was = retryPending;
+  retryPending = false;
+  return was;
+}
+
+/**
+ * Brew always shows the camera screen first: the browser is asked only when the player taps
+ * "Allow the camera" (the user's call, ANALYSIS §4.43). A camera already open this visit
+ * goes straight on.
+ */
 async function withCamera(next: () => void, practice: () => void): Promise<void> {
   if (camera.active) {
     next();
     return;
   }
-  if (!getSettings().seenCameraPrompt) {
-    cameraPromptScreen(() => void openCameraThen(next, practice), practice);
+  cameraPromptScreen(() => void openCameraThen(next, practice), practice);
+}
+
+/** On start: after "Try again" reloaded the page, go straight back to Brew's camera screen. */
+export function start(): void {
+  let retry = false;
+  try {
+    retry = sessionStorage.getItem(RETRY_CAMERA_KEY) === '1';
+    sessionStorage.removeItem(RETRY_CAMERA_KEY);
+  } catch {
+    // No storage: start normally.
+  }
+  if (!retry) {
+    goTitle();
     return;
   }
-  await openCameraThen(next, practice);
+  // Straight to the camera screen (showing the title first would race it).
+  retryPending = true;
+  void beginSeven('camera');
 }
 
 // --- Seven Colors ------------------------------------------------------------------

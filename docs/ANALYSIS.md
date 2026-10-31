@@ -257,6 +257,19 @@ getUserMedia stream (rear, ~1280×720)
 
 Every design change gets a short analysis against the market, the game design and the Digit7 Jam (see `CLAUDE.md`). Newest first.
 
+### 4.43 Camera permission: asked only on the button; "Try again" really asks again (2026-10-31)
+
+**The change (the user's report and call).**
+- **Brew always shows the camera screen first.** The browser is asked only when the player taps "Allow the camera". Before, after the first visit Brew asked the browser straight away. A camera already open this visit still goes straight on.
+- **"Try again" after a refusal now asks again.** A browser that has been refused the camera never shows its request again on the same page, whatever the page calls. Safari asks again after a reload, so "Try again" now reloads the page and returns straight to the camera screen; tapping "Allow the camera" then asks again.
+- **When the browser still refuses** (Chrome remembers a refusal per site), the error screen adds: "Your browser is blocking the camera. Allow it in the site settings (next to the address bar), then try again."
+
+**Market:** asking for a permission only after the player chooses to is the recommended pattern on iOS and Android, and it gets more grants. A retry button that silently fails is a classic "the game is broken" moment.
+
+**Game design:** none. This is onboarding.
+
+**Digit7 Jam:** judges who refuse the camera by accident can recover without guessing. Tested in Chromium with a refused camera: the camera screen comes first, the browser isn't asked before the tap, the reload brings the camera screen back, the hint appears on a second refusal, and Brew again shows the camera screen first. Still to confirm on the iPhone (Safari).
+
 ### 4.42 Camera screens in plain words; no hunt tips (2026-10-31)
 
 **The change (the user's call).**

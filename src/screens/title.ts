@@ -146,7 +146,11 @@ export function cameraPromptScreen(onOpen: () => void, onPractice: () => void): 
   }, 'prompt');
 }
 
-export function cameraErrorScreen(err: CameraError, retry: () => void, onPractice: () => void): void {
+/**
+ * `stillBlocked`: the camera was refused again right after "Try again", so the browser is
+ * remembering the refusal and won't ask: say where to allow it.
+ */
+export function cameraErrorScreen(err: CameraError, retry: () => void, onPractice: () => void, stillBlocked = false): void {
   // One plain line for every cause (the user's wording); the cause is still logged for testers.
   console.info(`camera unavailable: ${err} (${CAMERA_ERROR_TEXT[err]})`);
   show((screen) => {
@@ -156,6 +160,7 @@ export function cameraErrorScreen(err: CameraError, retry: () => void, onPractic
         { class: 'center-col' },
         h('div', { class: 'eye closed', 'aria-hidden': 'true' }, '◌'),
         h('h2', null, 'The color extracting machine couldn’t access the camera.'),
+        stillBlocked ? h('p', null, 'Your browser is blocking the camera. Allow it in the site settings (next to the address bar), then try again.') : null,
         h('button', { class: 'btn primary', type: 'button', onclick: retry }, 'Try again'),
         h('button', { class: 'btn', type: 'button', onclick: onPractice }, 'Practice instead'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => goTitle() }, 'Back'),
