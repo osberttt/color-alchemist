@@ -511,7 +511,6 @@ export function sevenScreen(r: SevenRun): void {
     function showResult(sec: Section, before: number, dropFrom: { x: number; y: number }): void {
       paintSpectrum();
       resultAt = performance.now();
-      const last = r.index + 1 >= SEVEN.sections;
       const power = Math.max(0, SEVEN.colorTiers.length - 1 - sec.tierIndex); // 0 = Botched/Empty … 5 = Flawless
       const scoreEl = h('span', { class: 'res-acc mono' }, '0');
       const stampEl = stamp(sec.tier, 'slam');
@@ -524,7 +523,7 @@ export function sevenScreen(r: SevenRun): void {
       const craftBlurb = h('p', { class: 'craft-blurb' }, r.index === 0 ? '' : POTION_BLURBS[prevCraft.index]);
       const barFill = h('i');
       const barLabel = h('span', { class: 'bar-label mono' });
-      const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, last ? 'Reveal potion ▶' : 'Next ▶');
+      const nextBtn = h('button', { class: 'btn primary xl res-next-btn', type: 'button', disabled: true, onclick: () => advance() }, 'Next ▶');
       paintBar(before, prevCraft);
 
       sheetInner.replaceChildren(
